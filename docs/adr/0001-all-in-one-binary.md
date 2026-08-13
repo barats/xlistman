@@ -1,0 +1,3 @@
+# All-in-one binary architecture
+
+xListman ships as a single Go binary containing the mail processing engine, an embedded web server (list admin, subscription management, archive browsing), and archive storage. This is a deliberate departure from GNU Mailman 3, which splits these into three separate deployable components (Mailman core, Postorius, HyperKitty). The trade-off is deployment simplicity (one binary, zero external dependencies beyond the MTA and SQLite) versus modularity. We chose simplicity because the multi-component deployment model is Mailman 3's biggest pain point, and eliminating it is xListman's core value proposition.
