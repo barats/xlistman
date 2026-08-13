@@ -1,0 +1,29 @@
+[Unit]
+Description=xListman Mailing List Manager
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/xlistman serve
+Restart=on-failure
+RestartSec=5
+
+# Configuration
+Environment=XLISTMAN_CONFIG=/etc/xlistman/config.yaml
+
+# User
+User=xlistman
+Group=xlistman
+
+# Data directory
+StateDirectory=xlistman
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/xlistman
+
+[Install]
+WantedBy=multi-user.target
