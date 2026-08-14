@@ -226,61 +226,7 @@ func (s *LMTPServer) processRecipient(ctx context.Context, rcpt string, rawMsg [
 
 func (s *LMTPServer) handleSubscribe(ctx context.Context, p ParsedAddress, rawMsg []byte) error {
 	sender, _, _ := ParseMessage(rawMsg)
-	sub, err := s.Store.GetOrCreateSubscriber(ctx, sender)
-	if err != nil {
-		return err
-	}
-	l, err := s.Store.GetList(ctx, p.ListName, p.Domain)
-	if err != nil {
-		return err
-	}
-
-	// Closed lists don't accept self-service subscriptions.
-	if l.Settings.SubscriptionPolicy == model.SubscriptionPolicyClosed {
-		return fmt.Errorf("list is closed for subscriptions")
-	}
-
-	// A repeat request for a pending subscription re-sends the confirmation
-	// email instead of erroring, so a lost email can't permanently block a join.
-	if existing, err := s.Store.GetSubscription(ctx, l.ID, sub.ID); err == nil {
-		switch existing.Status {
-		case model.SubscriptionStatusPending:
-			token, err := s.Store.CreateConfirmationToken(ctx, l.ID, sub.ID, sender, time.Now().Add(48*time.Hour))
-			if err != nil {
-				return err
-			}
-			return s.enqueueConfirmation(ctx, l, sub, token)
-		case model.SubscriptionStatusActive, model.SubscriptionStatusHeld:
-			return fmt.Errorf("already subscribed")
-		case model.SubscriptionStatusDisabled:
-			return fmt.Errorf("already subscribed but disabled; re-enabling is not yet supported")
-		}
-	}
-
-	// Create a pending subscription (double opt-in).
-	if _, err := s.Store.CreateSubscription(ctx, l.ID, sub.ID); err != nil {
-		return err // likely already subscribed
-	}
-
-	token, err := s.Store.CreateConfirmationToken(ctx, l.ID, sub.ID, sender, time.Now().Add(48*time.Hour))
-	if err != nil {
-		return err
-	}
-
-	return s.enqueueConfirmation(ctx, l, sub, token)
-}
-
-// enqueueConfirmation builds and enqueues the double opt-in confirmation email.
-// The subscriber confirms by replying to the confirmation address, so the
-// message sets Reply-To to that address and the body instructs a reply.
-func (s *LMTPServer) enqueueConfirmation(ctx context.Context, l *model.List, sub *model.Subscriber, token string) error {
-	confirmAddr := fmt.Sprintf("%s-confirm+%s@%s", l.ListName, token, l.Domain)
-	date := time.Now().UTC().Format(time.RFC1123Z)
-	raw := fmt.Sprintf("From: %s\r\nTo: %s\r\nReply-To: %s\r\nSubject: Confirm your subscription to %s\r\nDate: %s\r\n\r\n"+
-		"Reply to this message to confirm your subscription to %s.\r\n\r\n"+
-		"If you did not request this subscription, you can safely ignore this message.\r\n",
-		l.Address(), sub.Email, confirmAddr, l.Address(), date, l.Address())
-	return s.Store.Enqueue(ctx, l.ID, l.Address(), sub.Email, []byte(raw), l.Address())
+	return s.Pipeline.Subscribe(ctx, p.ListName, p.Domain, sender)
 }
 
 func (s *LMTPServer) handleUnsubscribe(ctx context.Context, p ParsedAddress, rawMsg []byte) error {

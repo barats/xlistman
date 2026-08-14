@@ -65,6 +65,14 @@ _Avoid_: Suspended subscription, blocked subscription
 A one-line instruction sent in the body of an email to a List's `listname-request@domain` address (e.g., `set digest`, `which`, `unsubscribe`). One command per line, case-insensitive, quoted reply lines ignored; the sender's From address is the identity. Commands act on the sender's own Subscription. Replies are a single combined email from the List address.
 _Avoid_: Request, admin command
 
+**Magic Link**:
+A one-time login URL emailed to a Subscriber's address that establishes a Session for the web UI. Passwordless by design; each link is valid once and expires. The identity it grants is the email address it was sent to.
+_Avoid_: Login link, sign-in token
+
+**Session**:
+An authenticated web browsing context for a Subscriber, created when a Magic Link is followed and carried by a persistent session cookie. Expires automatically and can be ended by logging out. No passwords anywhere.
+_Avoid_: Login, auth state
+
 **Archive**:
 The stored history of posts to a List, browsable by Members via the web UI as threaded conversations with full-text search. Always members-only; no public access. Retained indefinitely by default, with an optional configurable max age per list.
 _Avoid_: Message store, history

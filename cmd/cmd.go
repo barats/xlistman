@@ -168,7 +168,7 @@ func cmdServe(args []string) int {
 	socketServer := &mail.SocketServer{Path: cfg.Socket.Path, Server: lmtpServer}
 
 	// HTTP API server.
-	httpServer := server.New(cfg, s, logger)
+	httpServer := server.New(cfg, s, logger, pipeline)
 
 	errCh := make(chan error, 3)
 	go func() { errCh <- lmtpServer.ListenAndServe(ctx) }()

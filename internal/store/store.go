@@ -36,6 +36,7 @@ type Store interface {
 	// Subscription operations
 	CreateSubscription(ctx context.Context, listID, subscriberID int64) (*model.Subscription, error)
 	GetSubscription(ctx context.Context, listID, subscriberID int64) (*model.Subscription, error)
+	GetSubscriptionByID(ctx context.Context, id int64) (*model.Subscription, error)
 	ListSubscriptions(ctx context.Context, listID int64) ([]model.Subscription, error)
 	ListSubscriptionsBySubscriber(ctx context.Context, subscriberID int64) ([]model.Subscription, error)
 	UpdateSubscriptionDelivery(ctx context.Context, subID int64, mode model.DeliveryMode) error

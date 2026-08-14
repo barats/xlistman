@@ -260,6 +260,14 @@ func (s *Store) GetSubscription(ctx context.Context, listID, subscriberID int64)
 	return &sub, nil
 }
 
+func (s *Store) GetSubscriptionByID(ctx context.Context, id int64) (*model.Subscription, error) {
+	var sub model.Subscription
+	if err := s.db.WithContext(ctx).First(&sub, id).Error; err != nil {
+		return nil, fmt.Errorf("get subscription by id: %w", err)
+	}
+	return &sub, nil
+}
+
 func (s *Store) ListSubscriptions(ctx context.Context, listID int64) ([]model.Subscription, error) {
 	var subs []model.Subscription
 	if err := s.db.WithContext(ctx).Where("list_id = ?", listID).Find(&subs).Error; err != nil {

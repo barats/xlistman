@@ -62,6 +62,66 @@ func (p *Pipeline) ProcessPost(ctx context.Context, listName, domain, senderAddr
 	return nil
 }
 
+// Subscribe registers an email address for double opt-in on a list. It is
+// shared by the email path (listname-subscribe@domain) and the web path
+// (POST /api/lists/{...}/subscribe). A repeat request for a pending
+// subscription re-sends the confirmation email instead of erroring, so a
+// lost email can't permanently block a join.
+func (p *Pipeline) Subscribe(ctx context.Context, listName, domain, email string) error {
+	sub, err := p.Store.GetOrCreateSubscriber(ctx, email)
+	if err != nil {
+		return err
+	}
+	l, err := p.Store.GetList(ctx, listName, domain)
+	if err != nil {
+		return err
+	}
+
+	// Closed lists don't accept self-service subscriptions.
+	if l.Settings.SubscriptionPolicy == model.SubscriptionPolicyClosed {
+		return fmt.Errorf("list is closed for subscriptions")
+	}
+
+	if existing, err := p.Store.GetSubscription(ctx, l.ID, sub.ID); err == nil {
+		switch existing.Status {
+		case model.SubscriptionStatusPending:
+			token, err := p.Store.CreateConfirmationToken(ctx, l.ID, sub.ID, email, time.Now().Add(48*time.Hour))
+			if err != nil {
+				return err
+			}
+			return p.enqueueConfirmation(ctx, l, sub, token)
+		case model.SubscriptionStatusActive, model.SubscriptionStatusHeld:
+			return fmt.Errorf("already subscribed")
+		case model.SubscriptionStatusDisabled:
+			return fmt.Errorf("already subscribed but disabled; re-enable it via the -request email command")
+		}
+	}
+
+	// Create a pending subscription (double opt-in).
+	if _, err := p.Store.CreateSubscription(ctx, l.ID, sub.ID); err != nil {
+		return err
+	}
+
+	token, err := p.Store.CreateConfirmationToken(ctx, l.ID, sub.ID, email, time.Now().Add(48*time.Hour))
+	if err != nil {
+		return err
+	}
+	return p.enqueueConfirmation(ctx, l, sub, token)
+}
+
+// enqueueConfirmation builds and enqueues the double opt-in confirmation
+// email. The subscriber confirms by replying to the confirmation address, so
+// the message sets Reply-To to that address and the body instructs a reply.
+func (p *Pipeline) enqueueConfirmation(ctx context.Context, l *model.List, sub *model.Subscriber, token string) error {
+	confirmAddr := fmt.Sprintf("%s-confirm+%s@%s", l.ListName, token, l.Domain)
+	date := time.Now().UTC().Format(time.RFC1123Z)
+	raw := fmt.Sprintf("From: %s\r\nTo: %s\r\nReply-To: %s\r\nSubject: Confirm your subscription to %s\r\nDate: %s\r\n\r\n"+
+		"Reply to this message to confirm your subscription to %s.\r\n\r\n"+
+		"If you did not request this subscription, you can safely ignore this message.\r\n",
+		l.Address(), sub.Email, confirmAddr, l.Address(), date, l.Address())
+	return p.Store.Enqueue(ctx, l.ID, l.Address(), sub.Email, []byte(raw), l.Address())
+}
+
 // deliverToList modifies the message, archives it, and enqueues delivery
 // to all active (non-disabled, non-nomail) subscribers with regular delivery.
 func (p *Pipeline) deliverToList(ctx context.Context, l *model.List, senderAddr string, rawMsg []byte) error {
