@@ -54,6 +54,7 @@ type Store interface {
 	AddModerator(ctx context.Context, listID, subscriberID int64) error
 	RemoveModerator(ctx context.Context, listID, subscriberID int64) error
 	ListModerators(ctx context.Context, listID int64) ([]model.Moderator, error)
+	IsModerator(ctx context.Context, listID, subscriberID int64) (bool, error)
 
 	// Designated sender operations
 	AddDesignatedSender(ctx context.Context, listID, subscriberID int64) error
@@ -64,7 +65,10 @@ type Store interface {
 	// Held message operations
 	CreateHeldMessage(ctx context.Context, listID int64, sender, subject string, body []byte, expiresAt time.Time) (*model.HeldMessage, error)
 	ListHeldMessages(ctx context.Context, listID int64) ([]model.HeldMessage, error)
+	GetHeldMessageByToken(ctx context.Context, token string) (*model.HeldMessage, error)
+	GetHeldMessageByID(ctx context.Context, id int64) (*model.HeldMessage, error)
 	DeleteHeldMessage(ctx context.Context, id int64) error
+	DeleteExpiredHeldMessages(ctx context.Context, now time.Time) (int64, error)
 
 	// Queue operations
 	Enqueue(ctx context.Context, listID int64, from, to string, body []byte, envelopeSender string) error

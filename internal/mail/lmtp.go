@@ -2,9 +2,12 @@ package mail
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net"
+	"net/mail"
 	"strings"
 	"time"
 
@@ -215,6 +218,9 @@ func (s *LMTPServer) processRecipient(ctx context.Context, rcpt string, rawMsg [
 	case AddressTypeConfirm:
 		return s.handleConfirm(ctx, parsed)
 
+	case AddressTypeModerate:
+		return s.handleModerate(ctx, parsed, rawMsg)
+
 	default:
 		return fmt.Errorf("unknown address type")
 	}
@@ -355,6 +361,71 @@ func (s *LMTPServer) handleConfirm(ctx context.Context, p ParsedAddress) error {
 	}
 
 	return s.Store.DeleteConfirmationToken(ctx, p.EncodedPart)
+}
+
+// handleModerate processes a moderation action sent to
+// listname-moderate+token@domain. The actor (the reply's sender) must be an
+// Owner or Moderator of the list; the first word of the reply body selects
+// the action: approve, reject, or discard.
+func (s *LMTPServer) handleModerate(ctx context.Context, p ParsedAddress, rawMsg []byte) error {
+	actor, _, _ := ParseMessage(rawMsg)
+
+	held, err := s.Store.GetHeldMessageByToken(ctx, p.EncodedPart)
+	if err != nil {
+		return fmt.Errorf("invalid moderation token")
+	}
+	if time.Now().After(held.ExpiresAt) {
+		return fmt.Errorf("held message has expired")
+	}
+
+	l, err := s.Store.GetListByID(ctx, held.ListID)
+	if err != nil {
+		return err
+	}
+
+	// Only owners and moderators of the list may act.
+	sub, err := s.Store.GetSubscriber(ctx, actor)
+	if err != nil {
+		return fmt.Errorf("not an owner or moderator of %s", l.Address())
+	}
+	isOwner, _ := s.Store.IsOwner(ctx, l.ID, sub.ID)
+	isModerator, _ := s.Store.IsModerator(ctx, l.ID, sub.ID)
+	if !isOwner && !isModerator {
+		return fmt.Errorf("not an owner or moderator of %s", l.Address())
+	}
+
+	switch moderationAction(rawMsg) {
+	case "approve":
+		return s.Pipeline.ApproveHeld(ctx, held.ID)
+	case "reject":
+		return s.Pipeline.RejectHeld(ctx, held.ID)
+	case "discard":
+		return s.Pipeline.DiscardHeld(ctx, held.ID)
+	default:
+		return fmt.Errorf("unknown moderation action (use approve, reject, or discard)")
+	}
+}
+
+// moderationAction extracts the action word from a moderation reply: the first
+// word of the first non-blank, non-quoted body line.
+func moderationAction(raw []byte) string {
+	msg, err := mail.ReadMessage(bytes.NewReader(raw))
+	if err != nil {
+		return ""
+	}
+	body, _ := io.ReadAll(msg.Body)
+	for _, line := range strings.Split(string(body), "\n") {
+		line = strings.TrimSpace(strings.TrimRight(line, "\r"))
+		if line == "" || strings.HasPrefix(line, ">") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) == 0 {
+			continue
+		}
+		return strings.ToLower(strings.Trim(fields[0], ",;"))
+	}
+	return ""
 }
 
 func (c *lmtpConn) send(code int, msg string) {

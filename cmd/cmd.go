@@ -50,6 +50,8 @@ func Run(args []string) int {
 		return cmdOwner(rest)
 	case "subscriber":
 		return cmdSubscriber(rest)
+	case "moderation":
+		return cmdModeration(rest)
 	case "queue":
 		return cmdQueue(rest)
 	case "config":
@@ -79,7 +81,7 @@ Commands:
   domain remove <name>           Remove a virtual domain
   domain list                    List all domains
   list create <addr> --type <t>  Create a list (type: discussion or newsletter)
-       --owner <email>           Assign first owner
+       [--owner <email>] [--moderate]  Assign first owner / enable moderation
   list delete <addr>             Delete a list
   list list [--domain <d>]       List lists
   list info <addr>               Show list details
@@ -90,6 +92,10 @@ Commands:
   subscriber remove <list> <email>  Remove subscriber
   subscriber list <list>         List subscribers
   subscriber import <list> <file>  Import from CSV
+  moderation list <list>           List held messages awaiting approval
+  moderation approve <id>          Approve and deliver a held message
+  moderation reject <id>           Reject a held message (notifies sender)
+  moderation discard <id>          Discard a held message silently
   queue list                     List pending outbound messages
   queue discard <id>             Discard a stuck message
   config check                   Validate config file
@@ -172,6 +178,24 @@ func cmdServe(args []string) int {
 			errCh <- err
 		} else {
 			errCh <- nil
+		}
+	}()
+
+	// Background sweeper: silently discard expired held messages.
+	go func() {
+		ticker := time.NewTicker(time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if n, err := s.DeleteExpiredHeldMessages(ctx, time.Now()); err != nil {
+					logger.Error("expire held messages", "error", err)
+				} else if n > 0 {
+					logger.Info("expired held messages discarded", "count", n)
+				}
+			}
 		}
 	}()
 
@@ -328,7 +352,7 @@ func cmdList(args []string) int {
 	switch args[0] {
 	case "create":
 		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "usage: xlistman list create <addr> --type <discussion|newsletter> --owner <email>")
+			fmt.Fprintln(os.Stderr, "usage: xlistman list create <addr> --type <discussion|newsletter> [--owner <email>] [--moderate]")
 			return 1
 		}
 		listName, domain, err := parseListAddr(args[1])
@@ -339,6 +363,7 @@ func cmdList(args []string) int {
 		listType := model.ListTypeDiscussion
 		ownerEmail := ""
 		desc := ""
+		moderate := false
 		for i := 2; i < len(args); i++ {
 			switch args[i] {
 			case "--type":
@@ -356,6 +381,8 @@ func cmdList(args []string) int {
 				if i < len(args) {
 					desc = args[i]
 				}
+			case "--moderate":
+				moderate = true
 			}
 		}
 		d, err := s.GetDomain(ctx, domain)
@@ -367,6 +394,14 @@ func cmdList(args []string) int {
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "create list:", err)
 			return 1
+		}
+		if moderate {
+			settings := l.Settings
+			settings.ModerationEnabled = true
+			if err := s.UpdateListSettings(ctx, l.ID, settings); err != nil {
+				fmt.Fprintln(os.Stderr, "set moderation:", err)
+				return 1
+			}
 		}
 		if ownerEmail != "" {
 			owner, _ := s.GetOrCreateSubscriber(ctx, ownerEmail)
@@ -616,6 +651,83 @@ func cmdSubscriber(args []string) int {
 			count++
 		}
 		fmt.Printf("Imported %d subscribers to %s\n", count, args[1])
+		return 0
+	}
+	return 1
+}
+
+// --- moderation ---
+
+func cmdModeration(args []string) int {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "usage: xlistman moderation <list|approve|reject|discard> [args]")
+		return 1
+	}
+	cfg, err := loadConfig()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	s, err := openStore(cfg)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "open store:", err)
+		return 1
+	}
+	defer s.Close()
+	ctx := context.Background()
+
+	switch args[0] {
+	case "list":
+		if len(args) < 2 {
+			fmt.Fprintln(os.Stderr, "usage: xlistman moderation list <list-addr>")
+			return 1
+		}
+		listName, domain, _ := parseListAddr(args[1])
+		l, err := s.GetList(ctx, listName, domain)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "get list:", err)
+			return 1
+		}
+		held, err := s.ListHeldMessages(ctx, l.ID)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "list held messages:", err)
+			return 1
+		}
+		if len(held) == 0 {
+			fmt.Println("No held messages.")
+			return 0
+		}
+		for _, m := range held {
+			fmt.Printf("%d\t%s\t%s\texpires=%s\n", m.ID, m.Sender, m.Subject, m.ExpiresAt.Format("2006-01-02 15:04"))
+		}
+		return 0
+
+	case "approve", "reject", "discard":
+		if len(args) < 2 {
+			fmt.Fprintf(os.Stderr, "usage: xlistman moderation %s <id>\n", args[0])
+			return 1
+		}
+		id, err := strconv.ParseInt(args[1], 10, 64)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "invalid id:", err)
+			return 1
+		}
+		p := &mail.Pipeline{Store: s, WebBaseURL: cfg.Web.BaseURL}
+		switch args[0] {
+		case "approve":
+			err = p.ApproveHeld(ctx, id)
+		case "reject":
+			err = p.RejectHeld(ctx, id)
+		case "discard":
+			err = p.DiscardHeld(ctx, id)
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "moderation:", err)
+			return 1
+		}
+		fmt.Printf("Held message %d %s\n", id, map[string]string{
+			"approve": "approved", "reject": "rejected", "discard": "discarded",
+		}[args[0]])
 		return 0
 	}
 	return 1

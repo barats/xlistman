@@ -47,8 +47,12 @@ A ListType for two-way lists. Subscribers can post. Has a single "moderation" to
 A ListType for one-way lists. Only designated senders (owners or an allowlist) can post; all other posts are rejected. Subscribers receive but cannot post.
 
 **Held Message**:
-A post awaiting moderator approval, stored in a per-list moderation queue.
+A post awaiting moderator approval, stored in a per-list moderation queue. Carries a moderation token used by the email action path, and expires (is silently discarded) after the list's HeldExpiryDays.
 _Avoid_: Pending message, queued message
+
+**Moderation Action**:
+One of Approve, Reject, or Discard, performed by an Owner or Moderator on a Held Message. Approve delivers the post to the list; Reject discards it and notifies the sender; Discard removes it without notifying the sender.
+_Avoid_: Decision, moderation decision
 
 **Bounce**:
 A delivery failure notification received for a Subscriber's address. Tracked per Subscription via VERP (Variable Envelope Return Path), which encodes the recipient in the envelope sender so bounces can be attributed to a specific Subscription.

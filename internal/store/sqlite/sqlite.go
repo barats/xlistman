@@ -351,6 +351,13 @@ func (s *Store) ListModerators(ctx context.Context, listID int64) ([]model.Moder
 	return mods, nil
 }
 
+func (s *Store) IsModerator(ctx context.Context, listID, subscriberID int64) (bool, error) {
+	var count int64
+	err := s.db.WithContext(ctx).Model(&model.Moderator{}).
+		Where("list_id = ? AND subscriber_id = ?", listID, subscriberID).Count(&count).Error
+	return count > 0, err
+}
+
 // --- Designated sender operations ---
 
 func (s *Store) AddDesignatedSender(ctx context.Context, listID, subscriberID int64) error {
@@ -383,6 +390,7 @@ func (s *Store) IsDesignatedSender(ctx context.Context, listID, subscriberID int
 func (s *Store) CreateHeldMessage(ctx context.Context, listID int64, sender, subject string, body []byte, expiresAt time.Time) (*model.HeldMessage, error) {
 	m := model.HeldMessage{
 		ListID:     listID,
+		Token:      generateToken(),
 		Sender:     sender,
 		Subject:    subject,
 		Body:       body,
@@ -403,8 +411,31 @@ func (s *Store) ListHeldMessages(ctx context.Context, listID int64) ([]model.Hel
 	return msgs, nil
 }
 
+func (s *Store) GetHeldMessageByToken(ctx context.Context, token string) (*model.HeldMessage, error) {
+	var m model.HeldMessage
+	if err := s.db.WithContext(ctx).Where("token = ?", token).First(&m).Error; err != nil {
+		return nil, err
+	}
+	return &m, nil
+}
+
+func (s *Store) GetHeldMessageByID(ctx context.Context, id int64) (*model.HeldMessage, error) {
+	var m model.HeldMessage
+	if err := s.db.WithContext(ctx).First(&m, id).Error; err != nil {
+		return nil, err
+	}
+	return &m, nil
+}
+
 func (s *Store) DeleteHeldMessage(ctx context.Context, id int64) error {
 	return s.db.WithContext(ctx).Delete(&model.HeldMessage{}, id).Error
+}
+
+// DeleteExpiredHeldMessages removes held messages past their expiry and
+// returns how many were removed.
+func (s *Store) DeleteExpiredHeldMessages(ctx context.Context, now time.Time) (int64, error) {
+	res := s.db.WithContext(ctx).Where("expires_at < ?", now).Delete(&model.HeldMessage{})
+	return res.RowsAffected, res.Error
 }
 
 // --- Queue operations ---

@@ -16,6 +16,7 @@ const (
 	AddressTypeUnsubscribe
 	AddressTypeBounce
 	AddressTypeConfirm
+	AddressTypeModerate
 	AddressTypeUnknown
 )
 
@@ -39,6 +40,7 @@ type ParsedAddress struct {
 //	listname-unsubscribe@domain  - unsubscribe shortcut
 //	listname-bounces+enc@domain  - VERP bounce address
 //	listname-confirm+token@domain - confirmation token
+//	listname-moderate+token@domain - moderation action token
 func ParseAddress(addr string) (ParsedAddress, error) {
 	atIdx := strings.LastIndex(addr, "@")
 	if atIdx < 0 {
@@ -67,6 +69,13 @@ func ParseAddress(addr string) (ParsedAddress, error) {
 			listName := strings.TrimSuffix(prefix, "-confirm")
 			return ParsedAddress{
 				Type: AddressTypeConfirm, ListName: listName, Domain: domain,
+				ListAddr: listName + "@" + domain, EncodedPart: encoded,
+			}, nil
+		}
+		if strings.HasSuffix(prefix, "-moderate") {
+			listName := strings.TrimSuffix(prefix, "-moderate")
+			return ParsedAddress{
+				Type: AddressTypeModerate, ListName: listName, Domain: domain,
 				ListAddr: listName + "@" + domain, EncodedPart: encoded,
 			}, nil
 		}

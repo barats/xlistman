@@ -121,17 +121,137 @@ func (p *Pipeline) deliverToList(ctx context.Context, l *model.List, senderAddr 
 	return nil
 }
 
-// holdMessage stores the message in the moderation queue.
+// holdMessage stores the message in the moderation queue and notifies the
+// list's owners and moderators, plus the sender when sender_held_notice is on.
 func (p *Pipeline) holdMessage(ctx context.Context, l *model.List, senderAddr string, rawMsg []byte) error {
 	subject := extractSubject(rawMsg)
 	expiresAt := time.Now().Add(time.Duration(l.Settings.HeldExpiryDays) * 24 * time.Hour)
-	_, err := p.Store.CreateHeldMessage(ctx, l.ID, senderAddr, subject, rawMsg, expiresAt)
+	held, err := p.Store.CreateHeldMessage(ctx, l.ID, senderAddr, subject, rawMsg, expiresAt)
 	if err != nil {
 		return fmt.Errorf("create held message: %w", err)
 	}
 
-	// TODO: Notify moderators that a message is awaiting approval.
+	if err := p.notifyModerators(ctx, l, held); err != nil {
+		return fmt.Errorf("notify moderators: %w", err)
+	}
+	if l.Settings.SenderHeldNotice {
+		if err := p.notifySenderHeld(ctx, l, senderAddr, subject); err != nil {
+			return fmt.Errorf("notify sender: %w", err)
+		}
+	}
 	return nil
+}
+
+// notifyModerators emails the full held message to every owner and moderator
+// of the list (deduplicated), with a Reply-To that routes their reply to the
+// moderation action handler.
+func (p *Pipeline) notifyModerators(ctx context.Context, l *model.List, held *model.HeldMessage) error {
+	moderateAddr := fmt.Sprintf("%s-moderate+%s@%s", l.ListName, held.Token, l.Domain)
+
+	seen := map[int64]bool{}
+	emails := []string{}
+	add := func(id int64) {
+		if seen[id] {
+			return
+		}
+		seen[id] = true
+		if sub, err := p.Store.GetSubscriberByID(ctx, id); err == nil {
+			emails = append(emails, sub.Email)
+		}
+	}
+	if owners, err := p.Store.ListOwners(ctx, l.ID); err == nil {
+		for _, o := range owners {
+			add(o.SubscriberID)
+		}
+	}
+	if mods, err := p.Store.ListModerators(ctx, l.ID); err == nil {
+		for _, m := range mods {
+			add(m.SubscriberID)
+		}
+	}
+
+	bodyText := fmt.Sprintf("A message from %s to %s is awaiting approval.\n\n"+
+		"Subject: %s\n\n"+
+		"To approve, reply to this message with: approve\n"+
+		"To reject, reply with: reject\n"+
+		"To discard, reply with: discard\n\n"+
+		"---- original message ----\n%s\n", held.Sender, l.Address(), held.Subject, held.Body)
+
+	for _, to := range emails {
+		if err := p.Store.Enqueue(ctx, l.ID, l.Address(), to,
+			buildNotice(l.Address(), to, moderateAddr, "Held message for approval: "+held.Subject, bodyText),
+			l.Address()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// notifySenderHeld emails the post's sender that their message is awaiting
+// moderator approval.
+func (p *Pipeline) notifySenderHeld(ctx context.Context, l *model.List, senderAddr, subject string) error {
+	bodyText := fmt.Sprintf("Your message to %s has been received and is awaiting moderator approval.\n"+
+		"If it is not approved, you will not receive a further notification.\n", l.Address())
+	return p.Store.Enqueue(ctx, l.ID, l.Address(), senderAddr,
+		buildNotice(l.Address(), senderAddr, l.Address()+"-owner@"+l.Domain, "Your message to "+l.Address()+" is being reviewed", bodyText),
+		l.Address())
+}
+
+// buildNotice builds a plain-text notification email.
+func buildNotice(from, to, replyTo, subject, bodyText string) []byte {
+	date := time.Now().UTC().Format(time.RFC1123Z)
+	return []byte(fmt.Sprintf("From: %s\r\nTo: %s\r\nReply-To: %s\r\nSubject: %s\r\nDate: %s\r\n\r\n%s",
+		from, to, replyTo, subject, date, bodyText))
+}
+
+// ApproveHeld delivers a held message to the list, overriding the posting
+// policy, and removes it from the moderation queue.
+func (p *Pipeline) ApproveHeld(ctx context.Context, heldID int64) error {
+	held, l, err := p.heldContext(ctx, heldID)
+	if err != nil {
+		return err
+	}
+	if err := p.deliverToList(ctx, l, held.Sender, held.Body); err != nil {
+		return err
+	}
+	return p.Store.DeleteHeldMessage(ctx, held.ID)
+}
+
+// RejectHeld discards a held message and notifies its original sender.
+func (p *Pipeline) RejectHeld(ctx context.Context, heldID int64) error {
+	held, l, err := p.heldContext(ctx, heldID)
+	if err != nil {
+		return err
+	}
+	if err := p.rejectMessage(ctx, l, held.Sender, held.Body); err != nil {
+		return err
+	}
+	return p.Store.DeleteHeldMessage(ctx, held.ID)
+}
+
+// DiscardHeld removes a held message silently.
+func (p *Pipeline) DiscardHeld(ctx context.Context, heldID int64) error {
+	held, _, err := p.heldContext(ctx, heldID)
+	if err != nil {
+		return err
+	}
+	return p.Store.DeleteHeldMessage(ctx, held.ID)
+}
+
+// heldContext loads a held message and its list, rejecting expired messages.
+func (p *Pipeline) heldContext(ctx context.Context, heldID int64) (*model.HeldMessage, *model.List, error) {
+	held, err := p.Store.GetHeldMessageByID(ctx, heldID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("held message %d: %w", heldID, err)
+	}
+	if time.Now().After(held.ExpiresAt) {
+		return nil, nil, fmt.Errorf("held message %d has expired", heldID)
+	}
+	l, err := p.Store.GetListByID(ctx, held.ListID)
+	if err != nil {
+		return nil, nil, err
+	}
+	return held, l, nil
 }
 
 // rejectMessage sends a rejection notification to the sender.

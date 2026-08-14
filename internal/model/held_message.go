@@ -6,6 +6,7 @@ import "time"
 type HeldMessage struct {
 	ID         int64  `gorm:"primaryKey;autoIncrement"`
 	ListID     int64  `gorm:"not null;index"`
+	Token      string `gorm:"uniqueIndex;not null"`
 	Sender     string `gorm:"not null"`
 	Subject    string `gorm:"not null;default:''"`
 	Body       []byte `gorm:"not null"`
