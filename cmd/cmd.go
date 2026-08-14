@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"net"
 	"net/http"
@@ -27,8 +28,9 @@ import (
 // Version is set at build time.
 var Version = "dev"
 
-// Run dispatches CLI commands.
-func Run(args []string) int {
+// Run dispatches CLI commands. webBuild carries the embedded SvelteKit SPA
+// (ADR 0007); it is passed to the HTTP server for static serving.
+func Run(args []string, webBuild fs.FS) int {
 	if len(args) < 1 {
 		printUsage()
 		return 1
@@ -39,7 +41,7 @@ func Run(args []string) int {
 
 	switch cmd {
 	case "serve":
-		return cmdServe(rest)
+		return cmdServe(rest, webBuild)
 	case "deliver":
 		return cmdDeliver(rest)
 	case "domain":
@@ -129,7 +131,7 @@ func parseListAddr(addr string) (listName, domain string, err error) {
 
 // --- serve ---
 
-func cmdServe(args []string) int {
+func cmdServe(args []string, webBuild fs.FS) int {
 	cfg, err := loadConfig()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -173,8 +175,8 @@ func cmdServe(args []string) int {
 	// Inbound: pipe-mode Unix socket (fallback MTA path, ADR 0002).
 	socketServer := &mail.SocketServer{Path: cfg.Socket.Path, Server: lmtpServer}
 
-	// HTTP API server.
-	httpServer := server.New(cfg, s, logger, pipeline)
+	// HTTP API server (also serves the embedded SPA).
+	httpServer := server.New(cfg, s, logger, pipeline, webBuild)
 
 	errCh := make(chan error, 3)
 	go func() { errCh <- lmtpServer.ListenAndServe(ctx) }()

@@ -1,14 +1,14 @@
-.PHONY: build test clean docker
+.PHONY: build build-go web test test-short docker clean config serve tidy
 
 # Frontend build (SvelteKit SPA -> static files)
-web/build:
-	cd web && npm install && npm run build
+web:
+	cd web && pnpm install && pnpm build
 
-# Build the Go binary (frontend must be built first)
-build: web/build
+# Build the Go binary with the embedded frontend (frontend must be built first)
+build: web
 	go build -ldflags "-X github.com/barats/xlistman/cmd.Version=$(shell git describe --tags --always 2>/dev/null || echo dev)" -o xlistman .
 
-# Build without frontend (backend only)
+# Build without the frontend (backend only)
 build-go:
 	go build -o xlistman .
 
@@ -28,6 +28,8 @@ docker:
 clean:
 	rm -f xlistman
 	rm -rf web/build
+	mkdir -p web/build
+	touch web/build/.gitkeep
 
 # Generate default config
 config:

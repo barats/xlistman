@@ -1,4 +1,13 @@
-# Build stage: compile the Go binary
+# Frontend build stage: compile the SvelteKit SPA.
+FROM node:22-alpine AS web
+WORKDIR /web
+RUN npm install -g pnpm
+COPY web/package.json web/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY web/ ./
+RUN pnpm build
+
+# Build stage: compile the Go binary with the embedded frontend.
 FROM golang:1.25-alpine AS builder
 
 WORKDIR /build
@@ -7,8 +16,9 @@ WORKDIR /build
 COPY go.mod go.sum ./
 RUN GOPROXY=https://goproxy.cn,direct go mod download
 
-# Copy source code.
+# Copy source code, then the compiled frontend build.
 COPY . .
+COPY --from=web /web/build ./web/build
 
 # Build the binary.
 RUN CGO_ENABLED=0 go build -ldflags "-X github.com/barats/xlistman/cmd.Version=$(git describe --tags --always 2>/dev/null || echo dev)" -o xlistman .

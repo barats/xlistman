@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/barats/xlistman/internal/config"
 	xmail "github.com/barats/xlistman/internal/mail"
@@ -505,4 +506,57 @@ func mustSubscriber(t *testing.T, st *sqlite.Store, email string) *model.Subscri
 
 func itoa(n int64) string {
 	return strconv.FormatInt(n, 10)
+}
+
+// TestSPAServing verifies the embedded SPA is served with an index.html
+// fallback for client-side routes, while /api/ and /health still hit the API.
+func TestSPAServing(t *testing.T) {
+	web := fstest.MapFS{
+		"web/build/index.html":  {Data: []byte("<html>spa shell</html>")},
+		"web/build/robots.txt":  {Data: []byte("User-agent: *")},
+		"web/build/_app/a.js":   {Data: []byte("console.log('asset')")},
+	}
+
+	st, err := sqlite.OpenInMemory()
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { st.Close() })
+	ctx := context.Background()
+	if _, err := st.CreateDomain(ctx, "example.com", "Example"); err != nil {
+		t.Fatalf("create domain: %v", err)
+	}
+	d, _ := st.GetDomain(ctx, "example.com")
+	if _, err := st.CreateList(ctx, "dev", d.ID, "example.com", "Dev list", model.ListTypeDiscussion); err != nil {
+		t.Fatalf("create list: %v", err)
+	}
+
+	cfg := &config.Config{Web: config.WebConfig{BaseURL: "http://test.local"}}
+	pipeline := &xmail.Pipeline{Store: st, WebBaseURL: cfg.Web.BaseURL}
+	srv := New(cfg, st, slog.New(slog.NewTextHandler(io.Discard, nil)), pipeline, web)
+
+	cases := []struct{ path, want string }{
+		{"/", "spa shell"},
+		{"/l/dev@example.com", "spa shell"}, // client-side route -> fallback
+		{"/auth", "spa shell"},
+		{"/robots.txt", "User-agent: *"},
+		{"/_app/a.js", "asset"},
+	}
+	for _, c := range cases {
+		rec := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, c.path, nil))
+		if rec.Code != http.StatusOK {
+			t.Errorf("%s: status = %d, want 200", c.path, rec.Code)
+		}
+		if !strings.Contains(rec.Body.String(), c.want) {
+			t.Errorf("%s: body = %q, want to contain %q", c.path, rec.Body.String(), c.want)
+		}
+	}
+
+	// API routes still win over the SPA.
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/lists", nil))
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "dev@example.com") {
+		t.Errorf("/api/lists: status=%d body=%q", rec.Code, rec.Body.String())
+	}
 }

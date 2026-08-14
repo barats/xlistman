@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	netmail "net/mail"
@@ -43,8 +44,10 @@ type Server struct {
 	httpSrv   *http.Server
 }
 
-// New creates a new HTTP server.
-func New(cfg *config.Config, st store.Store, logger *slog.Logger, pipeline *xmail.Pipeline) *Server {
+// New creates a new HTTP server. webFS optionally carries the embedded
+// SvelteKit SPA build (web/build); when present it is served with an
+// index.html fallback for client-side routes (ADR 0007).
+func New(cfg *config.Config, st store.Store, logger *slog.Logger, pipeline *xmail.Pipeline, webFS ...fs.FS) *Server {
 	s := &Server{
 		Store:     st,
 		Config:    cfg,
@@ -54,14 +57,57 @@ func New(cfg *config.Config, st store.Store, logger *slog.Logger, pipeline *xmai
 	}
 	mux := http.NewServeMux()
 	s.registerRoutes(mux)
-	s.handler = mux
+	s.handler = s.composeHandler(mux, webFS)
 	s.httpSrv = &http.Server{
 		Addr:         cfg.HTTP.Listen,
-		Handler:      mux,
+		Handler:      s.handler,
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
 	}
 	return s
+}
+
+// composeHandler routes API and health requests to the mux and everything
+// else to the embedded SPA.
+func (s *Server) composeHandler(mux *http.ServeMux, webFS []fs.FS) http.Handler {
+	spa := s.spaHandler(webFS)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/") || r.URL.Path == "/health" {
+			mux.ServeHTTP(w, r)
+			return
+		}
+		spa.ServeHTTP(w, r)
+	})
+}
+
+// spaHandler serves the embedded SPA static files, falling back to index.html
+// for client-side routes. When no build is embedded, it returns 404.
+func (s *Server) spaHandler(webFS []fs.FS) http.Handler {
+	if len(webFS) == 0 || webFS[0] == nil {
+		return http.NotFoundHandler()
+	}
+	sub, err := fs.Sub(webFS[0], "web/build")
+	if err != nil {
+		return http.NotFoundHandler()
+	}
+	fileServer := http.FileServer(http.FS(sub))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p := strings.TrimPrefix(r.URL.Path, "/")
+		if p == "" {
+			p = "index.html"
+		}
+		if _, err := fs.Stat(sub, p); err == nil {
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+		if _, err := fs.Stat(sub, "index.html"); err == nil {
+			clone := r.Clone(r.Context())
+			clone.URL.Path = "/"
+			fileServer.ServeHTTP(w, clone)
+			return
+		}
+		http.NotFound(w, r)
+	})
 }
 
 // Handler returns the HTTP handler (the registered routes), for tests and for
