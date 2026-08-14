@@ -208,12 +208,10 @@ func (s *LMTPServer) processRecipient(ctx context.Context, rcpt string, rawMsg [
 		return s.handleBounce(ctx, parsed)
 
 	case AddressTypeRequest:
-		// TODO: parse email commands from body
-		return nil
+		return s.handleRequest(ctx, parsed, rawMsg)
 
 	case AddressTypeOwner:
-		// Forward to list owners
-		return nil
+		return s.handleOwnerForward(ctx, parsed, rawMsg)
 
 	case AddressTypeConfirm:
 		return s.handleConfirm(ctx, parsed)

@@ -11,7 +11,7 @@ import (
 
 // TestPipelineDeliversOnlyToActive verifies that a post is delivered to Active
 // subscriptions only: Pending (unconfirmed), Held, and Disabled must not
-// receive posts.
+// receive posts. The poster also does not receive their own post.
 func TestPipelineDeliversOnlyToActive(t *testing.T) {
 	s, err := sqlite.OpenInMemory()
 	if err != nil {
@@ -61,14 +61,12 @@ func TestPipelineDeliversOnlyToActive(t *testing.T) {
 	}
 	got := strings.Join(recipients, ",")
 
-	for _, want := range []string{"bob@example.com", "alice@example.com"} {
-		if !strings.Contains(got, want) {
-			t.Errorf("queue missing delivery to %s; got %q", want, got)
-		}
+	if !strings.Contains(got, "alice@example.com") {
+		t.Errorf("queue missing delivery to alice; got %q", got)
 	}
-	for _, notWant := range []string{"charlie@example.com", "dave@example.com", "erin@example.com"} {
+	for _, notWant := range []string{"bob@example.com", "charlie@example.com", "dave@example.com", "erin@example.com"} {
 		if strings.Contains(got, notWant) {
-			t.Errorf("queue delivered to non-active subscriber %s; got %q", notWant, got)
+			t.Errorf("queue delivered to %s; got %q", notWant, got)
 		}
 	}
 }

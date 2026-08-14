@@ -58,8 +58,12 @@ _Avoid_: Decision, moderation decision
 A delivery failure notification received for a Subscriber's address. Tracked per Subscription via VERP (Variable Envelope Return Path), which encodes the recipient in the envelope sender so bounces can be attributed to a specific Subscription.
 
 **Disabled Subscription**:
-A Subscription with Status Disabled, automatically deactivated due to excessive consecutive bounces (configurable threshold, default 5). The Subscriber can re-enable it via the web UI or email command. Not deleted.
+A Subscription with Status Disabled, automatically deactivated due to excessive consecutive bounces (configurable threshold, default 5). The Subscriber can re-enable it with the Email Command `re-enable`, which returns it directly to Active. Not deleted.
 _Avoid_: Suspended subscription, blocked subscription
+
+**Email Command**:
+A one-line instruction sent in the body of an email to a List's `listname-request@domain` address (e.g., `set digest`, `which`, `unsubscribe`). One command per line, case-insensitive, quoted reply lines ignored; the sender's From address is the identity. Commands act on the sender's own Subscription. Replies are a single combined email from the List address.
+_Avoid_: Request, admin command
 
 **Archive**:
 The stored history of posts to a List, browsable by Members via the web UI as threaded conversations with full-text search. Always members-only; no public access. Retained indefinitely by default, with an optional configurable max age per list.

@@ -3,6 +3,7 @@ package mail
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/barats/xlistman/internal/model"
@@ -93,6 +94,9 @@ func (p *Pipeline) deliverToList(ctx context.Context, l *model.List, senderAddr 
 		subscriber, err := p.Store.GetSubscriberByID(ctx, sub.SubscriberID)
 		if err != nil {
 			continue
+		}
+		if strings.EqualFold(subscriber.Email, senderAddr) {
+			continue // don't send posters their own message back
 		}
 
 		// Build VERP envelope sender.
