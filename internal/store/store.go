@@ -70,9 +70,11 @@ type Store interface {
 	GetHeldMessageByID(ctx context.Context, id int64) (*model.HeldMessage, error)
 	DeleteHeldMessage(ctx context.Context, id int64) error
 	DeleteExpiredHeldMessages(ctx context.Context, now time.Time) (int64, error)
+	DeleteExpiredMagicLinks(ctx context.Context, now time.Time) (int64, error)
+	DeleteExpiredSessions(ctx context.Context, now time.Time) (int64, error)
 
 	// Queue operations
-	Enqueue(ctx context.Context, listID int64, from, to string, body []byte, envelopeSender string) error
+	Enqueue(ctx context.Context, listID int64, from, to string, body []byte, envelopeSender, originalSender string) error
 	ClaimNextQueued(ctx context.Context, now time.Time) (*model.QueuedMessage, error)
 	MarkQueuedSent(ctx context.Context, id int64) error
 	RequeueWithBackoff(ctx context.Context, id int64, nextAttempt time.Time) error
@@ -83,8 +85,15 @@ type Store interface {
 	// Archive operations
 	ArchiveMessage(ctx context.Context, listID int64, msgID, subject, from string, body []byte, threadID string) error
 	ListArchive(ctx context.Context, listID int64, limit, offset int) ([]model.ArchiveEntry, error)
+	ListArchiveSince(ctx context.Context, listID int64, since time.Time) ([]model.ArchiveEntry, error)
 	SearchArchive(ctx context.Context, listID int64, query string, limit int) ([]model.ArchiveEntry, error)
 	GetArchiveEntry(ctx context.Context, id int64) (*model.ArchiveEntry, error)
+
+	// Digest operations
+	// AdvanceDigestWatermark claims the digest window for a list: it moves the
+	// watermark to `to` only if it is still `from` (or nil), returning whether
+	// the claim succeeded. Guards against two instances sending the same digest.
+	AdvanceDigestWatermark(ctx context.Context, listID int64, from *time.Time, to time.Time) (bool, error)
 
 	// Confirmation token operations
 	CreateConfirmationToken(ctx context.Context, listID, subscriberID int64, email string, expiresAt time.Time) (string, error)

@@ -119,7 +119,7 @@ func (p *Pipeline) enqueueConfirmation(ctx context.Context, l *model.List, sub *
 		"Reply to this message to confirm your subscription to %s.\r\n\r\n"+
 		"If you did not request this subscription, you can safely ignore this message.\r\n",
 		l.Address(), sub.Email, confirmAddr, l.Address(), date, l.Address())
-	return p.Store.Enqueue(ctx, l.ID, l.Address(), sub.Email, []byte(raw), l.Address())
+	return p.Store.Enqueue(ctx, l.ID, l.Address(), sub.Email, []byte(raw), l.Address(), "")
 }
 
 // deliverToList modifies the message, archives it, and enqueues delivery
@@ -176,7 +176,7 @@ func (p *Pipeline) deliverToList(ctx context.Context, l *model.List, senderAddr 
 			continue
 		}
 
-		if err := p.Store.Enqueue(ctx, l.ID, l.Address(), subscriber.Email, modified, verpAddr); err != nil {
+		if err := p.Store.Enqueue(ctx, l.ID, l.Address(), subscriber.Email, modified, verpAddr, senderAddr); err != nil {
 			// Skip a failed enqueue so one bad recipient doesn't block the rest.
 			continue
 		}
@@ -244,7 +244,7 @@ func (p *Pipeline) notifyModerators(ctx context.Context, l *model.List, held *mo
 	for _, to := range emails {
 		if err := p.Store.Enqueue(ctx, l.ID, l.Address(), to,
 			buildNotice(l.Address(), to, moderateAddr, "Held message for approval: "+held.Subject, bodyText),
-			l.Address()); err != nil {
+			l.Address(), ""); err != nil {
 			return err
 		}
 	}
@@ -258,7 +258,7 @@ func (p *Pipeline) notifySenderHeld(ctx context.Context, l *model.List, senderAd
 		"If it is not approved, you will not receive a further notification.\n", l.Address())
 	return p.Store.Enqueue(ctx, l.ID, l.Address(), senderAddr,
 		buildNotice(l.Address(), senderAddr, l.Address()+"-owner@"+l.Domain, "Your message to "+l.Address()+" is being reviewed", bodyText),
-		l.Address())
+		l.Address(), "")
 }
 
 // buildNotice builds a plain-text notification email.
@@ -327,7 +327,7 @@ func (p *Pipeline) rejectMessage(ctx context.Context, l *model.List, senderAddr 
 		"If this is a newsletter list, only designated senders may post.\n",
 		l.ListName+"-owner@"+l.Domain, senderAddr, l.Address(), l.Address())
 
-	return p.Store.Enqueue(ctx, 0, l.ListName+"-owner@"+l.Domain, senderAddr, []byte(rejectionBody), "")
+	return p.Store.Enqueue(ctx, 0, l.ListName+"-owner@"+l.Domain, senderAddr, []byte(rejectionBody), "", "")
 }
 
 // --- helpers ---

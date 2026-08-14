@@ -154,11 +154,17 @@ func cmdServe(args []string) int {
 	// Outbound queue worker sends via SMTP, or writes to a sink directory in
 	// development (smtp.mode: sink).
 	worker := &queue.Worker{
-		Store:  s,
-		SMTP:   &mail.SMTPClient{Host: cfg.SMTP.Host, Port: cfg.SMTP.Port, Username: cfg.SMTP.Username, Password: cfg.SMTP.Password, Mode: cfg.SMTP.Mode, SinkDir: cfg.SMTP.SinkDir},
-		Logger: logger,
+		Store:      s,
+		SMTP:       &mail.SMTPClient{Host: cfg.SMTP.Host, Port: cfg.SMTP.Port, Username: cfg.SMTP.Username, Password: cfg.SMTP.Password, Mode: cfg.SMTP.Mode, SinkDir: cfg.SMTP.SinkDir},
+		MaxRetries: cfg.Queue.MaxRetries,
+		Logger:     logger,
 	}
 	go worker.Run(ctx)
+
+	// Digest worker: compile and enqueue per-list digests for digest-mode
+	// subscribers.
+	digestWorker := &queue.DigestWorker{Store: s, Logger: logger}
+	go digestWorker.Run(ctx)
 
 	// Inbound: LMTP server (primary MTA path).
 	pipeline := &mail.Pipeline{Store: s, WebBaseURL: cfg.Web.BaseURL}
@@ -181,7 +187,8 @@ func cmdServe(args []string) int {
 		}
 	}()
 
-	// Background sweeper: silently discard expired held messages.
+	// Background sweeper: silently discard expired held messages, magic links,
+	// and sessions.
 	go func() {
 		ticker := time.NewTicker(time.Hour)
 		defer ticker.Stop()
@@ -194,6 +201,16 @@ func cmdServe(args []string) int {
 					logger.Error("expire held messages", "error", err)
 				} else if n > 0 {
 					logger.Info("expired held messages discarded", "count", n)
+				}
+				if n, err := s.DeleteExpiredMagicLinks(ctx, time.Now()); err != nil {
+					logger.Error("expire magic links", "error", err)
+				} else if n > 0 {
+					logger.Info("expired magic links discarded", "count", n)
+				}
+				if n, err := s.DeleteExpiredSessions(ctx, time.Now()); err != nil {
+					logger.Error("expire sessions", "error", err)
+				} else if n > 0 {
+					logger.Info("expired sessions discarded", "count", n)
 				}
 			}
 		}

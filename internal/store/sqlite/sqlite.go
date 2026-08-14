@@ -446,15 +446,30 @@ func (s *Store) DeleteExpiredHeldMessages(ctx context.Context, now time.Time) (i
 	return res.RowsAffected, res.Error
 }
 
+// DeleteExpiredMagicLinks removes magic links past their expiry and returns
+// how many were removed.
+func (s *Store) DeleteExpiredMagicLinks(ctx context.Context, now time.Time) (int64, error) {
+	res := s.db.WithContext(ctx).Where("expires_at < ?", now).Delete(&model.MagicLink{})
+	return res.RowsAffected, res.Error
+}
+
+// DeleteExpiredSessions removes sessions past their expiry and returns how
+// many were removed.
+func (s *Store) DeleteExpiredSessions(ctx context.Context, now time.Time) (int64, error) {
+	res := s.db.WithContext(ctx).Where("expires_at < ?", now).Delete(&model.Session{})
+	return res.RowsAffected, res.Error
+}
+
 // --- Queue operations ---
 
-func (s *Store) Enqueue(ctx context.Context, listID int64, from, to string, body []byte, envelopeSender string) error {
+func (s *Store) Enqueue(ctx context.Context, listID int64, from, to string, body []byte, envelopeSender, originalSender string) error {
 	q := model.QueuedMessage{
 		ListID:         listID,
 		From:           from,
 		To:             to,
 		Body:           body,
 		EnvelopeSender: envelopeSender,
+		OriginalSender: originalSender,
 		NextAttempt:    time.Now(),
 	}
 	return s.db.WithContext(ctx).Create(&q).Error
@@ -544,6 +559,17 @@ func (s *Store) ListArchive(ctx context.Context, listID int64, limit, offset int
 	return entries, nil
 }
 
+// ListArchiveSince returns archive entries for a list received after `since`,
+// in chronological order (used by the digest worker).
+func (s *Store) ListArchiveSince(ctx context.Context, listID int64, since time.Time) ([]model.ArchiveEntry, error) {
+	var entries []model.ArchiveEntry
+	if err := s.db.WithContext(ctx).Where("list_id = ? AND received_at > ?", listID, since).
+		Order("received_at ASC").Find(&entries).Error; err != nil {
+		return nil, err
+	}
+	return entries, nil
+}
+
 func (s *Store) SearchArchive(ctx context.Context, listID int64, query string, limit int) ([]model.ArchiveEntry, error) {
 	var entries []model.ArchiveEntry
 	err := s.db.WithContext(ctx).Raw(`
@@ -564,6 +590,21 @@ func (s *Store) GetArchiveEntry(ctx context.Context, id int64) (*model.ArchiveEn
 		return nil, err
 	}
 	return &e, nil
+}
+
+// --- Digest operations ---
+
+// AdvanceDigestWatermark moves a list's digest watermark to `to` only if it is
+// still `from` (or still nil), returning whether the claim succeeded.
+func (s *Store) AdvanceDigestWatermark(ctx context.Context, listID int64, from *time.Time, to time.Time) (bool, error) {
+	query := s.db.WithContext(ctx).Model(&model.List{}).Where("id = ?", listID)
+	if from == nil {
+		query = query.Where("last_digest_sent_at IS NULL")
+	} else {
+		query = query.Where("last_digest_sent_at <= ?", from)
+	}
+	res := query.Updates(map[string]any{"last_digest_sent_at": to})
+	return res.RowsAffected > 0, res.Error
 }
 
 // --- Confirmation token operations ---

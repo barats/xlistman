@@ -77,6 +77,10 @@ type List struct {
 	ListType    ListType     `gorm:"not null;default:'discussion'"`
 	Settings    ListSettings `gorm:"serializer:json"`
 	CreatedAt   time.Time
+	// LastDigestSentAt is the digest watermark: archive posts after this
+	// timestamp are candidates for the next digest. Nil means no digest has
+	// been sent yet.
+	LastDigestSentAt *time.Time
 
 	// Domain is populated via join, not stored directly.
 	Domain string `gorm:"-"`

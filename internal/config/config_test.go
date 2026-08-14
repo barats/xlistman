@@ -78,6 +78,9 @@ func TestLoadConfig_AppliesDefaults(t *testing.T) {
 	if cfg.RateLimits.PostsPerHour != 10 {
 		t.Errorf("default RateLimits.PostsPerHour = %d, want %d", cfg.RateLimits.PostsPerHour, 10)
 	}
+	if cfg.Queue.MaxRetries != 8 {
+		t.Errorf("default Queue.MaxRetries = %d, want %d", cfg.Queue.MaxRetries, 8)
+	}
 }
 
 func TestLoadConfig_EnvVarOverrides(t *testing.T) {

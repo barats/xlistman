@@ -23,15 +23,19 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
 - Archives: members-only list/search/detail with SQLite FTS5 full-text search (ADR 0013).
 - Test suite green (`go test ./...`); smoke-tested live with curl.
 
-## Next
+### Phase 2 — mailroom gaps — complete and tested
+- Expiry sweeper: the hourly sweep now also prunes expired Magic Links and Sessions, no
+  grace period (ADR 0012).
+- Queue max-retry → bounce: post deliveries carry `OriginalSender`; at max retries
+  (configurable `queue.max_retries`, default 8) they bounce a failure notice to the poster
+  then drop; list-originated notices drop with a warning log (ADR 0006).
+- Digest worker: per-list daily/weekly compilation from the archive via an elapsed-based
+  self-healing watermark (`last_digest_sent_at`), multipart/digest format, atomic watermark
+  update so multiple instances can't double-send, sent via the outbound queue with VERP
+  (ADR 0014).
+- Test suite green; digest compiled and delivered live in a sink-mode smoke test.
 
-### Phase 2 — mailroom gaps (make the backend honest)
-- Digest worker: per-list daily/weekly compilation for digest-mode subscribers (currently
-  digest subscribers receive nothing).
-- Queue worker: max-retry → bounce to the original sender (ADR 0006 promises it; today it
-  retries forever).
-- Expiry sweeper: delete expired held messages, Magic Links, and Sessions on a schedule
-  (ADR 0012 requires session/token pruning).
+## Next
 
 ### Phase 3 — Web UI (SvelteKit 5 SPA)
 - `web/` SvelteKit app (shadcn-svelte), compiled to static and embedded via `go:embed`
@@ -40,6 +44,7 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
   Subscriber: my subscriptions, delivery prefs, re-enable, unsubscribe.
   Archives: threaded browsing + full-text search (members-only).
 - Go server serves the SPA with a fallback to `index.html` for client-side routes.
+  (`make build` currently requires the frontend build in `web/build`.)
 
 ### Phase 4 — Integration and validation
 - `make build` end-to-end (frontend + Go binary), run, and exercise in the browser.

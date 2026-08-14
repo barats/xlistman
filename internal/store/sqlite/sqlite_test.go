@@ -275,7 +275,7 @@ func TestQueueEnqueueClaimSend(t *testing.T) {
 	ctx := context.Background()
 
 	// Enqueue
-	err := s.Enqueue(ctx, 1, "dev@example.com", "alice@work.com", []byte("test message"), "dev-bounces+alice=work.com@example.com")
+	err := s.Enqueue(ctx, 1, "dev@example.com", "alice@work.com", []byte("test message"), "dev-bounces+alice=work.com@example.com", "")
 	if err != nil {
 		t.Fatalf("Enqueue: %v", err)
 	}
@@ -319,7 +319,7 @@ func TestQueueRequeueWithBackoff(t *testing.T) {
 	s := testStore(t)
 	ctx := context.Background()
 
-	s.Enqueue(ctx, 1, "list@x.com", "sub@x.com", []byte("msg"), "")
+	s.Enqueue(ctx, 1, "list@x.com", "sub@x.com", []byte("msg"), "", "")
 	now := time.Now()
 	q, _ := s.ClaimNextQueued(ctx, now)
 
@@ -448,5 +448,60 @@ func TestMagicLinkAndSession(t *testing.T) {
 	_, err = s.GetSession(ctx, sessID)
 	if err == nil {
 		t.Error("expected error after session delete")
+	}
+}
+
+func TestExpirySweep(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	sub, _ := s.GetOrCreateSubscriber(ctx, "alice@x.com")
+
+	// One expired and one live magic link.
+	expiredToken, _ := s.CreateMagicLink(ctx, sub.ID, "alice@x.com", time.Now().Add(-time.Minute))
+	liveToken, _ := s.CreateMagicLink(ctx, sub.ID, "alice@x.com", time.Now().Add(time.Hour))
+
+	// One expired and one live session.
+	expiredSess, _ := s.CreateSession(ctx, sub.ID, "alice@x.com", time.Now().Add(-time.Minute))
+	liveSess, _ := s.CreateSession(ctx, sub.ID, "alice@x.com", time.Now().Add(time.Hour))
+
+	// One expired held message.
+	d, _ := s.CreateDomain(ctx, "example.com", "")
+	l, _ := s.CreateList(ctx, "dev", d.ID, "example.com", "", model.ListTypeDiscussion)
+	_, _ = s.CreateHeldMessage(ctx, l.ID, "bob@x.com", "subj", []byte("body"), time.Now().Add(-time.Minute))
+
+	now := time.Now()
+
+	if n, err := s.DeleteExpiredMagicLinks(ctx, now); err != nil {
+		t.Fatalf("DeleteExpiredMagicLinks: %v", err)
+	} else if n != 1 {
+		t.Errorf("deleted magic links = %d, want 1", n)
+	}
+	if _, err := s.GetMagicLink(ctx, expiredToken); err == nil {
+		t.Error("expired magic link still present")
+	}
+	if _, err := s.GetMagicLink(ctx, liveToken); err != nil {
+		t.Error("live magic link was deleted")
+	}
+
+	if n, err := s.DeleteExpiredSessions(ctx, now); err != nil {
+		t.Fatalf("DeleteExpiredSessions: %v", err)
+	} else if n != 1 {
+		t.Errorf("deleted sessions = %d, want 1", n)
+	}
+	if _, err := s.GetSession(ctx, expiredSess); err == nil {
+		t.Error("expired session still present")
+	}
+	if _, err := s.GetSession(ctx, liveSess); err != nil {
+		t.Error("live session was deleted")
+	}
+
+	if n, err := s.DeleteExpiredHeldMessages(ctx, now); err != nil {
+		t.Fatalf("DeleteExpiredHeldMessages: %v", err)
+	} else if n != 1 {
+		t.Errorf("deleted held messages = %d, want 1", n)
+	}
+	if held, _ := s.ListHeldMessages(ctx, l.ID); len(held) != 0 {
+		t.Errorf("len(held) = %d, want 0", len(held))
 	}
 }

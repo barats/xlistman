@@ -20,6 +20,7 @@ type Config struct {
 	SMTP       SMTPConfig      `yaml:"smtp"`
 	Web        WebConfig       `yaml:"web"`
 	RateLimits RateLimitConfig `yaml:"rate_limits"`
+	Queue      QueueConfig     `yaml:"queue"`
 }
 
 type HTTPConfig struct {
@@ -55,6 +56,13 @@ type RateLimitConfig struct {
 	SubscribePerHour int `yaml:"subscribe_per_hour"`
 	MagicLinkPerHour int `yaml:"magic_link_per_hour"`
 	PostsPerHour     int `yaml:"posts_per_hour"`
+}
+
+// QueueConfig controls the outbound queue worker.
+type QueueConfig struct {
+	// MaxRetries is the number of delivery attempts before a message is
+	// bounced (posts) or dropped (notifications).
+	MaxRetries int `yaml:"max_retries"`
 }
 
 const envPrefix = "XLISTMAN_"
@@ -151,6 +159,9 @@ func applyDefaults(cfg *Config) {
 	if cfg.RateLimits.PostsPerHour == 0 {
 		cfg.RateLimits.PostsPerHour = 10
 	}
+	if cfg.Queue.MaxRetries == 0 {
+		cfg.Queue.MaxRetries = 8
+	}
 }
 
 func applyEnvOverrides(cfg *Config) {
@@ -168,6 +179,7 @@ func applyEnvOverrides(cfg *Config) {
 	setIntFromEnv(envPrefix+"RATE_LIMITS_SUBSCRIBE_PER_HOUR", &cfg.RateLimits.SubscribePerHour)
 	setIntFromEnv(envPrefix+"RATE_LIMITS_MAGIC_LINK_PER_HOUR", &cfg.RateLimits.MagicLinkPerHour)
 	setIntFromEnv(envPrefix+"RATE_LIMITS_POSTS_PER_HOUR", &cfg.RateLimits.PostsPerHour)
+	setIntFromEnv(envPrefix+"QUEUE_MAX_RETRIES", &cfg.Queue.MaxRetries)
 }
 
 func setStrFromEnv(name string, target *string) {

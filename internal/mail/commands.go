@@ -116,7 +116,7 @@ func (s *LMTPServer) enqueueCommandReply(ctx context.Context, l *model.List, sen
 	}
 	replyTo := fmt.Sprintf("%s-request@%s", l.ListName, l.Domain)
 	return s.Store.Enqueue(ctx, l.ID, l.Address(), sender,
-		buildNotice(l.Address(), sender, replyTo, "Your request to "+l.Address(), body), verpAddr)
+		buildNotice(l.Address(), sender, replyTo, "Your request to "+l.Address(), body), verpAddr, "")
 }
 
 func (s *LMTPServer) cmdHelp(l *model.List) string {
@@ -317,7 +317,7 @@ func (s *LMTPServer) forwardToOwners(ctx context.Context, l *model.List, sender,
 	body := fmt.Sprintf("The following message was sent to the owners of %s:\n\n%s", l.Address(), content)
 	for _, addr := range to {
 		if err := s.Store.Enqueue(ctx, l.ID, l.Address(), addr,
-			buildNotice(l.Address(), addr, sender, "Contact to "+l.Address(), body), l.Address()); err != nil {
+			buildNotice(l.Address(), addr, sender, "Contact to "+l.Address(), body), l.Address(), ""); err != nil {
 			return err
 		}
 	}
