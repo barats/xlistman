@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/barat/xlistman/internal/model"
+	"github.com/barats/xlistman/internal/model"
 )
 
 func testStore(t *testing.T) *Store {
@@ -171,6 +171,9 @@ func TestSubscriptionCRUD(t *testing.T) {
 	if subscr.DeliveryMode != model.DeliveryModeRegular {
 		t.Errorf("DeliveryMode = %q, want %q", subscr.DeliveryMode, model.DeliveryModeRegular)
 	}
+	if subscr.Status != model.SubscriptionStatusPending {
+		t.Errorf("Status = %q, want %q", subscr.Status, model.SubscriptionStatusPending)
+	}
 
 	// Get
 	got, err := s.GetSubscription(ctx, l.ID, sub.ID)
@@ -188,16 +191,19 @@ func TestSubscriptionCRUD(t *testing.T) {
 		t.Errorf("DeliveryMode = %q, want %q", got.DeliveryMode, model.DeliveryModeDigest)
 	}
 
-	// Disable and re-enable
-	s.DisableSubscription(ctx, subscr.ID)
+	// Set status and confirm
+	s.SetSubscriptionStatus(ctx, subscr.ID, model.SubscriptionStatusDisabled)
 	got, _ = s.GetSubscription(ctx, l.ID, sub.ID)
-	if !got.Disabled {
-		t.Errorf("Disabled = false, want true")
+	if got.Status != model.SubscriptionStatusDisabled {
+		t.Errorf("Status = %q, want %q", got.Status, model.SubscriptionStatusDisabled)
 	}
-	s.EnableSubscription(ctx, subscr.ID)
+	s.ConfirmSubscription(ctx, subscr.ID, model.SubscriptionStatusActive)
 	got, _ = s.GetSubscription(ctx, l.ID, sub.ID)
-	if got.Disabled {
-		t.Errorf("Disabled = true, want false")
+	if got.Status != model.SubscriptionStatusActive {
+		t.Errorf("Status = %q, want %q", got.Status, model.SubscriptionStatusActive)
+	}
+	if got.ConfirmedAt == nil {
+		t.Errorf("ConfirmedAt = nil, want set")
 	}
 
 	// Bounce count

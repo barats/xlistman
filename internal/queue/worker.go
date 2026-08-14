@@ -6,9 +6,9 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/barat/xlistman/internal/mail"
-	"github.com/barat/xlistman/internal/model"
-	"github.com/barat/xlistman/internal/store"
+	"github.com/barats/xlistman/internal/mail"
+	"github.com/barats/xlistman/internal/model"
+	"github.com/barats/xlistman/internal/store"
 )
 
 // Worker processes the outbound queue, sending messages to the MTA via SMTP.

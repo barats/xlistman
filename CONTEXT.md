@@ -17,8 +17,12 @@ A verified email address known to xListman. The primary identity for subscriptio
 _Avoid_: User, account, member (use Member for the subscription role specifically)
 
 **Subscription**:
-The relationship between a Subscriber and a List that causes posts to be delivered to that address. Carries delivery preferences (e.g., regular, digest).
+The relationship between a Subscriber and a List that causes posts to be delivered to that address while the Subscription is Active. Carries delivery preferences (e.g., regular, digest).
 _Avoid_: Membership, signup
+
+**Subscription Status**:
+The state of a Subscription. Four statuses: Pending (requested, awaiting email confirmation), Active (confirmed; posts are delivered), Held (confirmed but awaiting owner approval on Moderated lists), Disabled (deactivated by the bounce threshold).
+_Avoid_: Subscription state, lifecycle state
 
 **Owner**:
 A Subscriber with administrative authority over a List: configuration, membership management, and moderation. Separate from Subscription.
@@ -50,7 +54,7 @@ _Avoid_: Pending message, queued message
 A delivery failure notification received for a Subscriber's address. Tracked per Subscription via VERP (Variable Envelope Return Path), which encodes the recipient in the envelope sender so bounces can be attributed to a specific Subscription.
 
 **Disabled Subscription**:
-A Subscription automatically deactivated due to excessive consecutive bounces (configurable threshold, default 5). The Subscriber can re-enable it via the web UI or email command. Not deleted.
+A Subscription with Status Disabled, automatically deactivated due to excessive consecutive bounces (configurable threshold, default 5). The Subscriber can re-enable it via the web UI or email command. Not deleted.
 _Avoid_: Suspended subscription, blocked subscription
 
 **Archive**:

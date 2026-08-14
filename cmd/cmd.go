@@ -3,14 +3,25 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
+	"log/slog"
+	"net"
+	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
+	"time"
 
-	"github.com/barat/xlistman/internal/config"
-	"github.com/barat/xlistman/internal/model"
-	"github.com/barat/xlistman/internal/store/sqlite"
+	"github.com/barats/xlistman/internal/config"
+	"github.com/barats/xlistman/internal/mail"
+	"github.com/barats/xlistman/internal/model"
+	"github.com/barats/xlistman/internal/queue"
+	"github.com/barats/xlistman/internal/server"
+	"github.com/barats/xlistman/internal/store/sqlite"
 )
 
 // Version is set at build time.
@@ -41,8 +52,6 @@ func Run(args []string) int {
 		return cmdSubscriber(rest)
 	case "queue":
 		return cmdQueue(rest)
-	case "migrate":
-		return cmdMigrate(rest)
 	case "config":
 		return cmdConfig(rest)
 	case "version":
@@ -83,7 +92,6 @@ Commands:
   subscriber import <list> <file>  Import from CSV
   queue list                     List pending outbound messages
   queue discard <id>             Discard a stuck message
-  migrate                        Run database migrations
   config check                   Validate config file
   version                        Print version
 `)
@@ -125,11 +133,67 @@ func cmdServe(args []string) int {
 		fmt.Fprintln(os.Stderr, "config validation:", err)
 		return 1
 	}
-	// TODO: start daemon (LMTP + HTTP + queue worker)
-	fmt.Println("xListman daemon starting...")
-	fmt.Printf("  HTTP: %s\n", cfg.HTTP.Listen)
-	fmt.Printf("  LMTP: %s\n", cfg.LMTP.Listen)
-	fmt.Println("Daemon not yet fully implemented. Use 'xlistman domain/list/owner' commands to manage lists.")
+	s, err := openStore(cfg)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "open store:", err)
+		return 1
+	}
+	defer s.Close()
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+
+	// Outbound queue worker sends via SMTP, or writes to a sink directory in
+	// development (smtp.mode: sink).
+	worker := &queue.Worker{
+		Store:  s,
+		SMTP:   &mail.SMTPClient{Host: cfg.SMTP.Host, Port: cfg.SMTP.Port, Username: cfg.SMTP.Username, Password: cfg.SMTP.Password, Mode: cfg.SMTP.Mode, SinkDir: cfg.SMTP.SinkDir},
+		Logger: logger,
+	}
+	go worker.Run(ctx)
+
+	// Inbound: LMTP server (primary MTA path).
+	pipeline := &mail.Pipeline{Store: s, WebBaseURL: cfg.Web.BaseURL}
+	lmtpServer := &mail.LMTPServer{Addr: cfg.LMTP.Listen, Store: s, Pipeline: pipeline}
+
+	// Inbound: pipe-mode Unix socket (fallback MTA path, ADR 0002).
+	socketServer := &mail.SocketServer{Path: cfg.Socket.Path, Server: lmtpServer}
+
+	// HTTP API server.
+	httpServer := server.New(cfg, s, logger)
+
+	errCh := make(chan error, 3)
+	go func() { errCh <- lmtpServer.ListenAndServe(ctx) }()
+	go func() { errCh <- socketServer.ListenAndServe(ctx) }()
+	go func() {
+		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
+		} else {
+			errCh <- nil
+		}
+	}()
+
+	logger.Info("xListman daemon started",
+		"http", cfg.HTTP.Listen, "lmtp", cfg.LMTP.Listen, "socket", cfg.Socket.Path, "smtp_mode", cfg.SMTP.Mode)
+
+	select {
+	case <-ctx.Done():
+		// Normal shutdown (SIGINT/SIGTERM).
+	case err := <-errCh:
+		if err != nil {
+			logger.Error("server error", "error", err)
+			return 1
+		}
+	}
+
+	logger.Info("shutting down")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		logger.Error("http shutdown", "error", err)
+	}
 	return 0
 }
 
@@ -140,9 +204,36 @@ func cmdDeliver(args []string) int {
 		fmt.Fprintln(os.Stderr, "usage: xlistman deliver <list-address>")
 		return 1
 	}
-	// TODO: read stdin, relay to daemon via Unix socket
-	fmt.Fprintln(os.Stderr, "pipe mode not yet implemented")
-	return 1
+	cfg, err := loadConfig()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	conn, err := net.Dial("unix", cfg.Socket.Path)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "connect to daemon: %v (is 'xlistman serve' running?)\n", err)
+		return 1
+	}
+	defer conn.Close()
+
+	// Send the recipient address, then the raw message from stdin.
+	fmt.Fprintf(conn, "%s\n", args[0])
+	if _, err := io.Copy(conn, os.Stdin); err != nil {
+		fmt.Fprintln(os.Stderr, "send message:", err)
+		return 1
+	}
+	if uc, ok := conn.(*net.UnixConn); ok {
+		uc.CloseWrite()
+	}
+
+	resp, _ := io.ReadAll(conn)
+	text := strings.TrimSpace(string(resp))
+	if strings.HasPrefix(text, "ERR") {
+		fmt.Fprintln(os.Stderr, text)
+		return 1
+	}
+	fmt.Println(text)
+	return 0
 }
 
 // --- domain ---
@@ -450,7 +541,14 @@ func cmdSubscriber(args []string) int {
 			return 1
 		}
 		if args[0] == "add" {
-			s.CreateSubscription(ctx, l.ID, sub.ID)
+			subscr, err := s.CreateSubscription(ctx, l.ID, sub.ID)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "add subscriber:", err)
+				return 1
+			}
+			// Manual owner action: bypasses double opt-in (CLI add/import
+			// create Active subscriptions directly).
+			s.SetSubscriptionStatus(ctx, subscr.ID, model.SubscriptionStatusActive)
 			fmt.Printf("Added subscriber: %s to %s\n", args[2], args[1])
 		} else {
 			s.DeleteSubscription(ctx, l.ID, sub.ID)
@@ -473,11 +571,7 @@ func cmdSubscriber(args []string) int {
 		for _, sub := range subs {
 			subr, _ := s.GetSubscriberByID(ctx, sub.SubscriberID)
 			if subr != nil {
-				status := "active"
-				if sub.Disabled {
-					status = "disabled"
-				}
-				fmt.Printf("%s\t%s\t%s\n", subr.Email, sub.DeliveryMode, status)
+				fmt.Printf("%s\t%s\t%s\n", subr.Email, sub.DeliveryMode, sub.Status)
 			}
 		}
 		return 0
@@ -513,7 +607,12 @@ func cmdSubscriber(args []string) int {
 			if err != nil {
 				continue
 			}
-			s.CreateSubscription(ctx, l.ID, sub.ID)
+			subscr, err := s.CreateSubscription(ctx, l.ID, sub.ID)
+			if err != nil {
+				continue // already subscribed
+			}
+			// Manual import bypasses double opt-in, like subscriber add.
+			s.SetSubscriptionStatus(ctx, subscr.ID, model.SubscriptionStatusActive)
 			count++
 		}
 		fmt.Printf("Imported %d subscribers to %s\n", count, args[1])
@@ -573,24 +672,6 @@ func cmdQueue(args []string) int {
 		return 0
 	}
 	return 1
-}
-
-// --- migrate ---
-
-func cmdMigrate(args []string) int {
-	cfg, err := loadConfig()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
-	}
-	s, err := openStore(cfg)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "migrate:", err)
-		return 1
-	}
-	defer s.Close()
-	fmt.Println("Migrations complete.")
-	return 0
 }
 
 // --- config ---

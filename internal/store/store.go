@@ -9,7 +9,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/barat/xlistman/internal/model"
+	"github.com/barats/xlistman/internal/model"
 )
 
 // Store is the storage interface for all xListman domain operations.
@@ -39,8 +39,8 @@ type Store interface {
 	ListSubscriptions(ctx context.Context, listID int64) ([]model.Subscription, error)
 	ListSubscriptionsBySubscriber(ctx context.Context, subscriberID int64) ([]model.Subscription, error)
 	UpdateSubscriptionDelivery(ctx context.Context, subID int64, mode model.DeliveryMode) error
-	DisableSubscription(ctx context.Context, subID int64) error
-	EnableSubscription(ctx context.Context, subID int64) error
+	SetSubscriptionStatus(ctx context.Context, subID int64, status model.SubscriptionStatus) error
+	ConfirmSubscription(ctx context.Context, subID int64, status model.SubscriptionStatus) error
 	IncrementBounceCount(ctx context.Context, subID int64) error
 	DeleteSubscription(ctx context.Context, listID, subscriberID int64) error
 

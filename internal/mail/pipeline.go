@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/barat/xlistman/internal/model"
-	"github.com/barat/xlistman/internal/store"
+	"github.com/barats/xlistman/internal/model"
+	"github.com/barats/xlistman/internal/store"
 )
 
 // Pipeline processes inbound mail messages and routes them to the appropriate
@@ -80,7 +80,10 @@ func (p *Pipeline) deliverToList(ctx context.Context, l *model.List, senderAddr 
 
 	// Enqueue delivery for each subscriber.
 	for _, sub := range subs {
-		if sub.Disabled || sub.DeliveryMode == model.DeliveryModeNomail {
+		if sub.Status != model.SubscriptionStatusActive {
+			continue // only confirmed, active subscriptions receive posts
+		}
+		if sub.DeliveryMode == model.DeliveryModeNomail {
 			continue
 		}
 		if sub.DeliveryMode == model.DeliveryModeDigest {
@@ -110,7 +113,8 @@ func (p *Pipeline) deliverToList(ctx context.Context, l *model.List, senderAddr 
 		}
 
 		if err := p.Store.Enqueue(ctx, l.ID, l.Address(), subscriber.Email, modified, verpAddr); err != nil {
-			return fmt.Errorf("enqueue to %s: %w", subscriber.Email, err)
+			// Skip a failed enqueue so one bad recipient doesn't block the rest.
+			continue
 		}
 	}
 
@@ -137,9 +141,9 @@ func (p *Pipeline) rejectMessage(ctx context.Context, l *model.List, senderAddr 
 		"Your message to %s was not accepted.\n\n"+
 		"If this is a discussion list, only subscribers may post.\n"+
 		"If this is a newsletter list, only designated senders may post.\n",
-		l.Address()+"-owner@"+l.Domain, senderAddr, l.Address(), l.Address())
+		l.ListName+"-owner@"+l.Domain, senderAddr, l.Address(), l.Address())
 
-	return p.Store.Enqueue(ctx, 0, l.Address()+"-owner@"+l.Domain, senderAddr, []byte(rejectionBody), "")
+	return p.Store.Enqueue(ctx, 0, l.ListName+"-owner@"+l.Domain, senderAddr, []byte(rejectionBody), "")
 }
 
 // --- helpers ---

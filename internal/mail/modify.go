@@ -1,13 +1,12 @@
 package mail
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"net/mail"
 	"strings"
 
-	"github.com/barat/xlistman/internal/model"
+	"github.com/barats/xlistman/internal/model"
 )
 
 // ModifyMessageOptions controls how a message is modified before delivery.
@@ -140,6 +139,3 @@ func ScanHeaders(raw []byte) (mail.Header, error) {
 	}
 	return msg.Header, nil
 }
-
-// Ensure bufio is used (for potential future header scanning optimizations).
-var _ = bufio.NewScanner

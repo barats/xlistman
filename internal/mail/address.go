@@ -21,23 +21,24 @@ const (
 
 // ParsedAddress describes a recipient address routed to xListman.
 type ParsedAddress struct {
-	Type       AddressType
-	ListName   string // local part before any suffix
-	Domain     string
-	ListAddr   string // listname@domain
+	Type        AddressType
+	ListName    string // local part before any suffix
+	Domain      string
+	ListAddr    string // listname@domain
 	EncodedPart string // for bounces: recipient=domain; for confirm: token
 }
 
 // ParseAddress determines the function of an email address.
 //
 // Address conventions (dash-suffix):
-//   listname@domain              - post to list
-//   listname-request@domain      - email commands
-//   listname-owner@domain        - contact owners
-//   listname-subscribe@domain    - subscribe shortcut
-//   listname-unsubscribe@domain  - unsubscribe shortcut
-//   listname-bounces+enc@domain  - VERP bounce address
-//   listname-confirm+token@domain - confirmation token
+//
+//	listname@domain              - post to list
+//	listname-request@domain      - email commands
+//	listname-owner@domain        - contact owners
+//	listname-subscribe@domain    - subscribe shortcut
+//	listname-unsubscribe@domain  - unsubscribe shortcut
+//	listname-bounces+enc@domain  - VERP bounce address
+//	listname-confirm+token@domain - confirmation token
 func ParseAddress(addr string) (ParsedAddress, error) {
 	atIdx := strings.LastIndex(addr, "@")
 	if atIdx < 0 {

@@ -6,10 +6,10 @@ import (
 
 func TestEncodeVERP(t *testing.T) {
 	tests := []struct {
-		name     string
-		list     string
+		name      string
+		list      string
 		recipient string
-		want     string
+		want      string
 	}{
 		{
 			name:      "basic",

@@ -9,16 +9,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/barat/xlistman/internal/config"
-	"github.com/barat/xlistman/internal/store"
+	"github.com/barats/xlistman/internal/config"
+	"github.com/barats/xlistman/internal/model"
+	"github.com/barats/xlistman/internal/store"
 )
 
 // Server is the HTTP server for xListman.
 type Server struct {
-	Store    store.Store
-	Config   *config.Config
-	Logger   *slog.Logger
-	httpSrv  *http.Server
+	Store   store.Store
+	Config  *config.Config
+	Logger  *slog.Logger
+	httpSrv *http.Server
 }
 
 // New creates a new HTTP server.
@@ -120,8 +121,6 @@ func (s *Server) handleListDetail(w http.ResponseWriter, r *http.Request) {
 		s.handleSubscribe(w, r, l)
 		return
 	}
-
-	// List detail
 	writeJSON(w, 200, map[string]any{
 		"address":             l.Address(),
 		"list_name":           l.ListName,
@@ -134,7 +133,7 @@ func (s *Server) handleListDetail(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *Server) handleSubscribe(w http.ResponseWriter, r *http.Request, l interface{}) {
+func (s *Server) handleSubscribe(w http.ResponseWriter, r *http.Request, l *model.List) {
 	// TODO: implement subscription flow (create subscriber, send confirmation)
 	writeJSON(w, 202, map[string]string{"status": "confirmation email sent"})
 }

@@ -46,19 +46,19 @@ type ListSettings struct {
 // DefaultListSettings returns settings with sensible defaults for a new list.
 func DefaultListSettings(listType ListType) ListSettings {
 	s := ListSettings{
-		SubjectPrefix:         "", // set by caller based on list name
-		FooterEnabled:         true,
-		MaxMessageSize:        1_000_000, // 1 MB
-		ArchiveMaxAgeDays:     0,         // unlimited
-		DigestFrequency:       DigestDaily,
-		SubscriptionPolicy:    SubscriptionPolicyOpen,
-		ReplyToMode:           ReplyToList,
-		WelcomeEmail:          true,
-		GoodbyeEmail:          true,
-		SenderHeldNotice:      true,
+		SubjectPrefix:          "", // set by caller based on list name
+		FooterEnabled:          true,
+		MaxMessageSize:         1_000_000, // 1 MB
+		ArchiveMaxAgeDays:      0,         // unlimited
+		DigestFrequency:        DigestDaily,
+		SubscriptionPolicy:     SubscriptionPolicyOpen,
+		ReplyToMode:            ReplyToList,
+		WelcomeEmail:           true,
+		GoodbyeEmail:           true,
+		SenderHeldNotice:       true,
 		OwnerAutoDisableNotice: false,
-		BounceThreshold:       5,
-		HeldExpiryDays:        14,
+		BounceThreshold:        5,
+		HeldExpiryDays:         14,
 	}
 
 	if listType == ListTypeDiscussion {
@@ -70,11 +70,11 @@ func DefaultListSettings(listType ListType) ListSettings {
 
 // List is a mailing list, identified by (listname, domain).
 type List struct {
-	ID          int64       `gorm:"primaryKey;autoIncrement"`
-	ListName    string      `gorm:"not null;index:idx_list_domain,unique"`
-	DomainID    int64       `gorm:"not null;index:idx_list_domain,unique"`
-	Description string      `gorm:"not null;default:''"`
-	ListType    ListType    `gorm:"not null;default:'discussion'"`
+	ID          int64        `gorm:"primaryKey;autoIncrement"`
+	ListName    string       `gorm:"not null;index:idx_list_domain,unique"`
+	DomainID    int64        `gorm:"not null;index:idx_list_domain,unique"`
+	Description string       `gorm:"not null;default:''"`
+	ListType    ListType     `gorm:"not null;default:'discussion'"`
 	Settings    ListSettings `gorm:"serializer:json"`
 	CreatedAt   time.Time
 

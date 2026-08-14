@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/barat/xlistman/cmd"
+	"github.com/barats/xlistman/cmd"
 )
 
 func main() {

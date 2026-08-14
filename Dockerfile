@@ -11,7 +11,7 @@ RUN GOPROXY=https://goproxy.cn,direct go mod download
 COPY . .
 
 # Build the binary.
-RUN CGO_ENABLED=0 go build -ldflags "-X github.com/barat/xlistman/cmd.Version=$(git describe --tags --always 2>/dev/null || echo dev)" -o xlistman .
+RUN CGO_ENABLED=0 go build -ldflags "-X github.com/barats/xlistman/cmd.Version=$(git describe --tags --always 2>/dev/null || echo dev)" -o xlistman .
 
 # Runtime stage: minimal image
 FROM scratch

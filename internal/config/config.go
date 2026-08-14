@@ -43,6 +43,8 @@ type SMTPConfig struct {
 	Port     int    `yaml:"port"`
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
+	Mode     string `yaml:"mode"`     // "smtp" (default) or "sink" (write to disk for development)
+	SinkDir  string `yaml:"sink_dir"` // directory for outbound mail when mode is "sink"
 }
 
 type WebConfig struct {
@@ -134,6 +136,12 @@ func applyDefaults(cfg *Config) {
 	if cfg.SMTP.Port == 0 {
 		cfg.SMTP.Port = 25
 	}
+	if cfg.SMTP.Mode == "" {
+		cfg.SMTP.Mode = "smtp"
+	}
+	if cfg.SMTP.SinkDir == "" {
+		cfg.SMTP.SinkDir = "./mail"
+	}
 	if cfg.RateLimits.SubscribePerHour == 0 {
 		cfg.RateLimits.SubscribePerHour = 5
 	}
@@ -154,6 +162,8 @@ func applyEnvOverrides(cfg *Config) {
 	setIntFromEnv(envPrefix+"SMTP_PORT", &cfg.SMTP.Port)
 	setStrFromEnv(envPrefix+"SMTP_USERNAME", &cfg.SMTP.Username)
 	setStrFromEnv(envPrefix+"SMTP_PASSWORD", &cfg.SMTP.Password)
+	setStrFromEnv(envPrefix+"SMTP_MODE", &cfg.SMTP.Mode)
+	setStrFromEnv(envPrefix+"SMTP_SINK_DIR", &cfg.SMTP.SinkDir)
 	setStrFromEnv(envPrefix+"WEB_BASE_URL", &cfg.Web.BaseURL)
 	setIntFromEnv(envPrefix+"RATE_LIMITS_SUBSCRIBE_PER_HOUR", &cfg.RateLimits.SubscribePerHour)
 	setIntFromEnv(envPrefix+"RATE_LIMITS_MAGIC_LINK_PER_HOUR", &cfg.RateLimits.MagicLinkPerHour)

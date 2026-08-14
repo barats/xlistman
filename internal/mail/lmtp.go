@@ -8,13 +8,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/barat/xlistman/internal/store"
+	"github.com/barats/xlistman/internal/model"
+	"github.com/barats/xlistman/internal/store"
 )
 
 // LMTPServer receives inbound mail from the MTA via LMTP (RFC 2033).
 type LMTPServer struct {
-	Addr    string
-	Store   store.Store
+	Addr     string
+	Store    store.Store
 	Pipeline *Pipeline
 }
 
@@ -63,8 +64,8 @@ type lmtpConn struct {
 	r      *bufio.Reader
 	w      *bufio.Writer
 
-	mailFrom  string
-	rcptTos   []string
+	mailFrom string
+	rcptTos  []string
 }
 
 func (c *lmtpConn) serve(ctx context.Context) {
@@ -165,7 +166,7 @@ func (c *lmtpConn) handleData(ctx context.Context) {
 
 	// Process each recipient and return per-recipient status.
 	for _, rcpt := range c.rcptTos {
-		err := c.processRecipient(ctx, rcpt, rawMsg)
+		err := c.server.processRecipient(ctx, rcpt, rawMsg)
 		if err != nil {
 			c.send(550, fmt.Sprintf("Failed: %v", err))
 		} else {
@@ -177,7 +178,13 @@ func (c *lmtpConn) handleData(ctx context.Context) {
 	c.rcptTos = nil
 }
 
-func (c *lmtpConn) processRecipient(ctx context.Context, rcpt string, rawMsg []byte) error {
+// ProcessMessage routes a single message to one recipient. It is the shared
+// entry point for both the LMTP inbound path and the pipe-mode Unix socket.
+func (s *LMTPServer) ProcessMessage(ctx context.Context, rcpt string, rawMsg []byte) error {
+	return s.processRecipient(ctx, rcpt, rawMsg)
+}
+
+func (s *LMTPServer) processRecipient(ctx context.Context, rcpt string, rawMsg []byte) error {
 	parsed, err := ParseAddress(rcpt)
 	if err != nil {
 		return err
@@ -186,16 +193,16 @@ func (c *lmtpConn) processRecipient(ctx context.Context, rcpt string, rawMsg []b
 	switch parsed.Type {
 	case AddressTypePost:
 		sender, _, _ := ParseMessage(rawMsg)
-		return c.server.Pipeline.ProcessPost(ctx, parsed.ListName, parsed.Domain, sender, rawMsg)
+		return s.Pipeline.ProcessPost(ctx, parsed.ListName, parsed.Domain, sender, rawMsg)
 
 	case AddressTypeSubscribe:
-		return c.handleSubscribe(ctx, parsed, rawMsg)
+		return s.handleSubscribe(ctx, parsed, rawMsg)
 
 	case AddressTypeUnsubscribe:
-		return c.handleUnsubscribe(ctx, parsed, rawMsg)
+		return s.handleUnsubscribe(ctx, parsed, rawMsg)
 
 	case AddressTypeBounce:
-		return c.handleBounce(ctx, parsed)
+		return s.handleBounce(ctx, parsed)
 
 	case AddressTypeRequest:
 		// TODO: parse email commands from body
@@ -206,113 +213,148 @@ func (c *lmtpConn) processRecipient(ctx context.Context, rcpt string, rawMsg []b
 		return nil
 
 	case AddressTypeConfirm:
-		return c.handleConfirm(ctx, parsed)
+		return s.handleConfirm(ctx, parsed)
 
 	default:
 		return fmt.Errorf("unknown address type")
 	}
 }
 
-func (c *lmtpConn) handleSubscribe(ctx context.Context, p ParsedAddress, rawMsg []byte) error {
+func (s *LMTPServer) handleSubscribe(ctx context.Context, p ParsedAddress, rawMsg []byte) error {
 	sender, _, _ := ParseMessage(rawMsg)
-	sub, err := c.server.Store.GetOrCreateSubscriber(ctx, sender)
+	sub, err := s.Store.GetOrCreateSubscriber(ctx, sender)
 	if err != nil {
 		return err
 	}
-	l, err := c.server.Store.GetList(ctx, p.ListName, p.Domain)
+	l, err := s.Store.GetList(ctx, p.ListName, p.Domain)
 	if err != nil {
 		return err
 	}
 
-	// Check subscription policy.
-	switch l.Settings.SubscriptionPolicy {
-	case "closed":
+	// Closed lists don't accept self-service subscriptions.
+	if l.Settings.SubscriptionPolicy == model.SubscriptionPolicyClosed {
 		return fmt.Errorf("list is closed for subscriptions")
 	}
 
-	// Create a pending subscription.
-	subscr, err := c.server.Store.CreateSubscription(ctx, l.ID, sub.ID)
-	if err != nil {
+	// A repeat request for a pending subscription re-sends the confirmation
+	// email instead of erroring, so a lost email can't permanently block a join.
+	if existing, err := s.Store.GetSubscription(ctx, l.ID, sub.ID); err == nil {
+		switch existing.Status {
+		case model.SubscriptionStatusPending:
+			token, err := s.Store.CreateConfirmationToken(ctx, l.ID, sub.ID, sender, time.Now().Add(48*time.Hour))
+			if err != nil {
+				return err
+			}
+			return s.enqueueConfirmation(ctx, l, sub, token)
+		case model.SubscriptionStatusActive, model.SubscriptionStatusHeld:
+			return fmt.Errorf("already subscribed")
+		case model.SubscriptionStatusDisabled:
+			return fmt.Errorf("already subscribed but disabled; re-enabling is not yet supported")
+		}
+	}
+
+	// Create a pending subscription (double opt-in).
+	if _, err := s.Store.CreateSubscription(ctx, l.ID, sub.ID); err != nil {
 		return err // likely already subscribed
 	}
 
-	// Create confirmation token (double opt-in).
-	token, err := c.server.Store.CreateConfirmationToken(ctx, l.ID, sub.ID, sender, time.Now().Add(48*time.Hour))
+	token, err := s.Store.CreateConfirmationToken(ctx, l.ID, sub.ID, sender, time.Now().Add(48*time.Hour))
 	if err != nil {
 		return err
 	}
 
-	_ = subscr
-	_ = token
-	// TODO: Enqueue confirmation email with the token.
-	return nil
+	return s.enqueueConfirmation(ctx, l, sub, token)
 }
 
-func (c *lmtpConn) handleUnsubscribe(ctx context.Context, p ParsedAddress, rawMsg []byte) error {
+// enqueueConfirmation builds and enqueues the double opt-in confirmation email.
+// The subscriber confirms by replying to the confirmation address, so the
+// message sets Reply-To to that address and the body instructs a reply.
+func (s *LMTPServer) enqueueConfirmation(ctx context.Context, l *model.List, sub *model.Subscriber, token string) error {
+	confirmAddr := fmt.Sprintf("%s-confirm+%s@%s", l.ListName, token, l.Domain)
+	date := time.Now().UTC().Format(time.RFC1123Z)
+	raw := fmt.Sprintf("From: %s\r\nTo: %s\r\nReply-To: %s\r\nSubject: Confirm your subscription to %s\r\nDate: %s\r\n\r\n"+
+		"Reply to this message to confirm your subscription to %s.\r\n\r\n"+
+		"If you did not request this subscription, you can safely ignore this message.\r\n",
+		l.Address(), sub.Email, confirmAddr, l.Address(), date, l.Address())
+	return s.Store.Enqueue(ctx, l.ID, l.Address(), sub.Email, []byte(raw), l.Address())
+}
+
+func (s *LMTPServer) handleUnsubscribe(ctx context.Context, p ParsedAddress, rawMsg []byte) error {
 	sender, _, _ := ParseMessage(rawMsg)
-	sub, err := c.server.Store.GetSubscriber(ctx, sender)
+	sub, err := s.Store.GetSubscriber(ctx, sender)
 	if err != nil {
 		return nil // not subscribed, nothing to do
 	}
-	l, err := c.server.Store.GetList(ctx, p.ListName, p.Domain)
+	l, err := s.Store.GetList(ctx, p.ListName, p.Domain)
 	if err != nil {
 		return err
 	}
-	return c.server.Store.DeleteSubscription(ctx, l.ID, sub.ID)
+	return s.Store.DeleteSubscription(ctx, l.ID, sub.ID)
 }
 
-func (c *lmtpConn) handleBounce(ctx context.Context, p ParsedAddress) error {
+func (s *LMTPServer) handleBounce(ctx context.Context, p ParsedAddress) error {
 	// Decode the VERP address to find the recipient.
 	_, recipientAddr, err := DecodeVERP(p.ListName + "-bounces+" + p.EncodedPart + "@" + p.Domain)
 	if err != nil {
 		return err
 	}
 
-	sub, err := c.server.Store.GetSubscriber(ctx, recipientAddr)
+	sub, err := s.Store.GetSubscriber(ctx, recipientAddr)
 	if err != nil {
 		return nil
 	}
 
 	// Find the subscription for this list.
-	l, err := c.server.Store.GetList(ctx, p.ListName, p.Domain)
+	l, err := s.Store.GetList(ctx, p.ListName, p.Domain)
 	if err != nil {
 		return err
 	}
 
-	subscr, err := c.server.Store.GetSubscription(ctx, l.ID, sub.ID)
+	subscr, err := s.Store.GetSubscription(ctx, l.ID, sub.ID)
 	if err != nil {
 		return nil
 	}
 
 	// Increment bounce count and auto-disable if threshold exceeded.
-	if err := c.server.Store.IncrementBounceCount(ctx, subscr.ID); err != nil {
+	if err := s.Store.IncrementBounceCount(ctx, subscr.ID); err != nil {
 		return err
 	}
 
-	updated, _ := c.server.Store.GetSubscription(ctx, l.ID, sub.ID)
+	updated, _ := s.Store.GetSubscription(ctx, l.ID, sub.ID)
 	if updated.BounceCount >= l.Settings.BounceThreshold {
-		c.server.Store.DisableSubscription(ctx, subscr.ID)
+		s.Store.SetSubscriptionStatus(ctx, subscr.ID, model.SubscriptionStatusDisabled)
 	}
 
 	return nil
 }
 
-func (c *lmtpConn) handleConfirm(ctx context.Context, p ParsedAddress) error {
-	ct, err := c.server.Store.GetConfirmationToken(ctx, p.EncodedPart)
+func (s *LMTPServer) handleConfirm(ctx context.Context, p ParsedAddress) error {
+	ct, err := s.Store.GetConfirmationToken(ctx, p.EncodedPart)
 	if err != nil {
 		return fmt.Errorf("invalid or expired token")
 	}
 
-	// Activate the subscription.
-	_, err = c.server.Store.GetSubscription(ctx, ct.ListID, ct.SubscriberID)
+	sub, err := s.Store.GetSubscription(ctx, ct.ListID, ct.SubscriberID)
 	if err != nil {
 		return err
 	}
 
-	// TODO: mark subscription as confirmed via store.
+	l, err := s.Store.GetListByID(ctx, ct.ListID)
+	if err != nil {
+		return err
+	}
 
-	c.server.Store.DeleteConfirmationToken(ctx, p.EncodedPart)
-	return nil
+	// Double opt-in complete: Open lists activate immediately, Moderated lists
+	// hold the subscription for owner approval.
+	target := model.SubscriptionStatusActive
+	if l.Settings.SubscriptionPolicy == model.SubscriptionPolicyModerated {
+		target = model.SubscriptionStatusHeld
+	}
+	if err := s.Store.ConfirmSubscription(ctx, sub.ID, target); err != nil {
+		return err
+	}
+
+	return s.Store.DeleteConfirmationToken(ctx, p.EncodedPart)
 }
 
 func (c *lmtpConn) send(code int, msg string) {

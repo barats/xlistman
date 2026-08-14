@@ -1,4 +1,4 @@
-module github.com/barat/xlistman
+module github.com/barats/xlistman
 
 go 1.25.0
 

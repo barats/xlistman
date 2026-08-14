@@ -6,7 +6,7 @@ web/build:
 
 # Build the Go binary (frontend must be built first)
 build: web/build
-	go build -ldflags "-X github.com/barat/xlistman/cmd.Version=$(shell git describe --tags --always 2>/dev/null || echo dev)" -o xlistman .
+	go build -ldflags "-X github.com/barats/xlistman/cmd.Version=$(shell git describe --tags --always 2>/dev/null || echo dev)" -o xlistman .
 
 # Build without frontend (backend only)
 build-go:

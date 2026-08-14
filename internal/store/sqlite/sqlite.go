@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/barat/xlistman/internal/model"
+	"github.com/barats/xlistman/internal/model"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -70,8 +70,10 @@ func (s *Store) migrate() error {
 	}
 
 	// FTS5 virtual table for archive full-text search (not managed by AutoMigrate).
+	// Uses a standalone FTS table (not external-content) for simplicity and
+	// reliability. The ArchiveMessage method inserts into both tables.
 	if err := s.db.Exec(`CREATE VIRTUAL TABLE IF NOT EXISTS archive_fts USING fts5(
-		subject, body_text, content='archive_entries', content_rowid='id'
+		subject, body_text
 	)`).Error; err != nil {
 		return fmt.Errorf("create archive_fts: %w", err)
 	}
@@ -242,6 +244,7 @@ func (s *Store) CreateSubscription(ctx context.Context, listID, subscriberID int
 		ListID:       listID,
 		SubscriberID: subscriberID,
 		DeliveryMode: model.DeliveryModeRegular,
+		Status:       model.SubscriptionStatusPending,
 	}
 	if err := s.db.WithContext(ctx).Create(&sub).Error; err != nil {
 		return nil, fmt.Errorf("create subscription: %w", err)
@@ -278,14 +281,17 @@ func (s *Store) UpdateSubscriptionDelivery(ctx context.Context, subID int64, mod
 		Update("delivery_mode", mode).Error
 }
 
-func (s *Store) DisableSubscription(ctx context.Context, subID int64) error {
+func (s *Store) SetSubscriptionStatus(ctx context.Context, subID int64, status model.SubscriptionStatus) error {
 	return s.db.WithContext(ctx).Model(&model.Subscription{}).Where("id = ?", subID).
-		Update("disabled", true).Error
+		Update("status", status).Error
 }
 
-func (s *Store) EnableSubscription(ctx context.Context, subID int64) error {
+// ConfirmSubscription marks a subscription confirmed: it sets Status and stamps
+// ConfirmedAt in a single update.
+func (s *Store) ConfirmSubscription(ctx context.Context, subID int64, status model.SubscriptionStatus) error {
+	now := time.Now()
 	return s.db.WithContext(ctx).Model(&model.Subscription{}).Where("id = ?", subID).
-		Updates(map[string]any{"disabled": false, "bounce_count": 0}).Error
+		Updates(map[string]any{"status": status, "confirmed_at": now}).Error
 }
 
 func (s *Store) IncrementBounceCount(ctx context.Context, subID int64) error {
@@ -480,7 +486,14 @@ func (s *Store) ArchiveMessage(ctx context.Context, listID int64, msgID, subject
 		ThreadID:   threadID,
 		ReceivedAt: time.Now(),
 	}
-	return s.db.WithContext(ctx).Create(&e).Error
+	if err := s.db.WithContext(ctx).Create(&e).Error; err != nil {
+		return err
+	}
+	// Insert into FTS table for full-text search.
+	return s.db.WithContext(ctx).Exec(
+		`INSERT INTO archive_fts (rowid, subject, body_text) VALUES (?, ?, ?)`,
+		e.ID, subject, string(body),
+	).Error
 }
 
 func (s *Store) ListArchive(ctx context.Context, listID int64, limit, offset int) ([]model.ArchiveEntry, error) {

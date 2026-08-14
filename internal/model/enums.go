@@ -23,6 +23,16 @@ const (
 	SubscriptionPolicyClosed    SubscriptionPolicy = "closed"
 )
 
+// SubscriptionStatus is the state of a Subscription.
+type SubscriptionStatus string
+
+const (
+	SubscriptionStatusPending  SubscriptionStatus = "pending"
+	SubscriptionStatusActive   SubscriptionStatus = "active"
+	SubscriptionStatusHeld     SubscriptionStatus = "held"
+	SubscriptionStatusDisabled SubscriptionStatus = "disabled"
+)
+
 // DeliveryMode controls how a subscriber receives posts.
 type DeliveryMode string
 
@@ -36,9 +46,9 @@ const (
 type ReplyToMode string
 
 const (
-	ReplyToList       ReplyToMode = "list"
-	ReplyToSender     ReplyToMode = "sender"
-	ReplyToSpecified  ReplyToMode = "specified"
+	ReplyToList      ReplyToMode = "list"
+	ReplyToSender    ReplyToMode = "sender"
+	ReplyToSpecified ReplyToMode = "specified"
 )
 
 // DigestFrequency controls how often digests are sent.
