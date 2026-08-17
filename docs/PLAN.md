@@ -35,9 +35,7 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
   (ADR 0014).
 - Test suite green; digest compiled and delivered live in a sink-mode smoke test.
 
-## Next
-
-### Phase 3 — Web UI (SvelteKit 5 SPA)
+### Phase 3 — Web UI (SvelteKit 5 SPA) — complete and tested
 - `web/` SvelteKit app (shadcn-svelte), compiled to static and embedded via `go:embed`
   (ADR 0007).
 - Public: list index, list info, subscribe form. Auth: magic-link request + verify.
@@ -45,7 +43,20 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
   Archives: threaded browsing + full-text search (members-only).
 - Go server serves the SPA with a fallback to `index.html` for client-side routes.
   (`make build` currently requires the frontend build in `web/build`.)
+- SPA build committed so `go build` alone yields a complete binary.
 
-### Phase 4 — Integration and validation
-- `make build` end-to-end (frontend + Go binary), run, and exercise in the browser.
+### Phase 4 — Integration and validation — complete
+- `make build` end-to-end (frontend + Go binary), run, and exercised in the browser
+  (DOM-based checks; no screenshots).
+- Verified live: list index/detail, double opt-in subscribe, magic-link login, /me
+  delivery prefs + re-enable + unsubscribe, members-only archives (browse/search/detail),
+  401/403 gate, invalid-link redirect, sign-out, mobile viewport, empty states.
+- Fixed a real integration bug found during validation: the emailed magic link pointed at
+  `/auth/verify` (no such SPA route) instead of `/api/auth/verify`; the login flow 404'd.
+  The link now targets the API endpoint, and the `login` test helper asserts the path so
+  this cannot regress.
+- Test suite green (`go test ./...`).
+
+## Next
+
 - Optionally validate the LMTP loop against local `postfix` (Docker is not available here).

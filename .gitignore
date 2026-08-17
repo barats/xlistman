@@ -1,2 +1,8 @@
 # Build output
 /xlistman
+
+# Local development (generated, untracked)
+/xlistman.yaml
+/xlistman.db
+/xlistman.db-shm
+/xlistman.db-wal

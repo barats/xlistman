@@ -293,7 +293,7 @@ func (s *Server) handleMagicLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	link := s.Config.Web.BaseURL + "/auth/verify?token=" + token
+	link := s.Config.Web.BaseURL + "/api/auth/verify?token=" + token
 	msg := buildTextEmail("xListman", email, "Your xListman login link",
 		"Use this link to sign in to your subscriptions. It expires in 30 minutes.\n\n"+link+"\n\nIf you did not request this, you can ignore this message.")
 	if err := s.Store.Enqueue(r.Context(), 0, "", email, msg, "", ""); err != nil {

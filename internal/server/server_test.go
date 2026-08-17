@@ -122,8 +122,10 @@ func login(t *testing.T, st *sqlite.Store, baseURL, email string) []*http.Cookie
 		if !strings.Contains(body, "To: "+email+"\r\n") {
 			continue
 		}
-		if i := strings.Index(body, "token="); i >= 0 {
-			rest := body[i+len("token="):]
+		// The emailed link must target the API verify endpoint, not an SPA
+		// route (the SPA has no /auth/verify page).
+		if i := strings.Index(body, "/api/auth/verify?token="); i >= 0 {
+			rest := body[i+len("/api/auth/verify?token="):]
 			if j := strings.IndexAny(rest, "\r\n "); j >= 0 {
 				rest = rest[:j]
 			}
