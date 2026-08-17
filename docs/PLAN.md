@@ -57,9 +57,7 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
   this cannot regress.
 - Test suite green (`go test ./...`).
 
-## Next
-
-### Phase 5 — Role console: web moderation + newsletter allowlist
+### Phase 5 — Role console: web moderation + newsletter allowlist — complete and tested
 - New domain term: **List Role** (Owner | Moderator | Designated Sender); a web role
   console surfaces every list where the signed-in Subscriber holds a role.
 - Web moderation: held-message queue + detail + Approve/Reject/Discard for Owners and
@@ -73,5 +71,10 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
 - Deferred (explicitly out of scope): web list configuration, web owner/subscriber/moderator
   management, sender held-status view, moderation audit trail, bounce management UI.
 - ADR 0015 records the decision and supersedes ADR 0010's deferred-web rationale.
+- Test suite green; verified end-to-end in the browser (console overview/roles, held queue,
+  approve/reject/discard, allowlist add/remove + subscriber-first errors, 401/403 gates,
+  mobile viewport) via DOM checks.
+
+## Next
 
 - Optionally validate the LMTP loop against local `postfix` (Docker is not available here).

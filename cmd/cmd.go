@@ -87,6 +87,9 @@ Commands:
   list delete <addr>             Delete a list
   list list [--domain <d>]       List lists
   list info <addr>               Show list details
+  list allowlist <addr>          List designated senders (newsletter)
+  list add-sender <addr> <email>  Designate a sender for a newsletter list
+  list remove-sender <addr> <id>  Remove a designated sender
   owner add <list> <email>       Add an owner
   owner remove <list> <email>    Remove an owner
   owner list <list>              List owners
@@ -482,6 +485,86 @@ func cmdList(args []string) int {
 		fmt.Printf("Digest: %s\n", l.Settings.DigestFrequency)
 		fmt.Printf("Subject Prefix: %s\n", l.Settings.SubjectPrefix)
 		fmt.Printf("Footer: %v\n", l.Settings.FooterEnabled)
+		return 0
+
+	case "allowlist":
+		if len(args) < 2 {
+			fmt.Fprintln(os.Stderr, "usage: xlistman list allowlist <addr>")
+			return 1
+		}
+		listName, domain, _ := parseListAddr(args[1])
+		l, err := s.GetList(ctx, listName, domain)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "get list:", err)
+			return 1
+		}
+		senders, err := s.ListDesignatedSenders(ctx, l.ID)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "list senders:", err)
+			return 1
+		}
+		if len(senders) == 0 {
+			fmt.Println("No designated senders.")
+			return 0
+		}
+		for _, d := range senders {
+			sub, err := s.GetSubscriberByID(ctx, d.SubscriberID)
+			if err != nil {
+				continue
+			}
+			fmt.Printf("%d\t%s\n", sub.ID, sub.Email)
+		}
+		return 0
+
+	case "add-sender":
+		if len(args) < 3 {
+			fmt.Fprintln(os.Stderr, "usage: xlistman list add-sender <addr> <email>")
+			return 1
+		}
+		listName, domain, _ := parseListAddr(args[1])
+		l, err := s.GetList(ctx, listName, domain)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "get list:", err)
+			return 1
+		}
+		if l.ListType != model.ListTypeNewsletter {
+			fmt.Fprintln(os.Stderr, "only newsletter lists have designated senders")
+			return 1
+		}
+		// Subscriber-first: only a known (verified) Subscriber can be designated.
+		sub, err := s.GetSubscriber(ctx, strings.ToLower(args[2]))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "unknown subscriber: %s. Add them first with `xlistman subscriber add`, or have them subscribe to a list.\n", args[2])
+			return 1
+		}
+		if err := s.AddDesignatedSender(ctx, l.ID, sub.ID); err != nil {
+			fmt.Fprintln(os.Stderr, "add sender:", err)
+			return 1
+		}
+		fmt.Printf("Added %s as a designated sender of %s\n", sub.Email, l.Address())
+		return 0
+
+	case "remove-sender":
+		if len(args) < 3 {
+			fmt.Fprintln(os.Stderr, "usage: xlistman list remove-sender <addr> <subscriber-id>")
+			return 1
+		}
+		listName, domain, _ := parseListAddr(args[1])
+		l, err := s.GetList(ctx, listName, domain)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "get list:", err)
+			return 1
+		}
+		subID, err := strconv.ParseInt(args[2], 10, 64)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "invalid subscriber id:", args[2])
+			return 1
+		}
+		if err := s.RemoveDesignatedSender(ctx, l.ID, subID); err != nil {
+			fmt.Fprintln(os.Stderr, "remove sender:", err)
+			return 1
+		}
+		fmt.Printf("Removed designated sender %d from %s\n", subID, l.Address())
 		return 0
 	}
 	fmt.Fprintln(os.Stderr, "unknown list subcommand:", args[0])

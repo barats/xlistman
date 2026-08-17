@@ -45,3 +45,37 @@ export interface ArchiveEntry {
 export interface ArchiveMessage extends ArchiveEntry {
 	body: string;
 }
+
+export interface ConsoleList {
+	address: string;
+	list_name: string;
+	domain: string;
+	list_type: string;
+	roles: string[];
+	held_count: number;
+}
+
+export interface ConsoleListInfo {
+	address: string;
+	list_name: string;
+	domain: string;
+	list_type: string;
+	roles: string[];
+}
+
+export interface HeldMessage {
+	id: number;
+	subject: string;
+	sender: string;
+	received_at: string;
+	expires_at: string;
+}
+
+export interface HeldMessageDetail extends HeldMessage {
+	body: string;
+}
+
+export interface DesignatedSender {
+	id: number;
+	email: string;
+}

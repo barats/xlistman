@@ -49,12 +49,14 @@ type Store interface {
 	AddOwner(ctx context.Context, listID, subscriberID int64) error
 	RemoveOwner(ctx context.Context, listID, subscriberID int64) error
 	ListOwners(ctx context.Context, listID int64) ([]model.Owner, error)
+	ListOwnerLists(ctx context.Context, subscriberID int64) ([]model.Owner, error)
 	IsOwner(ctx context.Context, listID, subscriberID int64) (bool, error)
 
 	// Moderator operations
 	AddModerator(ctx context.Context, listID, subscriberID int64) error
 	RemoveModerator(ctx context.Context, listID, subscriberID int64) error
 	ListModerators(ctx context.Context, listID int64) ([]model.Moderator, error)
+	ListModeratorLists(ctx context.Context, subscriberID int64) ([]model.Moderator, error)
 	IsModerator(ctx context.Context, listID, subscriberID int64) (bool, error)
 
 	// Designated sender operations

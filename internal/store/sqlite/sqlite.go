@@ -332,6 +332,15 @@ func (s *Store) ListOwners(ctx context.Context, listID int64) ([]model.Owner, er
 	return owners, nil
 }
 
+// ListOwnerLists returns the Owner rows for the lists a Subscriber owns.
+func (s *Store) ListOwnerLists(ctx context.Context, subscriberID int64) ([]model.Owner, error) {
+	var owners []model.Owner
+	if err := s.db.WithContext(ctx).Where("subscriber_id = ?", subscriberID).Find(&owners).Error; err != nil {
+		return nil, err
+	}
+	return owners, nil
+}
+
 func (s *Store) IsOwner(ctx context.Context, listID, subscriberID int64) (bool, error) {
 	var count int64
 	err := s.db.WithContext(ctx).Model(&model.Owner{}).
@@ -354,6 +363,16 @@ func (s *Store) RemoveModerator(ctx context.Context, listID, subscriberID int64)
 func (s *Store) ListModerators(ctx context.Context, listID int64) ([]model.Moderator, error) {
 	var mods []model.Moderator
 	if err := s.db.WithContext(ctx).Where("list_id = ?", listID).Find(&mods).Error; err != nil {
+		return nil, err
+	}
+	return mods, nil
+}
+
+// ListModeratorLists returns the Moderator rows for the lists a Subscriber
+// moderates.
+func (s *Store) ListModeratorLists(ctx context.Context, subscriberID int64) ([]model.Moderator, error) {
+	var mods []model.Moderator
+	if err := s.db.WithContext(ctx).Where("subscriber_id = ?", subscriberID).Find(&mods).Error; err != nil {
 		return nil, err
 	}
 	return mods, nil

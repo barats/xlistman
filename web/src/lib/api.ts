@@ -1,6 +1,11 @@
 import type {
 	ArchiveEntry,
 	ArchiveMessage,
+	ConsoleList,
+	ConsoleListInfo,
+	DesignatedSender,
+	HeldMessage,
+	HeldMessageDetail,
 	ListInfo,
 	ListSummary,
 	Subscription
@@ -114,4 +119,94 @@ export async function getArchiveEntry(
 	);
 	await throwOnError(res);
 	return res.json();
+}
+
+// --- Role console (ADR 0015) ---
+
+export async function getConsoleLists(): Promise<ConsoleList[]> {
+	const res = await fetch('/api/console/lists');
+	await throwOnError(res);
+	return res.json();
+}
+
+export async function getConsoleListInfo(
+	domain: string,
+	listName: string
+): Promise<ConsoleListInfo> {
+	const res = await fetch(
+		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}`
+	);
+	await throwOnError(res);
+	return res.json();
+}
+
+export async function getHeldMessages(
+	domain: string,
+	listName: string
+): Promise<HeldMessage[]> {
+	const res = await fetch(
+		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/held`
+	);
+	await throwOnError(res);
+	return res.json();
+}
+
+export async function getHeldMessage(
+	domain: string,
+	listName: string,
+	id: number
+): Promise<HeldMessageDetail> {
+	const res = await fetch(
+		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/held/${id}`
+	);
+	await throwOnError(res);
+	return res.json();
+}
+
+export async function moderate(
+	domain: string,
+	listName: string,
+	id: number,
+	action: 'approve' | 'reject' | 'discard'
+): Promise<void> {
+	const res = await fetch(
+		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/held/${id}/${action}`,
+		{ method: 'POST' }
+	);
+	await throwOnError(res);
+}
+
+export async function getSenders(
+	domain: string,
+	listName: string
+): Promise<DesignatedSender[]> {
+	const res = await fetch(
+		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/senders`
+	);
+	await throwOnError(res);
+	return res.json();
+}
+
+export async function addSender(
+	domain: string,
+	listName: string,
+	email: string
+): Promise<void> {
+	const res = await fetch(
+		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/senders`,
+		{ method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email }) }
+	);
+	await throwOnError(res);
+}
+
+export async function removeSender(
+	domain: string,
+	listName: string,
+	subscriberId: number
+): Promise<void> {
+	const res = await fetch(
+		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/senders/${subscriberId}`,
+		{ method: 'DELETE' }
+	);
+	await throwOnError(res);
 }

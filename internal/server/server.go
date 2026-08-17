@@ -135,6 +135,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/auth/logout", s.handleLogout)
 	mux.HandleFunc("/api/me", s.requireAuth(s.handleMe))
 	mux.HandleFunc("/api/me/subscriptions/", s.requireAuth(s.handleMySubscription))
+	s.registerConsoleRoutes(mux)
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {

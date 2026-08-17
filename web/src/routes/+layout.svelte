@@ -22,6 +22,9 @@
 			<nav class="flex items-center gap-4 text-sm">
 				<a href="/" class="text-muted-foreground transition-colors hover:text-foreground">Lists</a>
 				{#if $me}
+					<a href="/console" class="text-muted-foreground transition-colors hover:text-foreground"
+						>Console</a
+					>
 					<a href="/me" class="text-muted-foreground transition-colors hover:text-foreground"
 						>My subscriptions</a
 					>
