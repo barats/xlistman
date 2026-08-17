@@ -1,0 +1,1 @@
+import{G as e}from"./JlIMxZ8-.js";import"./BbJVgDWY.js";import{o as t,s as n}from"./DNATEyb4.js";var r=e(void 0);async function i(){try{let e=await t();return r.set(e),e}catch{return r.set(null),null}}async function a(){try{await n()}finally{r.set(null)}}export{i as n,a as r,r as t};

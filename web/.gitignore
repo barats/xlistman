@@ -6,8 +6,8 @@ node_modules
 .netlify
 .wrangler
 /.svelte-kit
-/build/*
-!/build/.gitkeep
+# The static SPA build under /build is committed (ADR 0015) so `go build`
+# alone produces a binary with the embedded UI; do not ignore it.
 
 # OS
 .DS_Store
