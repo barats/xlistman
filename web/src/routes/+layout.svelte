@@ -25,9 +25,11 @@
 					<a href="/me" class="text-muted-foreground transition-colors hover:text-foreground"
 						>My subscriptions</a
 					>
-					<a href="/admin" class="text-muted-foreground transition-colors hover:text-foreground"
-						>My lists</a
-					>
+					{#if $me.has_list_role}
+						<a href="/admin" class="text-muted-foreground transition-colors hover:text-foreground"
+							>My lists</a
+						>
+					{/if}
 					{#if $me.is_administrator}
 						<a href="/server" class="text-muted-foreground transition-colors hover:text-foreground"
 							>Server</a

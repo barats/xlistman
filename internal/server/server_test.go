@@ -324,6 +324,44 @@ func TestMeRequiresAuth(t *testing.T) {
 	}
 }
 
+func TestMeHasListRole(t *testing.T) {
+	_, st, baseURL := newTestServer(t)
+	l := setupList(t, st)
+	ctx := context.Background()
+
+	// A subscriber with no list role reports has_list_role false.
+	nobody := makeSubscriber(t, st, "nobody@example.com")
+	nobodyCookies := login(t, st, baseURL, nobody.Email)
+	resp, body := do(t, baseURL, "GET", "/api/me", "", nobodyCookies)
+	if resp.StatusCode != http.StatusOK || !strings.Contains(body, `"has_list_role":false`) {
+		t.Fatalf("/api/me no-role: status=%d body=%s", resp.StatusCode, body)
+	}
+
+	// An owner reports has_list_role true.
+	owner := makeSubscriber(t, st, "owner@example.com")
+	if err := st.AddOwner(ctx, l.ID, owner.ID); err != nil {
+		t.Fatalf("add owner: %v", err)
+	}
+	ownerCookies := login(t, st, baseURL, owner.Email)
+	resp, body = do(t, baseURL, "GET", "/api/me", "", ownerCookies)
+	if resp.StatusCode != http.StatusOK || !strings.Contains(body, `"has_list_role":true`) {
+		t.Fatalf("/api/me owner: status=%d body=%s", resp.StatusCode, body)
+	}
+
+	// An administrator with no list role: is_administrator true, has_list_role false.
+	admin := makeSubscriber(t, st, "admin@example.com")
+	if err := st.AddAdministrator(ctx, admin.ID); err != nil {
+		t.Fatalf("add administrator: %v", err)
+	}
+	adminCookies := login(t, st, baseURL, admin.Email)
+	resp, body = do(t, baseURL, "GET", "/api/me", "", adminCookies)
+	if resp.StatusCode != http.StatusOK ||
+		!strings.Contains(body, `"is_administrator":true`) ||
+		!strings.Contains(body, `"has_list_role":false`) {
+		t.Fatalf("/api/me admin: status=%d body=%s", resp.StatusCode, body)
+	}
+}
+
 func TestSelfService(t *testing.T) {
 	_, st, baseURL := newTestServer(t)
 	l := setupList(t, st)

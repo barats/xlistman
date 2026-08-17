@@ -73,7 +73,12 @@ export async function logout(): Promise<void> {
 	await fetch('/api/auth/logout', { method: 'POST' });
 }
 
-export async function getMe(): Promise<{ email: string; subscriptions: Subscription[]; is_administrator: boolean }> {
+export async function getMe(): Promise<{
+	email: string;
+	subscriptions: Subscription[];
+	is_administrator: boolean;
+	has_list_role: boolean;
+}> {
 	const res = await fetch('/api/me');
 	await throwOnError(res);
 	return res.json();

@@ -6,6 +6,7 @@ export interface Me {
 	email: string;
 	subscriptions: Subscription[];
 	is_administrator: boolean;
+	has_list_role: boolean;
 }
 
 // undefined = still loading, null = signed out, Me = signed in.

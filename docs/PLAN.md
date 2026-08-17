@@ -103,6 +103,7 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
 - List creation mirrors the CLI: default first Owner is the creating Administrator, overridable to any known Subscriber, so a list is never accidentally ownerless.
 - List deletion is a hard delete (list + settings + archive + held + subscriptions + roles + queue in one transaction) — fixes the existing orphan bug where `DeleteList` removed only the List row. Web requires typing the full address to confirm (the button stays disabled until it matches); server logs the deletion. CLI `list delete` uses the same cascade.
 - ListType change: warning + confirm dialog stating the posting-policy consequence; new `list type` CLI command for parity.
+- Nav is role-gated: **My lists** shows only to subscribers holding an Owner or Moderator role (via `has_list_role` on `/api/me`), **Server** only to Administrators — a plain member sees neither.
 - Test suite green (`go test ./...`); verified end-to-end in the browser (Console nav gate, overview/domains/lists/administrators tabs, domain + list creation, typed-address delete guard, list-type change warning, administrator designate/revoke, 401/403 gates, mobile viewport) via DOM/text-snapshot checks (no screenshots).
 
 ### After Phase 7 (deferred catalog continues)

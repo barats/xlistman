@@ -414,10 +414,14 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	isAdmin, _ := s.Store.IsAdministrator(r.Context(), sub.ID)
+	owners, _ := s.Store.ListOwnerLists(r.Context(), sub.ID)
+	mods, _ := s.Store.ListModeratorLists(r.Context(), sub.ID)
+	hasListRole := len(owners) > 0 || len(mods) > 0
 	writeJSON(w, 200, map[string]any{
 		"email":            sub.Email,
 		"subscriptions":    infos,
 		"is_administrator": isAdmin,
+		"has_list_role":    hasListRole,
 	})
 }
 

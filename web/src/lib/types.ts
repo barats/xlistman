@@ -32,6 +32,7 @@ export interface Me {
 	email: string;
 	subscriptions: Subscription[];
 	is_administrator: boolean;
+	has_list_role: boolean;
 }
 
 export interface ArchiveEntry {
