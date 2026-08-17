@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	xmail "github.com/barats/xlistman/internal/mail"
 	"github.com/barats/xlistman/internal/model"
 )
 
@@ -124,17 +125,33 @@ func (s *Server) handleConsoleList(w http.ResponseWriter, r *http.Request) {
 		h = func(w http.ResponseWriter, r *http.Request, l *model.List) {
 			s.handleConsoleSendersRemove(w, r, l, parts[3])
 		}
+	case len(parts) >= 3 && parts[2] == "settings" && len(parts) == 3:
+		h = s.handleConsoleSettings
+	case len(parts) >= 3 && parts[2] == "members" && len(parts) == 3:
+		h = s.handleConsoleMembers
+	case len(parts) == 4 && parts[2] == "members":
+		h = func(w http.ResponseWriter, r *http.Request, l *model.List) {
+			s.handleConsoleMemberRemove(w, r, l, parts[3])
+		}
+	case len(parts) == 5 && parts[2] == "members":
+		h = func(w http.ResponseWriter, r *http.Request, l *model.List) {
+			s.handleConsoleMemberAction(w, r, l, parts[3], parts[4])
+		}
+	case len(parts) == 5 && parts[2] == "roles":
+		h = func(w http.ResponseWriter, r *http.Request, l *model.List) {
+			s.handleConsoleRole(w, r, l, parts[3], parts[4])
+		}
 	default:
 		http.NotFound(w, r)
 		return
 	}
 
-	// Held-message routes need the Owner or Moderator role; allowlist routes
-	// need the Owner role.
-	if len(parts) >= 3 && parts[2] == "senders" {
-		s.requireOwner(w, r, l, h)
-	} else {
+	// List-info and held-message routes need the Owner or Moderator role; the
+	// admin sections (senders, settings, members, roles) need the Owner role.
+	if len(parts) == 2 || (len(parts) >= 3 && parts[2] == "held") {
 		s.requireRole(w, r, l, h)
+	} else {
+		s.requireOwner(w, r, l, h)
 	}
 }
 
@@ -158,11 +175,12 @@ func (s *Server) handleConsoleListInfo(w http.ResponseWriter, r *http.Request, l
 		roles = append(roles, "moderator")
 	}
 	writeJSON(w, 200, map[string]any{
-		"address":   l.Address(),
-		"list_name": l.ListName,
-		"domain":    l.Domain,
-		"list_type": string(l.ListType),
-		"roles":     roles,
+		"address":     l.Address(),
+		"list_name":   l.ListName,
+		"domain":      l.Domain,
+		"list_type":   string(l.ListType),
+		"description": l.Description,
+		"roles":       roles,
 	})
 }
 
@@ -380,4 +398,237 @@ func (s *Server) handleConsoleSendersRemove(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	writeJSON(w, 200, map[string]string{"status": "sender removed"})
+}
+
+// handleConsoleSettings reads or writes the list's configuration (Description
+// plus all ListSettings). Owners only.
+func (s *Server) handleConsoleSettings(w http.ResponseWriter, r *http.Request, l *model.List) {
+	ctx := r.Context()
+	if r.Method == http.MethodPut {
+		var body struct {
+			Description string             `json:"description"`
+			Settings    model.ListSettings `json:"settings"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeJSON(w, 400, map[string]string{"error": "invalid request body"})
+			return
+		}
+		if body.Settings.ReplyToMode == model.ReplyToSpecified && strings.TrimSpace(body.Settings.ReplyToAddress) == "" {
+			writeJSON(w, 400, map[string]string{"error": "a reply-to address is required when reply-to mode is 'specified'"})
+			return
+		}
+		if body.Settings.BounceThreshold < 0 || body.Settings.HeldExpiryDays < 0 ||
+			body.Settings.MaxMessageSize < 0 || body.Settings.ArchiveMaxAgeDays < 0 {
+			writeJSON(w, 400, map[string]string{"error": "numeric settings cannot be negative"})
+			return
+		}
+		if err := s.Store.UpdateListSettings(ctx, l.ID, body.Settings); err != nil {
+			writeJSON(w, 500, map[string]string{"error": "failed to update settings"})
+			return
+		}
+		if err := s.Store.UpdateListDescription(ctx, l.ID, body.Description); err != nil {
+			writeJSON(w, 500, map[string]string{"error": "failed to update settings"})
+			return
+		}
+		writeJSON(w, 200, map[string]string{"status": "settings updated"})
+		return
+	}
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	writeJSON(w, 200, map[string]any{
+		"description": l.Description,
+		"list_type":   string(l.ListType),
+		"settings":    l.Settings,
+	})
+}
+
+// handleConsoleMembers lists the list's members (with their roles), or adds a
+// member on POST. Adding is authoritative: the Owner's action replaces double
+// opt-in and subscribes immediately (ADR 0016). Owners only.
+func (s *Server) handleConsoleMembers(w http.ResponseWriter, r *http.Request, l *model.List) {
+	ctx := r.Context()
+	if r.Method == http.MethodPost {
+		var body struct {
+			Email string `json:"email"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeJSON(w, 400, map[string]string{"error": "invalid request body"})
+			return
+		}
+		email, err := normalizeEmail(body.Email)
+		if err != nil {
+			writeJSON(w, 400, map[string]string{"error": "a valid email is required"})
+			return
+		}
+		if _, err := s.Pipeline.AddMember(ctx, l.ListName, l.Domain, email); err != nil {
+			writeJSON(w, 400, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, 201, map[string]string{"status": "member added"})
+		return
+	}
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	subs, err := s.Store.ListSubscriptions(ctx, l.ID)
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": "failed to load members"})
+		return
+	}
+	owners, _ := s.Store.ListOwners(ctx, l.ID)
+	mods, _ := s.Store.ListModerators(ctx, l.ID)
+	senders, _ := s.Store.ListDesignatedSenders(ctx, l.ID)
+
+	roleBySub := map[int64][]string{}
+	addRole := func(id int64, role string) {
+		if roleBySub[id] == nil {
+			roleBySub[id] = []string{}
+		}
+		roleBySub[id] = append(roleBySub[id], role)
+	}
+	for _, o := range owners {
+		addRole(o.SubscriberID, "owner")
+	}
+	for _, m := range mods {
+		addRole(m.SubscriberID, "moderator")
+	}
+	for _, d := range senders {
+		addRole(d.SubscriberID, "designated_sender")
+	}
+
+	// Roles is never null so clients can rely on it being an array.
+	rolesFor := func(id int64) []string {
+		roles := roleBySub[id]
+		if roles == nil {
+			return []string{}
+		}
+		return roles
+	}
+
+	type memberInfo struct {
+		SubscriberID   int64    `json:"subscriber_id"`
+		Email          string   `json:"email"`
+		SubscriptionID *int64   `json:"subscription_id,omitempty"`
+		Status         *string  `json:"status,omitempty"`
+		DeliveryMode   *string  `json:"delivery_mode,omitempty"`
+		BounceCount    int      `json:"bounce_count"`
+		Roles          []string `json:"roles"`
+	}
+	result := make([]memberInfo, 0, len(subs))
+	seen := map[int64]bool{}
+	for _, sub := range subs {
+		subscriber, err := s.Store.GetSubscriberByID(ctx, sub.SubscriberID)
+		if err != nil {
+			continue
+		}
+		subID := sub.ID
+		status := string(sub.Status)
+		mode := string(sub.DeliveryMode)
+		seen[sub.SubscriberID] = true
+		result = append(result, memberInfo{
+			SubscriberID:   subscriber.ID,
+			Email:          subscriber.Email,
+			SubscriptionID: &subID,
+			Status:         &status,
+			DeliveryMode:   &mode,
+			BounceCount:    sub.BounceCount,
+			Roles:          rolesFor(sub.SubscriberID),
+		})
+	}
+	// Role holders who are not subscribed still appear so roles can be managed.
+	for id := range roleBySub {
+		if seen[id] {
+			continue
+		}
+		subscriber, err := s.Store.GetSubscriberByID(ctx, id)
+		if err != nil {
+			continue
+		}
+		result = append(result, memberInfo{SubscriberID: subscriber.ID, Email: subscriber.Email, Roles: rolesFor(id)})
+	}
+	writeJSON(w, 200, result)
+}
+
+// handleConsoleMemberRemove removes a member (DELETE /members/{subscriberID}).
+func (s *Server) handleConsoleMemberRemove(w http.ResponseWriter, r *http.Request, l *model.List, subIDStr string) {
+	if r.Method != http.MethodDelete {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	subID, err := strconv.ParseInt(subIDStr, 10, 64)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if err := s.Pipeline.RemoveMember(r.Context(), l.ID, subID); err != nil {
+		writeJSON(w, 400, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, map[string]string{"status": "member removed"})
+}
+
+// handleConsoleMemberAction approves or rejects a Held Subscription
+// (POST /members/{subscriberID}/{approve|reject}).
+func (s *Server) handleConsoleMemberAction(w http.ResponseWriter, r *http.Request, l *model.List, subIDStr, action string) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	subID, err := strconv.ParseInt(subIDStr, 10, 64)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	ctx := r.Context()
+	switch action {
+	case "approve":
+		err = s.Pipeline.ApproveSubscription(ctx, l.ID, subID)
+	case "reject":
+		err = s.Pipeline.RejectSubscription(ctx, l.ID, subID)
+	default:
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		writeJSON(w, 400, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, map[string]string{"status": "subscription " + action + "d"})
+}
+
+// handleConsoleRole grants (POST) or revokes (DELETE) the Owner or Moderator
+// List Role for a Subscriber. Revoking enforces the last-owner guard.
+func (s *Server) handleConsoleRole(w http.ResponseWriter, r *http.Request, l *model.List, subIDStr, role string) {
+	if role != xmail.RoleOwner && role != xmail.RoleModerator {
+		http.NotFound(w, r)
+		return
+	}
+	subID, err := strconv.ParseInt(subIDStr, 10, 64)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	ctx := r.Context()
+	switch r.Method {
+	case http.MethodPost:
+		err = s.Pipeline.GrantRole(ctx, l.ID, subID, role)
+	case http.MethodDelete:
+		err = s.Pipeline.RevokeRole(ctx, l.ID, subID, role)
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err != nil {
+		if strings.Contains(err.Error(), "last owner") {
+			writeJSON(w, 409, map[string]string{"error": err.Error()})
+		} else {
+			writeJSON(w, 400, map[string]string{"error": err.Error()})
+		}
+		return
+	}
+	writeJSON(w, 200, map[string]string{"status": "role updated"})
 }

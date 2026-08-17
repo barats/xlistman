@@ -60,6 +60,41 @@ export interface ConsoleListInfo {
 	list_name: string;
 	domain: string;
 	list_type: string;
+	description: string;
+	roles: string[];
+}
+
+export interface ListSettings {
+	moderation_enabled: boolean;
+	subject_prefix: string;
+	footer_enabled: boolean;
+	max_message_size: number;
+	archive_max_age_days: number;
+	digest_frequency: string;
+	subscription_policy: string;
+	reply_to_mode: string;
+	reply_to_address: string;
+	welcome_email: boolean;
+	goodbye_email: boolean;
+	sender_held_notice: boolean;
+	owner_auto_disable_notice: boolean;
+	bounce_threshold: number;
+	held_expiry_days: number;
+}
+
+export interface ConsoleSettings {
+	description: string;
+	list_type: string;
+	settings: ListSettings;
+}
+
+export interface ConsoleMember {
+	subscriber_id: number;
+	email: string;
+	subscription_id?: number;
+	status?: string;
+	delivery_mode?: string;
+	bounce_count: number;
 	roles: string[];
 }
 

@@ -304,6 +304,15 @@ func (s *LMTPServer) handleConfirm(ctx context.Context, p ParsedAddress) error {
 		return err
 	}
 
+	// Moderated lists: tell the requester their request awaits Owner approval.
+	if target == model.SubscriptionStatusHeld {
+		if subscriber, err := s.Store.GetSubscriberByID(ctx, sub.SubscriberID); err == nil {
+			if err := s.Pipeline.NotifySubscriptionPending(ctx, l, subscriber); err != nil {
+				return err
+			}
+		}
+	}
+
 	return s.Store.DeleteConfirmationToken(ctx, p.EncodedPart)
 }
 

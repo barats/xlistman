@@ -3,6 +3,8 @@ import type {
 	ArchiveMessage,
 	ConsoleList,
 	ConsoleListInfo,
+	ConsoleMember,
+	ConsoleSettings,
 	DesignatedSender,
 	HeldMessage,
 	HeldMessageDetail,
@@ -206,6 +208,116 @@ export async function removeSender(
 ): Promise<void> {
 	const res = await fetch(
 		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/senders/${subscriberId}`,
+		{ method: 'DELETE' }
+	);
+	await throwOnError(res);
+}
+
+// --- Admin console (ADR 0016) ---
+
+export async function getConsoleSettings(
+	domain: string,
+	listName: string
+): Promise<ConsoleSettings> {
+	const res = await fetch(
+		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/settings`
+	);
+	await throwOnError(res);
+	return res.json();
+}
+
+export async function updateConsoleSettings(
+	domain: string,
+	listName: string,
+	body: ConsoleSettings
+): Promise<void> {
+	const res = await fetch(
+		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/settings`,
+		{ method: 'PUT', headers: jsonHeaders, body: JSON.stringify(body) }
+	);
+	await throwOnError(res);
+}
+
+export async function getConsoleMembers(
+	domain: string,
+	listName: string
+): Promise<ConsoleMember[]> {
+	const res = await fetch(
+		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/members`
+	);
+	await throwOnError(res);
+	return res.json();
+}
+
+export async function addMember(
+	domain: string,
+	listName: string,
+	email: string
+): Promise<void> {
+	const res = await fetch(
+		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/members`,
+		{ method: 'POST', headers: jsonHeaders, body: JSON.stringify({ email }) }
+	);
+	await throwOnError(res);
+}
+
+export async function removeMember(
+	domain: string,
+	listName: string,
+	subscriberId: number
+): Promise<void> {
+	const res = await fetch(
+		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/members/${subscriberId}`,
+		{ method: 'DELETE' }
+	);
+	await throwOnError(res);
+}
+
+export async function approveSubscription(
+	domain: string,
+	listName: string,
+	subscriberId: number
+): Promise<void> {
+	const res = await fetch(
+		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/members/${subscriberId}/approve`,
+		{ method: 'POST' }
+	);
+	await throwOnError(res);
+}
+
+export async function rejectSubscription(
+	domain: string,
+	listName: string,
+	subscriberId: number
+): Promise<void> {
+	const res = await fetch(
+		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/members/${subscriberId}/reject`,
+		{ method: 'POST' }
+	);
+	await throwOnError(res);
+}
+
+export async function grantRole(
+	domain: string,
+	listName: string,
+	subscriberId: number,
+	role: string
+): Promise<void> {
+	const res = await fetch(
+		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/roles/${subscriberId}/${role}`,
+		{ method: 'POST' }
+	);
+	await throwOnError(res);
+}
+
+export async function revokeRole(
+	domain: string,
+	listName: string,
+	subscriberId: number,
+	role: string
+): Promise<void> {
+	const res = await fetch(
+		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/roles/${subscriberId}/${role}`,
 		{ method: 'DELETE' }
 	);
 	await throwOnError(res);

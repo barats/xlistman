@@ -75,6 +75,28 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
   approve/reject/discard, allowlist add/remove + subscriber-first errors, 401/403 gates,
   mobile viewport) via DOM checks.
 
+### Phase 6 — Web admin console: settings, membership, and roles — complete and tested
+- Per-list admin console with tabs: Overview / Settings / Members / Moderation / Allowlist,
+  each a nested SvelteKit route (ADR 0016).
+- Authorization: Owners get full per-list control (settings, members, roles, moderation,
+  allowlist); Moderators keep moderation only (no settings, no member list). List deletion
+  and ListType changes stay CLI-only (ADR 0005).
+- Members: list (email, subscription status, delivery mode, role badges), authoritative add
+  (GetOrCreateSubscriber → Active, no confirmation), remove, and approve/reject of Held
+  Subscriptions (fixes the moderated-policy dead end).
+- Roles: grant/revoke Owner and Moderator to any Subscriber, with a last-owner guard so a
+  list can never have zero Owners.
+- Settings: all 15 ListSettings + Description, grouped, with inline validation.
+- Notifications wired to previously dormant settings: welcome on approval (WelcomeEmail),
+  goodbye on Owner removal (GoodbyeEmail), pending-approval notice at confirm time,
+  rejection notice on reject.
+- CLI parity: `moderator add|remove`, `subscriber approve|reject`, `list config` — all
+  sharing the same store functions as the web.
+- Test suite green (`go test ./...`); verified end-to-end in the browser (owner console and
+  tabs, settings save, members add/approve/reject, role grant/revoke + last-owner guard,
+  held queue approve/reject/discard, allowlist add/remove + subscriber-first errors,
+  moderator scoping, 401 gate, mobile viewport) via DOM checks.
+
 ## Next
 
 - Optionally validate the LMTP loop against local `postfix` (Docker is not available here).

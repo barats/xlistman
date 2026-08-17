@@ -27,6 +27,7 @@ type Store interface {
 	ListLists(ctx context.Context, domainName string) ([]model.List, error)
 	DeleteList(ctx context.Context, listName, domainName string) error
 	UpdateListSettings(ctx context.Context, listID int64, settings model.ListSettings) error
+	UpdateListDescription(ctx context.Context, listID int64, description string) error
 
 	// Subscriber operations
 	GetOrCreateSubscriber(ctx context.Context, email string) (*model.Subscriber, error)

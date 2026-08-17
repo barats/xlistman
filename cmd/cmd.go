@@ -50,6 +50,8 @@ func Run(args []string, webBuild fs.FS) int {
 		return cmdList(rest)
 	case "owner":
 		return cmdOwner(rest)
+	case "moderator":
+		return cmdModerator(rest)
 	case "subscriber":
 		return cmdSubscriber(rest)
 	case "moderation":
@@ -90,11 +92,17 @@ Commands:
   list allowlist <addr>          List designated senders (newsletter)
   list add-sender <addr> <email>  Designate a sender for a newsletter list
   list remove-sender <addr> <id>  Remove a designated sender
+  list config <addr> <k>=<v>...  Edit list settings (keys match list info)
   owner add <list> <email>       Add an owner
   owner remove <list> <email>    Remove an owner
   owner list <list>              List owners
+  moderator add <list> <email>   Add a moderator
+  moderator remove <list> <email>  Remove a moderator
+  moderator list <list>          List moderators
   subscriber add <list> <email>  Manually add subscriber
   subscriber remove <list> <email>  Remove subscriber
+  subscriber approve <list> <email>  Approve a held subscription request
+  subscriber reject <list> <email>   Reject a held subscription request
   subscriber list <list>         List subscribers
   subscriber import <list> <file>  Import from CSV
   moderation list <list>           List held messages awaiting approval
@@ -130,6 +138,103 @@ func parseListAddr(addr string) (listName, domain string, err error) {
 		return "", "", fmt.Errorf("invalid list address: %s", addr)
 	}
 	return parts[0], parts[1], nil
+}
+
+// applyListSetting applies one key=value pair from `list config` to the
+// list's settings, returning ok=false for an unknown key. Keys match the
+// ListSettings JSON names; description is a list-level field.
+func applyListSetting(s *model.ListSettings, desc *string, descSet *bool, key, val string) (bool, error) {
+	switch key {
+	case "description":
+		*desc = val
+		*descSet = true
+	case "moderation_enabled":
+		b, err := strconv.ParseBool(val)
+		if err != nil {
+			return true, fmt.Errorf("expected true or false")
+		}
+		s.ModerationEnabled = b
+	case "subject_prefix":
+		s.SubjectPrefix = val
+	case "footer_enabled":
+		b, err := strconv.ParseBool(val)
+		if err != nil {
+			return true, fmt.Errorf("expected true or false")
+		}
+		s.FooterEnabled = b
+	case "max_message_size":
+		n, err := strconv.ParseInt(val, 10, 64)
+		if err != nil || n < 0 {
+			return true, fmt.Errorf("expected a non-negative integer")
+		}
+		s.MaxMessageSize = n
+	case "archive_max_age_days":
+		n, err := strconv.Atoi(val)
+		if err != nil || n < 0 {
+			return true, fmt.Errorf("expected a non-negative integer")
+		}
+		s.ArchiveMaxAgeDays = n
+	case "digest_frequency":
+		if val != string(model.DigestDaily) && val != string(model.DigestWeekly) {
+			return true, fmt.Errorf("expected daily or weekly")
+		}
+		s.DigestFrequency = model.DigestFrequency(val)
+	case "subscription_policy":
+		switch val {
+		case string(model.SubscriptionPolicyOpen), string(model.SubscriptionPolicyModerated), string(model.SubscriptionPolicyClosed):
+			s.SubscriptionPolicy = model.SubscriptionPolicy(val)
+		default:
+			return true, fmt.Errorf("expected open, moderated, or closed")
+		}
+	case "reply_to_mode":
+		switch val {
+		case string(model.ReplyToList), string(model.ReplyToSender), string(model.ReplyToSpecified):
+			s.ReplyToMode = model.ReplyToMode(val)
+		default:
+			return true, fmt.Errorf("expected list, sender, or specified")
+		}
+	case "reply_to_address":
+		s.ReplyToAddress = val
+	case "welcome_email":
+		b, err := strconv.ParseBool(val)
+		if err != nil {
+			return true, fmt.Errorf("expected true or false")
+		}
+		s.WelcomeEmail = b
+	case "goodbye_email":
+		b, err := strconv.ParseBool(val)
+		if err != nil {
+			return true, fmt.Errorf("expected true or false")
+		}
+		s.GoodbyeEmail = b
+	case "sender_held_notice":
+		b, err := strconv.ParseBool(val)
+		if err != nil {
+			return true, fmt.Errorf("expected true or false")
+		}
+		s.SenderHeldNotice = b
+	case "owner_auto_disable_notice":
+		b, err := strconv.ParseBool(val)
+		if err != nil {
+			return true, fmt.Errorf("expected true or false")
+		}
+		s.OwnerAutoDisableNotice = b
+	case "bounce_threshold":
+		n, err := strconv.Atoi(val)
+		if err != nil || n < 0 {
+			return true, fmt.Errorf("expected a non-negative integer")
+		}
+		s.BounceThreshold = n
+	case "held_expiry_days":
+		n, err := strconv.Atoi(val)
+		if err != nil || n < 0 {
+			return true, fmt.Errorf("expected a non-negative integer")
+		}
+		s.HeldExpiryDays = n
+	default:
+		return false, nil
+	}
+	return true, nil
 }
 
 // --- serve ---
@@ -487,6 +592,55 @@ func cmdList(args []string) int {
 		fmt.Printf("Footer: %v\n", l.Settings.FooterEnabled)
 		return 0
 
+	case "config":
+		if len(args) < 2 {
+			fmt.Fprintln(os.Stderr, "usage: xlistman list config <addr> <key>=<value> [<key>=<value> ...]")
+			return 1
+		}
+		listName, domain, _ := parseListAddr(args[1])
+		l, err := s.GetList(ctx, listName, domain)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "get list:", err)
+			return 1
+		}
+		settings := l.Settings
+		desc := l.Description
+		descSet := false
+		for _, kv := range args[2:] {
+			eq := strings.Index(kv, "=")
+			if eq <= 0 {
+				fmt.Fprintf(os.Stderr, "invalid setting (want key=value): %s\n", kv)
+				return 1
+			}
+			key := strings.ToLower(strings.TrimSpace(kv[:eq]))
+			val := strings.TrimSpace(kv[eq+1:])
+			ok, err := applyListSetting(&settings, &desc, &descSet, key, val)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "setting", key+":", err)
+				return 1
+			}
+			if !ok {
+				fmt.Fprintf(os.Stderr, "unknown setting: %s\n", key)
+				return 1
+			}
+		}
+		if settings.ReplyToMode == model.ReplyToSpecified && strings.TrimSpace(settings.ReplyToAddress) == "" {
+			fmt.Fprintln(os.Stderr, "reply_to_address is required when reply_to_mode is specified")
+			return 1
+		}
+		if err := s.UpdateListSettings(ctx, l.ID, settings); err != nil {
+			fmt.Fprintln(os.Stderr, "update settings:", err)
+			return 1
+		}
+		if descSet {
+			if err := s.UpdateListDescription(ctx, l.ID, desc); err != nil {
+				fmt.Fprintln(os.Stderr, "update description:", err)
+				return 1
+			}
+		}
+		fmt.Printf("Updated settings for %s\n", l.Address())
+		return 0
+
 	case "allowlist":
 		if len(args) < 2 {
 			fmt.Fprintln(os.Stderr, "usage: xlistman list allowlist <addr>")
@@ -640,6 +794,90 @@ func cmdOwner(args []string) int {
 	return 1
 }
 
+// --- moderator ---
+
+func cmdModerator(args []string) int {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "usage: xlistman moderator <add|remove|list> [args]")
+		return 1
+	}
+	cfg, err := loadConfig()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	s, err := openStore(cfg)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "open store:", err)
+		return 1
+	}
+	defer s.Close()
+	ctx := context.Background()
+
+	switch args[0] {
+	case "add", "remove":
+		if len(args) < 3 {
+			fmt.Fprintf(os.Stderr, "usage: xlistman moderator %s <list-addr> <email>\n", args[0])
+			return 1
+		}
+		listName, domain, _ := parseListAddr(args[1])
+		l, err := s.GetList(ctx, listName, domain)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "get list:", err)
+			return 1
+		}
+		sub, err := s.GetOrCreateSubscriber(ctx, strings.ToLower(args[2]))
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "get subscriber:", err)
+			return 1
+		}
+		p := &mail.Pipeline{Store: s, WebBaseURL: cfg.Web.BaseURL}
+		if args[0] == "add" {
+			err = p.GrantRole(ctx, l.ID, sub.ID, mail.RoleModerator)
+		} else {
+			err = p.RevokeRole(ctx, l.ID, sub.ID, mail.RoleModerator)
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, args[0]+" moderator:", err)
+			return 1
+		}
+		verb := map[string]string{"add": "Added", "remove": "Removed"}[args[0]]
+		fmt.Printf("%s moderator: %s on %s\n", verb, args[2], args[1])
+		return 0
+
+	case "list":
+		if len(args) < 2 {
+			fmt.Fprintln(os.Stderr, "usage: xlistman moderator list <list-addr>")
+			return 1
+		}
+		listName, domain, _ := parseListAddr(args[1])
+		l, err := s.GetList(ctx, listName, domain)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "get list:", err)
+			return 1
+		}
+		mods, err := s.ListModerators(ctx, l.ID)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "list moderators:", err)
+			return 1
+		}
+		if len(mods) == 0 {
+			fmt.Println("No moderators.")
+			return 0
+		}
+		for _, m := range mods {
+			sub, err := s.GetSubscriberByID(ctx, m.SubscriberID)
+			if err != nil {
+				continue
+			}
+			fmt.Println(sub.Email)
+		}
+		return 0
+	}
+	fmt.Fprintln(os.Stderr, "unknown moderator subcommand:", args[0])
+	return 1
+}
+
 // --- subscriber ---
 
 func cmdSubscriber(args []string) int {
@@ -691,6 +929,36 @@ func cmdSubscriber(args []string) int {
 			s.DeleteSubscription(ctx, l.ID, sub.ID)
 			fmt.Printf("Removed subscriber: %s from %s\n", args[2], args[1])
 		}
+		return 0
+
+	case "approve", "reject":
+		if len(args) < 3 {
+			fmt.Fprintf(os.Stderr, "usage: xlistman subscriber %s <list-addr> <email>\n", args[0])
+			return 1
+		}
+		listName, domain, _ := parseListAddr(args[1])
+		l, err := s.GetList(ctx, listName, domain)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "get list:", err)
+			return 1
+		}
+		sub, err := s.GetSubscriber(ctx, strings.ToLower(args[2]))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "unknown subscriber: %s\n", args[2])
+			return 1
+		}
+		p := &mail.Pipeline{Store: s, WebBaseURL: cfg.Web.BaseURL}
+		if args[0] == "approve" {
+			err = p.ApproveSubscription(ctx, l.ID, sub.ID)
+		} else {
+			err = p.RejectSubscription(ctx, l.ID, sub.ID)
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, args[0]+" subscription:", err)
+			return 1
+		}
+		verb := map[string]string{"approve": "approved", "reject": "rejected"}[args[0]]
+		fmt.Printf("Subscription of %s to %s %s\n", sub.Email, l.Address(), verb)
 		return 0
 
 	case "list":

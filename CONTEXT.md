@@ -13,7 +13,7 @@ A mailing list, identified by the pair `(listname, domain)` (e.g., `dev@example.
 _Avoid_: Mailing list entry, list instance
 
 **Subscriber**:
-A verified email address known to xListman. The primary identity for subscriptions, ownership, and moderation. A Subscriber does not need to be subscribed to any list (e.g., an owner who receives no posts).
+An email address known to xListman and treated as trustworthy. A Subscriber created through self-service (subscribe command, web form) is verified by double opt-in confirmation; a Subscriber added directly by an Owner or server administrator is trusted by that person's action, with no separate verification step. The primary identity for subscriptions, ownership, and moderation. A Subscriber does not need to be subscribed to any list (e.g., an owner who receives no posts).
 _Avoid_: User, account, member (use Member for the subscription role specifically)
 
 **Subscription**:
@@ -92,6 +92,10 @@ _Avoid_: Vacation mode, delivery pause
 **Subscription Policy**:
 A property of a List that determines how subscription requests are handled after double opt-in confirmation. Three options: Open (subscription activates immediately), Moderated (held for owner approval), Closed (no new subscriptions; owners add subscribers manually).
 _Avoid_: Join policy, admission policy
+
+**Subscription Approval**:
+The Owner action that resolves a Held Subscription on a Moderated list: approving activates it, rejecting removes it. A confirmed subscription request lands in Held, so it needs an Owner's Subscription Approval before delivery begins.
+_Avoid_: Acceptance, membership decision
 
 **Designated Sender**:
 A Subscriber authorized to post to a Newsletter list, in addition to owners. Managed via a per-list allowlist. Holds the Designated Sender List Role.
