@@ -25,12 +25,12 @@
 					<a href="/me" class="text-muted-foreground transition-colors hover:text-foreground"
 						>My subscriptions</a
 					>
-					<a href="/console" class="text-muted-foreground transition-colors hover:text-foreground"
+					<a href="/admin" class="text-muted-foreground transition-colors hover:text-foreground"
 						>My lists</a
 					>
 					{#if $me.is_administrator}
-						<a href="/admin" class="text-muted-foreground transition-colors hover:text-foreground"
-							>Console</a
+						<a href="/server" class="text-muted-foreground transition-colors hover:text-foreground"
+							>Server</a
 						>
 					{/if}
 					<button

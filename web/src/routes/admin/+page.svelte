@@ -1,75 +1,81 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import {
-		getAdminAdministrators,
-		getAdminDomains,
-		getAdminLists
-	} from '$lib/api';
-	import type { AdminAdministrator, AdminDomain, AdminList } from '$lib/types';
+	import { ApiError, getConsoleLists } from '$lib/api';
+	import type { ConsoleList } from '$lib/types';
+	import { Badge } from '$lib/components/ui/badge';
 	import { Card } from '$lib/components/ui/card';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 
-	let domains = $state<AdminDomain[] | null>(null);
-	let lists = $state<AdminList[] | null>(null);
-	let admins = $state<AdminAdministrator[] | null>(null);
+	let lists = $state<ConsoleList[] | null>(null);
+	let phase: 'loading' | 'loaded' | 'denied' | 'error' = $state('loading');
 	let error = $state('');
 
 	onMount(async () => {
 		try {
-			[domains, lists, admins] = await Promise.all([
-				getAdminDomains(),
-				getAdminLists(),
-				getAdminAdministrators()
-			]);
+			lists = await getConsoleLists();
+			phase = 'loaded';
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Could not load server overview.';
+			if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+				phase = 'denied';
+			} else {
+				phase = 'error';
+				error = e instanceof Error ? e.message : 'Could not load the console.';
+			}
 		}
 	});
+
+	function heldLabel(heldCount: number): string {
+		return heldCount === 1 ? '1 held' : `${heldCount} held`;
+	}
 </script>
 
-{#if error}
-	<p class="text-sm text-destructive">{error}</p>
-{:else if !domains || !lists || !admins}
-	<div class="space-y-3">
-		<Skeleton class="h-6 w-1/2" />
-		<Skeleton class="h-24 w-full" />
-	</div>
-{:else}
-	<div class="grid gap-3 sm:grid-cols-3">
-		<a href="/admin/domains" class="block transition-opacity hover:opacity-80">
-			<Card class="p-4">
-				<p class="text-sm text-muted-foreground">Domains</p>
-				<p class="mt-1 text-2xl font-semibold">{domains.length}</p>
-			</Card>
-		</a>
-		<a href="/admin/lists" class="block transition-opacity hover:opacity-80">
-			<Card class="p-4">
-				<p class="text-sm text-muted-foreground">Lists</p>
-				<p class="mt-1 text-2xl font-semibold">{lists.length}</p>
-			</Card>
-		</a>
-		<a href="/admin/administrators" class="block transition-opacity hover:opacity-80">
-			<Card class="p-4">
-				<p class="text-sm text-muted-foreground">Administrators</p>
-				<p class="mt-1 text-2xl font-semibold">{admins.length}</p>
-			</Card>
-		</a>
-	</div>
+<h1 class="text-2xl font-bold tracking-tight">My lists</h1>
+<p class="mt-1 text-muted-foreground">
+	Review held messages and manage lists where you hold a role.
+</p>
 
-	<Card class="mt-6 p-6">
-		<h2 class="text-lg font-semibold">How server administration works</h2>
-		<ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-			<li>
-				An <strong class="font-medium text-foreground">Administrator</strong> is a Subscriber
-				with instance-wide privileges. The first is designated on the server with
-				<code class="rounded bg-muted px-1 py-0.5">xlistman admin add</code>; later ones can be
-				added here.
-			</li>
-			<li>Creating a list makes you its first Owner by default (overrideable to any Subscriber).</li>
-			<li>
-				Deleting a list removes it and all its data — archive, members, held messages, and
-				outbound queue — permanently.
-			</li>
-		</ul>
+{#if phase === 'denied'}
+	<Card class="mx-auto mt-8 max-w-md p-6 text-center">
+		<h2 class="text-lg font-semibold">Sign in required</h2>
+		<p class="mt-1 text-sm text-muted-foreground">
+			The console shows lists where you're an owner or moderator. Sign in to continue.
+		</p>
+		<div class="mt-4">
+			<a href="/auth" class="text-sm font-medium text-primary underline-offset-4 hover:underline"
+				>Sign in</a
+			>
+		</div>
 	</Card>
+{:else if phase === 'loading'}
+	<div class="mt-6 space-y-3">
+		{#each Array(2) as _}
+			<Skeleton class="h-20 w-full" />
+		{/each}
+	</div>
+{:else if phase === 'error'}
+	<p class="mt-6 text-sm text-destructive">{error}</p>
+{:else if lists && lists.length === 0}
+	<Card class="mt-6 p-6 text-sm text-muted-foreground">
+		You don't hold a role on any list yet. Lists you own or moderate will appear here.
+	</Card>
+{:else}
+	<div class="mt-6 grid gap-3">
+		{#each lists ?? [] as l (l.address)}
+			<a href={`/admin/l/${l.address}`} class="block transition-opacity hover:opacity-80">
+				<Card class="p-4">
+					<div class="flex items-center justify-between gap-4">
+						<div class="min-w-0">
+							<p class="truncate font-semibold">{l.address}</p>
+							<div class="mt-1 flex items-center gap-2">
+								{#each l.roles as role (role)}
+									<Badge variant="secondary" class="capitalize">{role}</Badge>
+								{/each}
+							</div>
+						</div>
+						<Badge variant={l.held_count > 0 ? 'default' : 'outline'}>{heldLabel(l.held_count)}</Badge>
+					</div>
+				</Card>
+			</a>
+		{/each}
+	</div>
 {/if}
