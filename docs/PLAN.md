@@ -59,4 +59,19 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
 
 ## Next
 
+### Phase 5 — Role console: web moderation + newsletter allowlist
+- New domain term: **List Role** (Owner | Moderator | Designated Sender); a web role
+  console surfaces every list where the signed-in Subscriber holds a role.
+- Web moderation: held-message queue + detail + Approve/Reject/Discard for Owners and
+  Moderators, sharing one moderation-action function with the email and CLI paths so the
+  three cannot drift. Session + server-side role check; held messages by raw ID on the web
+  (email keeps opaque tokens, ADR 0010). Moderator-side only; no sender held-status view.
+- Allowlist management: Designated Sender (Subscriber-first — only known Subscribers can be
+  designated) add/remove/list via the CLI (server admins, ADR 0005) and via the role console
+  for Owners of Newsletter lists. Designated Sender grants posting only; archives stay
+  members-only. A sender may also hold a subscription (no exclusivity).
+- Deferred (explicitly out of scope): web list configuration, web owner/subscriber/moderator
+  management, sender held-status view, moderation audit trail, bounce management UI.
+- ADR 0015 records the decision and supersedes ADR 0010's deferred-web rationale.
+
 - Optionally validate the LMTP loop against local `postfix` (Docker is not available here).

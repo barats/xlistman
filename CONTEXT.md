@@ -24,12 +24,16 @@ _Avoid_: Membership, signup
 The state of a Subscription. Four statuses: Pending (requested, awaiting email confirmation), Active (confirmed; posts are delivered), Held (confirmed but awaiting owner approval on Moderated lists), Disabled (deactivated by the bounce threshold).
 _Avoid_: Subscription state, lifecycle state
 
+**List Role**:
+A privilege a Subscriber holds on a List, separate from Subscription, that grants capabilities beyond receiving posts. Three kinds: Owner, Moderator, and Designated Sender (see each). Roles are granted per List.
+_Avoid_: Admin role, staff role
+
 **Owner**:
 A Subscriber with administrative authority over a List: configuration, membership management, and moderation. Separate from Subscription.
 _Avoid_: Admin, list manager
 
 **Moderator**:
-A Subscriber who can approve or reject held messages on a List, but cannot change list configuration.
+A Subscriber who can approve or reject held messages on a List, but cannot change list configuration. Holds the Moderator List Role.
 _Avoid_: Approver, reviewer
 
 **Member**:
@@ -90,7 +94,7 @@ A property of a List that determines how subscription requests are handled after
 _Avoid_: Join policy, admission policy
 
 **Designated Sender**:
-A Subscriber authorized to post to a Newsletter list, in addition to owners. Managed via a per-list allowlist.
+A Subscriber authorized to post to a Newsletter list, in addition to owners. Managed via a per-list allowlist. Holds the Designated Sender List Role.
 _Avoid_: Authorized poster, allowed sender
 
 **Outbound Queue**:
