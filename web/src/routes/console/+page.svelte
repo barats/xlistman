@@ -29,7 +29,7 @@
 	}
 </script>
 
-<h1 class="text-2xl font-bold tracking-tight">Console</h1>
+<h1 class="text-2xl font-bold tracking-tight">My lists</h1>
 <p class="mt-1 text-muted-foreground">
 	Review held messages and manage lists where you hold a role.
 </p>

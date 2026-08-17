@@ -1,4 +1,8 @@
 import type {
+	AdminAdministrator,
+	AdminDomain,
+	AdminInfo,
+	AdminList,
 	ArchiveEntry,
 	ArchiveMessage,
 	ConsoleList,
@@ -69,7 +73,7 @@ export async function logout(): Promise<void> {
 	await fetch('/api/auth/logout', { method: 'POST' });
 }
 
-export async function getMe(): Promise<{ email: string; subscriptions: Subscription[] }> {
+export async function getMe(): Promise<{ email: string; subscriptions: Subscription[]; is_administrator: boolean }> {
 	const res = await fetch('/api/me');
 	await throwOnError(res);
 	return res.json();
@@ -320,5 +324,89 @@ export async function revokeRole(
 		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/roles/${subscriberId}/${role}`,
 		{ method: 'DELETE' }
 	);
+	await throwOnError(res);
+}
+
+// --- Server administration (ADR 0017) ---
+
+export async function getAdminInfo(): Promise<AdminInfo> {
+	const res = await fetch('/api/console/admin/info');
+	await throwOnError(res);
+	return res.json();
+}
+
+export async function getAdminDomains(): Promise<AdminDomain[]> {
+	const res = await fetch('/api/console/admin/domains');
+	await throwOnError(res);
+	return res.json();
+}
+
+export async function createAdminDomain(name: string, description: string): Promise<void> {
+	const res = await fetch('/api/console/admin/domains', {
+		method: 'POST',
+		headers: jsonHeaders,
+		body: JSON.stringify({ name, description })
+	});
+	await throwOnError(res);
+}
+
+export async function getAdminLists(): Promise<AdminList[]> {
+	const res = await fetch('/api/console/admin/lists');
+	await throwOnError(res);
+	return res.json();
+}
+
+export interface CreateListBody {
+	list_name: string;
+	domain: string;
+	list_type: string;
+	description: string;
+	first_owner_email: string;
+	moderation: boolean;
+}
+
+export async function createAdminList(body: CreateListBody): Promise<{ address: string }> {
+	const res = await fetch('/api/console/admin/lists', {
+		method: 'POST',
+		headers: jsonHeaders,
+		body: JSON.stringify(body)
+	});
+	await throwOnError(res);
+	return res.json();
+}
+
+export async function deleteAdminList(domain: string, listName: string): Promise<void> {
+	const res = await fetch(
+		`/api/console/admin/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}`,
+		{ method: 'DELETE' }
+	);
+	await throwOnError(res);
+}
+
+export async function changeAdminListType(domain: string, listName: string, listType: string): Promise<void> {
+	const res = await fetch(
+		`/api/console/admin/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/type`,
+		{ method: 'POST', headers: jsonHeaders, body: JSON.stringify({ list_type: listType }) }
+	);
+	await throwOnError(res);
+}
+
+export async function getAdminAdministrators(): Promise<AdminAdministrator[]> {
+	const res = await fetch('/api/console/admin/administrators');
+	await throwOnError(res);
+	return res.json();
+}
+
+export async function addAdminAdministrator(email: string): Promise<void> {
+	const res = await fetch('/api/console/admin/administrators', {
+		method: 'POST',
+		headers: jsonHeaders,
+		body: JSON.stringify({ email })
+	});
+	await throwOnError(res);
+}
+
+export async function removeAdminAdministrator(subscriberId: number): Promise<void> {
+	const res = await fetch(`/api/console/admin/administrators/${subscriberId}`, { method: 'DELETE' });
 	await throwOnError(res);
 }

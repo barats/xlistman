@@ -22,12 +22,17 @@
 			<nav class="flex items-center gap-4 text-sm">
 				<a href="/" class="text-muted-foreground transition-colors hover:text-foreground">Lists</a>
 				{#if $me}
-					<a href="/console" class="text-muted-foreground transition-colors hover:text-foreground"
-						>Console</a
-					>
 					<a href="/me" class="text-muted-foreground transition-colors hover:text-foreground"
 						>My subscriptions</a
 					>
+					<a href="/console" class="text-muted-foreground transition-colors hover:text-foreground"
+						>My lists</a
+					>
+					{#if $me.is_administrator}
+						<a href="/admin" class="text-muted-foreground transition-colors hover:text-foreground"
+							>Console</a
+						>
+					{/if}
 					<button
 						class="inline-flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
 						onclick={async () => {

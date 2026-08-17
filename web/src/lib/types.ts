@@ -31,6 +31,7 @@ export interface Subscription {
 export interface Me {
 	email: string;
 	subscriptions: Subscription[];
+	is_administrator: boolean;
 }
 
 export interface ArchiveEntry {
@@ -111,6 +112,33 @@ export interface HeldMessageDetail extends HeldMessage {
 }
 
 export interface DesignatedSender {
+	id: number;
+	email: string;
+}
+
+// --- Server administration (ADR 0017) ---
+
+export interface AdminInfo {
+	is_administrator: boolean;
+}
+
+export interface AdminDomain {
+	id: number;
+	name: string;
+	description: string;
+	list_count: number;
+}
+
+export interface AdminList {
+	address: string;
+	list_name: string;
+	domain: string;
+	list_type: string;
+	description: string;
+	member_count: number;
+}
+
+export interface AdminAdministrator {
 	id: number;
 	email: string;
 }

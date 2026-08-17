@@ -59,6 +59,7 @@ func (s *Store) migrate() error {
 		&model.Owner{},
 		&model.Moderator{},
 		&model.DesignatedSender{},
+		&model.Administrator{},
 		&model.HeldMessage{},
 		&model.QueuedMessage{},
 		&model.ArchiveEntry{},
@@ -186,11 +187,80 @@ func (s *Store) ListLists(ctx context.Context, domainName string) ([]model.List,
 	return lists, nil
 }
 
+// DeleteList removes a list and everything that references it, in one
+// transaction. The schema has no foreign keys, so every related row is
+// deleted explicitly: archive entries (and their FTS rows), held messages,
+// subscriptions, roles, and queued messages. Nothing is orphaned (ADR 0017).
 func (s *Store) DeleteList(ctx context.Context, listName, domainName string) error {
-	return s.db.WithContext(ctx).
-		Where("list_name = ? AND domain_id = (SELECT id FROM domains WHERE name = ?)",
-			listName, domainName).
-		Delete(&model.List{}).Error
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var l model.List
+		if err := tx.Joins("JOIN domains ON domains.id = lists.domain_id").
+			Where("lists.list_name = ? AND domains.name = ?", listName, domainName).
+			First(&l).Error; err != nil {
+			return err
+		}
+
+		// archive_fts rows are keyed by archive_entries.id (rowid).
+		var archiveIDs []int64
+		if err := tx.Model(&model.ArchiveEntry{}).Where("list_id = ?", l.ID).Pluck("id", &archiveIDs).Error; err != nil {
+			return err
+		}
+		if len(archiveIDs) > 0 {
+			if err := tx.Exec(`DELETE FROM archive_fts WHERE rowid IN ?`, archiveIDs).Error; err != nil {
+				return err
+			}
+		}
+
+		byList := []any{
+			&model.ArchiveEntry{},
+			&model.HeldMessage{},
+			&model.Subscription{},
+			&model.Owner{},
+			&model.Moderator{},
+			&model.DesignatedSender{},
+			&model.QueuedMessage{},
+		}
+		for _, m := range byList {
+			if err := tx.Where("list_id = ?", l.ID).Delete(m).Error; err != nil {
+				return err
+			}
+		}
+		return tx.Delete(&l).Error
+	})
+}
+
+// UpdateListType changes a list's ListType (discussion or newsletter). The
+// caller validates the value; this only writes it.
+func (s *Store) UpdateListType(ctx context.Context, listID int64, listType model.ListType) error {
+	return s.db.WithContext(ctx).Model(&model.List{}).Where("id = ?", listID).
+		Update("list_type", listType).Error
+}
+
+// --- Administrator operations ---
+
+func (s *Store) AddAdministrator(ctx context.Context, subscriberID int64) error {
+	a := model.Administrator{SubscriberID: subscriberID}
+	return s.db.WithContext(ctx).Clauses(onConflictDoNothing).Create(&a).Error
+}
+
+func (s *Store) RemoveAdministrator(ctx context.Context, subscriberID int64) error {
+	return s.db.WithContext(ctx).Where("subscriber_id = ?", subscriberID).
+		Delete(&model.Administrator{}).Error
+}
+
+func (s *Store) ListAdministrators(ctx context.Context) ([]model.Administrator, error) {
+	var admins []model.Administrator
+	if err := s.db.WithContext(ctx).Order("created_at").Find(&admins).Error; err != nil {
+		return nil, err
+	}
+	return admins, nil
+}
+
+func (s *Store) IsAdministrator(ctx context.Context, subscriberID int64) (bool, error) {
+	var count int64
+	err := s.db.WithContext(ctx).Model(&model.Administrator{}).
+		Where("subscriber_id = ?", subscriberID).Count(&count).Error
+	return count > 0, err
 }
 
 func (s *Store) UpdateListSettings(ctx context.Context, listID int64, settings model.ListSettings) error {

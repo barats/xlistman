@@ -36,6 +36,10 @@ _Avoid_: Admin, list manager
 A Subscriber who can approve or reject held messages on a List, but cannot change list configuration. Holds the Moderator List Role.
 _Avoid_: Approver, reviewer
 
+**Administrator**:
+A Subscriber with instance-wide server privileges on an xListman instance: creating domains and lists, managing other Administrators, deleting lists, and changing ListType, via the web console and the CLI. The server operator designates the first Administrator via the CLI; subsequent Administrators can be designated by any Administrator. The instance-wide counterpart to Owner, which is scoped to a single List.
+_Avoid_: Admin, server admin, staff role
+
 **Member**:
 A Subscriber who has a Subscription to a List. Used informally to mean "someone subscribed to a list."
 _Avoid_: Subscriber (use Subscriber for the entity, Member for the role)

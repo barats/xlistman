@@ -46,6 +46,8 @@ func Run(args []string, webBuild fs.FS) int {
 		return cmdDeliver(rest)
 	case "domain":
 		return cmdDomain(rest)
+	case "admin":
+		return cmdAdmin(rest)
 	case "list":
 		return cmdList(rest)
 	case "owner":
@@ -86,7 +88,8 @@ Commands:
   domain list                    List all domains
   list create <addr> --type <t>  Create a list (type: discussion or newsletter)
        [--owner <email>] [--moderate]  Assign first owner / enable moderation
-  list delete <addr>             Delete a list
+  list delete <addr>             Delete a list (and all its data)
+  list type <addr> <t>           Change a list's type (discussion|newsletter)
   list list [--domain <d>]       List lists
   list info <addr>               Show list details
   list allowlist <addr>          List designated senders (newsletter)
@@ -96,6 +99,9 @@ Commands:
   owner add <list> <email>       Add an owner
   owner remove <list> <email>    Remove an owner
   owner list <list>              List owners
+  admin add <email>              Designate a subscriber as Administrator (ADR 0017)
+  admin remove <email>           Revoke Administrator
+  admin list                     List Administrators
   moderator add <list> <email>   Add a moderator
   moderator remove <list> <email>  Remove a moderator
   moderator list <list>          List moderators
@@ -456,6 +462,84 @@ func cmdDomain(args []string) int {
 	return 1
 }
 
+// --- admin ---
+
+func cmdAdmin(args []string) int {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "usage: xlistman admin <add|remove|list> [email]")
+		return 1
+	}
+	cfg, err := loadConfig()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	s, err := openStore(cfg)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "open store:", err)
+		return 1
+	}
+	defer s.Close()
+	ctx := context.Background()
+
+	switch args[0] {
+	case "add":
+		if len(args) < 2 {
+			fmt.Fprintln(os.Stderr, "usage: xlistman admin add <email>")
+			return 1
+		}
+		sub, err := s.GetOrCreateSubscriber(ctx, strings.ToLower(args[1]))
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "get subscriber:", err)
+			return 1
+		}
+		if err := s.AddAdministrator(ctx, sub.ID); err != nil {
+			fmt.Fprintln(os.Stderr, "add administrator:", err)
+			return 1
+		}
+		fmt.Printf("Designated %s as Administrator\n", sub.Email)
+		return 0
+
+	case "remove":
+		if len(args) < 2 {
+			fmt.Fprintln(os.Stderr, "usage: xlistman admin remove <email>")
+			return 1
+		}
+		sub, err := s.GetSubscriber(ctx, strings.ToLower(args[1]))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "unknown subscriber: %s\n", args[1])
+			return 1
+		}
+		if err := s.RemoveAdministrator(ctx, sub.ID); err != nil {
+			fmt.Fprintln(os.Stderr, "remove administrator:", err)
+			return 1
+		}
+		fmt.Printf("Revoked Administrator from %s\n", sub.Email)
+		return 0
+
+	case "list":
+		admins, err := s.ListAdministrators(ctx)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "list administrators:", err)
+			return 1
+		}
+		if len(admins) == 0 {
+			fmt.Println("No administrators. Designate one with `xlistman admin add <email>`.")
+			return 0
+		}
+		for _, a := range admins {
+			sub, err := s.GetSubscriberByID(ctx, a.SubscriberID)
+			if err != nil {
+				continue
+			}
+			fmt.Println(sub.Email)
+		}
+		return 0
+	}
+	fmt.Fprintln(os.Stderr, "unknown admin subcommand:", args[0])
+	return 1
+}
+
 // --- list ---
 
 func cmdList(args []string) int {
@@ -548,6 +632,29 @@ func cmdList(args []string) int {
 			return 1
 		}
 		fmt.Printf("Deleted list: %s\n", args[1])
+		return 0
+
+	case "type":
+		if len(args) < 3 {
+			fmt.Fprintln(os.Stderr, "usage: xlistman list type <addr> <discussion|newsletter>")
+			return 1
+		}
+		listName, domain, _ := parseListAddr(args[1])
+		listType := model.ListType(strings.ToLower(args[2]))
+		if listType != model.ListTypeDiscussion && listType != model.ListTypeNewsletter {
+			fmt.Fprintln(os.Stderr, "list type must be discussion or newsletter")
+			return 1
+		}
+		l, err := s.GetList(ctx, listName, domain)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "get list:", err)
+			return 1
+		}
+		if err := s.UpdateListType(ctx, l.ID, listType); err != nil {
+			fmt.Fprintln(os.Stderr, "change list type:", err)
+			return 1
+		}
+		fmt.Printf("Changed %s to type %s\n", l.Address(), listType)
 		return 0
 
 	case "list":

@@ -505,3 +505,151 @@ func TestExpirySweep(t *testing.T) {
 		t.Errorf("len(held) = %d, want 0", len(held))
 	}
 }
+
+func TestAdministratorOperations(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	sub, _ := s.GetOrCreateSubscriber(ctx, "admin@example.com")
+
+	if ok, _ := s.IsAdministrator(ctx, sub.ID); ok {
+		t.Errorf("IsAdministrator = true before designation")
+	}
+
+	if err := s.AddAdministrator(ctx, sub.ID); err != nil {
+		t.Fatalf("AddAdministrator: %v", err)
+	}
+	if ok, _ := s.IsAdministrator(ctx, sub.ID); !ok {
+		t.Errorf("IsAdministrator = false after designation")
+	}
+
+	// Duplicate designation is idempotent.
+	if err := s.AddAdministrator(ctx, sub.ID); err != nil {
+		t.Errorf("duplicate AddAdministrator: %v", err)
+	}
+	admins, _ := s.ListAdministrators(ctx)
+	if len(admins) != 1 {
+		t.Errorf("len(admins) = %d, want 1", len(admins))
+	}
+	if admins[0].SubscriberID != sub.ID {
+		t.Errorf("admin subscriber id = %d, want %d", admins[0].SubscriberID, sub.ID)
+	}
+
+	if err := s.RemoveAdministrator(ctx, sub.ID); err != nil {
+		t.Fatalf("RemoveAdministrator: %v", err)
+	}
+	if ok, _ := s.IsAdministrator(ctx, sub.ID); ok {
+		t.Errorf("IsAdministrator = true after removal")
+	}
+}
+
+func TestUpdateListType(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	d, _ := s.CreateDomain(ctx, "example.com", "")
+	l, _ := s.CreateList(ctx, "dev", d.ID, "example.com", "", model.ListTypeDiscussion)
+
+	if err := s.UpdateListType(ctx, l.ID, model.ListTypeNewsletter); err != nil {
+		t.Fatalf("UpdateListType: %v", err)
+	}
+	got, _ := s.GetListByID(ctx, l.ID)
+	if got.ListType != model.ListTypeNewsletter {
+		t.Errorf("ListType = %q, want %q", got.ListType, model.ListTypeNewsletter)
+	}
+}
+
+// TestDeleteListCascade confirms deleting a list removes every related row —
+// archive entries (and their FTS rows), held messages, subscriptions, roles,
+// and queued messages — in one transaction, while unrelated data survives.
+func TestDeleteListCascade(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	d, _ := s.CreateDomain(ctx, "example.com", "")
+	keepDomain, _ := s.CreateDomain(ctx, "other.com", "")
+	l, _ := s.CreateList(ctx, "dev", d.ID, "example.com", "", model.ListTypeDiscussion)
+	keep, _ := s.CreateList(ctx, "team", keepDomain.ID, "other.com", "", model.ListTypeDiscussion)
+
+	alice, _ := s.GetOrCreateSubscriber(ctx, "alice@example.com")
+	bob, _ := s.GetOrCreateSubscriber(ctx, "bob@example.com")
+
+	// Related data for the doomed list.
+	if err := s.ArchiveMessage(ctx, l.ID, "<m1@x>", "hello", "alice@example.com", []byte("body"), "t1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.CreateHeldMessage(ctx, l.ID, "bob@example.com", "held", []byte("h"), time.Now().Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.CreateSubscription(ctx, l.ID, alice.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.AddOwner(ctx, l.ID, alice.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.AddModerator(ctx, l.ID, bob.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.AddDesignatedSender(ctx, l.ID, bob.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Enqueue(ctx, l.ID, "dev@example.com", "alice@example.com", []byte("post"), "", ""); err != nil {
+		t.Fatal(err)
+	}
+
+	// Unrelated data for the surviving list and its subscriber.
+	if err := s.ArchiveMessage(ctx, keep.ID, "<m2@x>", "team hello", "alice@example.com", []byte("keep body"), "t2"); err != nil {
+		t.Fatal(err)
+	}
+	keepSub, _ := s.CreateSubscription(ctx, keep.ID, alice.ID)
+
+	if err := s.DeleteList(ctx, "dev", "example.com"); err != nil {
+		t.Fatalf("DeleteList: %v", err)
+	}
+
+	// The doomed list and everything referencing it are gone.
+	if _, err := s.GetList(ctx, "dev", "example.com"); err == nil {
+		t.Error("list still exists after delete")
+	}
+	if entries, _ := s.ListArchive(ctx, l.ID, 10, 0); len(entries) != 0 {
+		t.Errorf("archive entries remain after delete: %d", len(entries))
+	}
+	if entries, _ := s.SearchArchive(ctx, l.ID, "hello", 10); len(entries) != 0 {
+		t.Errorf("FTS search still finds deleted archive entries: %d", len(entries))
+	}
+	if held, _ := s.ListHeldMessages(ctx, l.ID); len(held) != 0 {
+		t.Errorf("held messages remain after delete: %d", len(held))
+	}
+	if subs, _ := s.ListSubscriptions(ctx, l.ID); len(subs) != 0 {
+		t.Errorf("subscriptions remain after delete: %d", len(subs))
+	}
+	if owners, _ := s.ListOwners(ctx, l.ID); len(owners) != 0 {
+		t.Errorf("owners remain after delete: %d", len(owners))
+	}
+	if mods, _ := s.ListModerators(ctx, l.ID); len(mods) != 0 {
+		t.Errorf("moderators remain after delete: %d", len(mods))
+	}
+	if senders, _ := s.ListDesignatedSenders(ctx, l.ID); len(senders) != 0 {
+		t.Errorf("designated senders remain after delete: %d", len(senders))
+	}
+	queued, _ := s.ListQueued(ctx)
+	for _, q := range queued {
+		if q.ListID == l.ID {
+			t.Errorf("queued message for deleted list remains: id=%d", q.ID)
+		}
+	}
+
+	// Unrelated data survives.
+	if _, err := s.GetList(ctx, "team", "other.com"); err != nil {
+		t.Errorf("unrelated list deleted: %v", err)
+	}
+	if entries, _ := s.ListArchive(ctx, keep.ID, 10, 0); len(entries) != 1 {
+		t.Errorf("unrelated archive entries lost: %d", len(entries))
+	}
+	if _, err := s.GetSubscriptionByID(ctx, keepSub.ID); err != nil {
+		t.Errorf("unrelated subscription lost: %v", err)
+	}
+	if _, err := s.GetSubscriber(ctx, "alice@example.com"); err != nil {
+		t.Errorf("subscriber lost after list delete: %v", err)
+	}
+}

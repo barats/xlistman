@@ -28,6 +28,13 @@ type Store interface {
 	DeleteList(ctx context.Context, listName, domainName string) error
 	UpdateListSettings(ctx context.Context, listID int64, settings model.ListSettings) error
 	UpdateListDescription(ctx context.Context, listID int64, description string) error
+	UpdateListType(ctx context.Context, listID int64, listType model.ListType) error
+
+	// Administrator operations
+	AddAdministrator(ctx context.Context, subscriberID int64) error
+	RemoveAdministrator(ctx context.Context, subscriberID int64) error
+	ListAdministrators(ctx context.Context) ([]model.Administrator, error)
+	IsAdministrator(ctx context.Context, subscriberID int64) (bool, error)
 
 	// Subscriber operations
 	GetOrCreateSubscriber(ctx context.Context, email string) (*model.Subscriber, error)

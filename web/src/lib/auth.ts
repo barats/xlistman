@@ -5,6 +5,7 @@ import type { Subscription } from '$lib/types';
 export interface Me {
 	email: string;
 	subscriptions: Subscription[];
+	is_administrator: boolean;
 }
 
 // undefined = still loading, null = signed out, Me = signed in.

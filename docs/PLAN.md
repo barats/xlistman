@@ -97,6 +97,16 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
   held queue approve/reject/discard, allowlist add/remove + subscriber-first errors,
   moderator scoping, 401 gate, mobile viewport) via DOM checks.
 
-## Next
+### Phase 7 — Web server administration: the Administrator role — complete and tested
+- New instance-wide **Administrator** privilege: a Subscriber designated via CLI (`admin add|remove|list`, first by the server operator) who can create domains/lists, manage other Administrators, delete lists, and change ListType from the web. Supersedes ADR 0005 for these operations; magic-link Subscriber auth + an instance-wide flag (no separate admin auth). New `Administrator` entity + store functions; CLI parity commands.
+- The server-admin area lives at a top-level route `/admin` (nav label **Console**, shown only to Administrators) with tabs Overview / Domains / Lists / Administrators — a page separate from the per-list role console, which was renamed **My lists** (still at `/console`). The HTTP API stays at `/api/console/admin/*`.
+- List creation mirrors the CLI: default first Owner is the creating Administrator, overridable to any known Subscriber, so a list is never accidentally ownerless.
+- List deletion is a hard delete (list + settings + archive + held + subscriptions + roles + queue in one transaction) — fixes the existing orphan bug where `DeleteList` removed only the List row. Web requires typing the full address to confirm (the button stays disabled until it matches); server logs the deletion. CLI `list delete` uses the same cascade.
+- ListType change: warning + confirm dialog stating the posting-policy consequence; new `list type` CLI command for parity.
+- Test suite green (`go test ./...`); verified end-to-end in the browser (Console nav gate, overview/domains/lists/administrators tabs, domain + list creation, typed-address delete guard, list-type change warning, administrator designate/revoke, 401/403 gates, mobile viewport) via DOM/text-snapshot checks (no screenshots).
 
-- Optionally validate the LMTP loop against local `postfix` (Docker is not available here).
+### After Phase 7 (deferred catalog continues)
+- Moderation audit trail (now more valuable given destructive web ops).
+- Sender held-status view.
+- Bounce management UI.
+- Optionally validate the LMTP loop against local `postfix` (installed here, not yet running).

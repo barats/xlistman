@@ -62,7 +62,7 @@
 	<div class="flex flex-wrap items-center justify-between gap-3">
 		<div>
 			<a href="/console" class="text-sm text-muted-foreground hover:text-foreground">
-				&larr; Console
+				&larr; My lists
 			</a>
 			<h1 class="mt-1 text-2xl font-bold tracking-tight">{addr}</h1>
 			{#if info}

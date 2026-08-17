@@ -136,6 +136,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/me", s.requireAuth(s.handleMe))
 	mux.HandleFunc("/api/me/subscriptions/", s.requireAuth(s.handleMySubscription))
 	s.registerConsoleRoutes(mux)
+	s.registerAdminRoutes(mux)
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -412,9 +413,11 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 			BounceCount:  sub.BounceCount,
 		})
 	}
+	isAdmin, _ := s.Store.IsAdministrator(r.Context(), sub.ID)
 	writeJSON(w, 200, map[string]any{
-		"email":         sub.Email,
-		"subscriptions": infos,
+		"email":            sub.Email,
+		"subscriptions":    infos,
+		"is_administrator": isAdmin,
 	})
 }
 
