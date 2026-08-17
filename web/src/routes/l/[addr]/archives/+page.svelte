@@ -15,6 +15,7 @@
 
 	let entries = $state<ArchiveEntry[] | null>(null);
 	let phase: 'loading' | 'loaded' | 'denied' | 'error' = $state('loading');
+	let deniedStatus = $state(0);
 	let error = $state('');
 	let q = $state('');
 
@@ -27,6 +28,7 @@
 		} catch (e) {
 			if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
 				phase = 'denied';
+				deniedStatus = e.status;
 			} else {
 				phase = 'error';
 				error = e instanceof Error ? e.message : 'Could not load the archive.';
@@ -68,12 +70,21 @@
 {#if phase === 'denied'}
 	<Card class="mt-6 p-6">
 		<h2 class="text-lg font-semibold">Members only</h2>
-		<p class="mt-1 text-sm text-muted-foreground">
-			Archives are available to subscribers of {addr}. Sign in to confirm you're a member.
-		</p>
-		<div class="mt-4">
-			<a href="/auth" class={buttonVariants()}>Sign in</a>
-		</div>
+		{#if deniedStatus === 403}
+			<p class="mt-1 text-sm text-muted-foreground">
+				Only subscribers of {addr} can browse its archives.
+			</p>
+			<div class="mt-4">
+				<a href={`/l/${addr}`} class={buttonVariants()}>Subscribe</a>
+			</div>
+		{:else}
+			<p class="mt-1 text-sm text-muted-foreground">
+				Archives are available to subscribers of {addr}. Sign in to confirm you're a member.
+			</p>
+			<div class="mt-4">
+				<a href="/auth" class={buttonVariants()}>Sign in</a>
+			</div>
+		{/if}
 	</Card>
 {:else if phase === 'loading'}
 	<div class="mt-6 space-y-3">

@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { ApiError, getArchiveEntry } from '$lib/api';
 	import type { ArchiveMessage } from '$lib/types';
+	import { buttonVariants } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 
@@ -14,6 +15,7 @@
 
 	let msg = $state<ArchiveMessage | null>(null);
 	let phase: 'loading' | 'loaded' | 'denied' | 'error' = $state('loading');
+	let deniedStatus = $state(0);
 	let error = $state('');
 
 	onMount(async () => {
@@ -23,6 +25,7 @@
 		} catch (e) {
 			if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
 				phase = 'denied';
+				deniedStatus = e.status;
 			} else {
 				phase = 'error';
 				error = e instanceof Error ? e.message : 'Could not load the message.';
@@ -53,14 +56,23 @@
 {:else if phase === 'denied'}
 	<Card class="p-6">
 		<h2 class="text-lg font-semibold">Members only</h2>
-		<p class="mt-1 text-sm text-muted-foreground">
-			Archives are available to subscribers of {addr}. Sign in to continue.
-		</p>
-		<div class="mt-4">
-			<a href="/auth" class="text-sm font-medium text-primary underline-offset-4 hover:underline"
-				>Sign in</a
-			>
-		</div>
+		{#if deniedStatus === 403}
+			<p class="mt-1 text-sm text-muted-foreground">
+				Only subscribers of {addr} can browse its archives.
+			</p>
+			<div class="mt-4">
+				<a href={`/l/${addr}`} class={buttonVariants()}>Subscribe</a>
+			</div>
+		{:else}
+			<p class="mt-1 text-sm text-muted-foreground">
+				Archives are available to subscribers of {addr}. Sign in to continue.
+			</p>
+			<div class="mt-4">
+				<a href="/auth" class="text-sm font-medium text-primary underline-offset-4 hover:underline"
+					>Sign in</a
+				>
+			</div>
+		{/if}
 	</Card>
 {:else if phase === 'error'}
 	<p class="text-sm text-destructive">{error}</p>
