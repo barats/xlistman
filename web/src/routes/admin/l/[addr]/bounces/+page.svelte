@@ -50,8 +50,9 @@
 
 <h2 class="text-lg font-semibold">Bounces</h2>
 <p class="mt-1 text-sm text-muted-foreground">
-	Members whose delivery is failing. A member is disabled at {members?.[0]?.bounce_threshold ?? 'the'} bounce threshold
-	and can be re-enabled here; reset the count to give a struggling address a fresh start.
+	Members whose delivery is failing. A member is disabled after reaching the
+	list's bounce threshold and can be re-enabled here; reset the count to give
+	a struggling address a fresh start.
 </p>
 
 {#if actionOk}
