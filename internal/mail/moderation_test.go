@@ -195,6 +195,33 @@ func TestModerateDiscard(t *testing.T) {
 	}
 }
 
+// TestEmailBounceAutoDisables drives the VERP bounce address through the LMTP
+// handler and confirms the subscription auto-disables at the threshold
+// (ADR 0019).
+func TestEmailBounceAutoDisables(t *testing.T) {
+	s, srv, _, l := moderationFixture(t)
+	ctx := context.Background()
+	alice, _ := s.GetSubscriber(ctx, "alice@example.com")
+	threshold := l.Settings.BounceThreshold
+
+	for i := 0; i < threshold; i++ {
+		parsed, err := ParseAddress("dev-bounces+alice=example.com@example.com")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := srv.handleBounce(ctx, parsed); err != nil {
+			t.Fatalf("handleBounce: %v", err)
+		}
+	}
+	subscr, _ := s.GetSubscription(ctx, l.ID, alice.ID)
+	if subscr.Status != model.SubscriptionStatusDisabled {
+		t.Errorf("status = %q, want disabled after %d bounces", subscr.Status, threshold)
+	}
+	if subscr.BounceCount != threshold {
+		t.Errorf("bounce count = %d, want %d", subscr.BounceCount, threshold)
+	}
+}
+
 func TestModerateEmailRecordsAudit(t *testing.T) {
 	s, srv, p, l := moderationFixture(t)
 	ctx := context.Background()

@@ -214,6 +214,26 @@ func TestSubscriptionCRUD(t *testing.T) {
 		t.Errorf("BounceCount = %d, want 2", got.BounceCount)
 	}
 
+	// Re-enabling resets the counter and activates (ADR 0019).
+	if err := s.ReenableSubscription(ctx, subscr.ID); err != nil {
+		t.Fatalf("ReenableSubscription: %v", err)
+	}
+	got, _ = s.GetSubscription(ctx, l.ID, sub.ID)
+	if got.Status != model.SubscriptionStatusActive || got.BounceCount != 0 {
+		t.Errorf("after re-enable: status=%q bounce=%d, want active/0", got.Status, got.BounceCount)
+	}
+
+	// Reset clears the counter without touching status.
+	s.SetSubscriptionStatus(ctx, subscr.ID, model.SubscriptionStatusDisabled)
+	s.IncrementBounceCount(ctx, subscr.ID)
+	if err := s.ResetBounceCount(ctx, subscr.ID); err != nil {
+		t.Fatalf("ResetBounceCount: %v", err)
+	}
+	got, _ = s.GetSubscription(ctx, l.ID, sub.ID)
+	if got.BounceCount != 0 || got.Status != model.SubscriptionStatusDisabled {
+		t.Errorf("after reset: bounce=%d status=%q, want 0/disabled", got.BounceCount, got.Status)
+	}
+
 	// List subscriptions
 	subs, _ := s.ListSubscriptions(ctx, l.ID)
 	if len(subs) != 1 {

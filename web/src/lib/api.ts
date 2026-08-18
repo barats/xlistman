@@ -6,6 +6,7 @@ import type {
 	ArchiveEntry,
 	ArchiveMessage,
 	AuditEvent,
+	BounceMember,
 	ConsoleList,
 	ConsoleListInfo,
 	ConsoleMember,
@@ -336,6 +337,43 @@ export async function revokeRole(
 	const res = await fetch(
 		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/roles/${subscriberId}/${role}`,
 		{ method: 'DELETE' }
+	);
+	await throwOnError(res);
+}
+
+// --- Bounce management (ADR 0019) ---
+
+export async function getBounces(
+	domain: string,
+	listName: string
+): Promise<BounceMember[]> {
+	const res = await fetch(
+		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/bounces`
+	);
+	await throwOnError(res);
+	return res.json();
+}
+
+export async function reenableBounceMember(
+	domain: string,
+	listName: string,
+	subscriberId: number
+): Promise<void> {
+	const res = await fetch(
+		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/bounces/${subscriberId}/re-enable`,
+		{ method: 'POST' }
+	);
+	await throwOnError(res);
+}
+
+export async function resetBounceCount(
+	domain: string,
+	listName: string,
+	subscriberId: number
+): Promise<void> {
+	const res = await fetch(
+		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/bounces/${subscriberId}/reset`,
+		{ method: 'POST' }
 	);
 	await throwOnError(res);
 }

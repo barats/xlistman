@@ -44,6 +44,7 @@
 		if (isOwner) {
 			list.push({ href: `${base}/settings`, label: 'Settings' });
 			list.push({ href: `${base}/members`, label: 'Members' });
+			list.push({ href: `${base}/bounces`, label: 'Bounces' });
 			list.push({ href: `${base}/audit`, label: 'Audit' });
 		}
 		if (info?.list_type === 'newsletter' && isOwner) {

@@ -323,6 +323,62 @@ func (p *Pipeline) recordAudit(ctx context.Context, l *model.List, action string
 	return nil
 }
 
+// RecordBounce attributes a delivery failure (VERP) to a Subscription,
+// auto-disabling it once its accumulated bounce count reaches the list's
+// threshold, and notifying the list's Owners when OwnerAutoDisableNotice is on
+// (ADR 0019). Automated, so it records no Audit Event (ADR 0018).
+func (p *Pipeline) RecordBounce(ctx context.Context, l *model.List, subscr *model.Subscription) error {
+	if err := p.Store.IncrementBounceCount(ctx, subscr.ID); err != nil {
+		return err
+	}
+	updated, err := p.Store.GetSubscription(ctx, l.ID, subscr.SubscriberID)
+	if err != nil {
+		return err
+	}
+	if updated.BounceCount >= l.Settings.BounceThreshold {
+		if err := p.Store.SetSubscriptionStatus(ctx, subscr.ID, model.SubscriptionStatusDisabled); err != nil {
+			return err
+		}
+		if l.Settings.OwnerAutoDisableNotice {
+			return p.notifyOwnersAutoDisabled(ctx, l, updated)
+		}
+	}
+	return nil
+}
+
+// notifyOwnersAutoDisabled emails every Owner (deduplicated) that a member was
+// auto-disabled by bounces.
+func (p *Pipeline) notifyOwnersAutoDisabled(ctx context.Context, l *model.List, subscr *model.Subscription) error {
+	member, err := p.Store.GetSubscriberByID(ctx, subscr.SubscriberID)
+	if err != nil {
+		return err
+	}
+	owners, err := p.Store.ListOwners(ctx, l.ID)
+	if err != nil {
+		return err
+	}
+	seen := map[int64]bool{}
+	for _, o := range owners {
+		if seen[o.SubscriberID] {
+			continue
+		}
+		seen[o.SubscriberID] = true
+		owner, err := p.Store.GetSubscriberByID(ctx, o.SubscriberID)
+		if err != nil {
+			continue
+		}
+		bodyText := fmt.Sprintf("The subscription of %s to %s was automatically disabled after %d bounce(s).\n"+
+			"Re-enable it from the list's Bounces tab, or have the member re-enable it themselves.\n",
+			member.Email, l.Address(), subscr.BounceCount)
+		if err := p.Store.Enqueue(ctx, l.ID, l.Address(), owner.Email,
+			buildNotice(l.Address(), owner.Email, l.Address()+"-owner@"+l.Domain, "Subscription disabled by bounces: "+member.Email, bodyText),
+			l.Address(), ""); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // heldContext loads a held message and its list, rejecting expired messages.
 func (p *Pipeline) heldContext(ctx context.Context, heldID int64) (*model.HeldMessage, *model.List, error) {
 	held, err := p.Store.GetHeldMessageByID(ctx, heldID)

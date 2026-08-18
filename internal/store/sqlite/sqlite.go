@@ -370,6 +370,19 @@ func (s *Store) SetSubscriptionStatus(ctx context.Context, subID int64, status m
 		Update("status", status).Error
 }
 
+// ReenableSubscription activates a Disabled Subscription and resets its bounce
+// counter in one update, so a re-enabled member starts fresh (ADR 0019).
+func (s *Store) ReenableSubscription(ctx context.Context, subID int64) error {
+	return s.db.WithContext(ctx).Model(&model.Subscription{}).Where("id = ?", subID).
+		Updates(map[string]any{"status": model.SubscriptionStatusActive, "bounce_count": 0}).Error
+}
+
+// ResetBounceCount clears a Subscription's accumulated bounce counter.
+func (s *Store) ResetBounceCount(ctx context.Context, subID int64) error {
+	return s.db.WithContext(ctx).Model(&model.Subscription{}).Where("id = ?", subID).
+		Update("bounce_count", 0).Error
+}
+
 // ConfirmSubscription marks a subscription confirmed: it sets Status and stamps
 // ConfirmedAt in a single update.
 func (s *Store) ConfirmSubscription(ctx context.Context, subID int64, status model.SubscriptionStatus) error {

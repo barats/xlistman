@@ -141,6 +141,12 @@ func (s *Server) handleConsoleList(w http.ResponseWriter, r *http.Request) {
 		h = func(w http.ResponseWriter, r *http.Request, l *model.List) {
 			s.handleConsoleRole(w, r, l, parts[3], parts[4])
 		}
+	case len(parts) >= 3 && parts[2] == "bounces" && len(parts) == 3:
+		h = s.handleConsoleBounces
+	case len(parts) == 5 && parts[2] == "bounces":
+		h = func(w http.ResponseWriter, r *http.Request, l *model.List) {
+			s.handleConsoleBounceAction(w, r, l, parts[3], parts[4])
+		}
 	case len(parts) >= 3 && parts[2] == "audit" && len(parts) == 3:
 		h = s.handleConsoleAudit
 	default:

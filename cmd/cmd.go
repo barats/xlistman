@@ -112,6 +112,8 @@ Commands:
   subscriber remove <list> <email>  Remove subscriber
   subscriber approve <list> <email>  Approve a held subscription request
   subscriber reject <list> <email>   Reject a held subscription request
+  subscriber re-enable <list> <email>  Re-enable a bounced-out subscriber (resets bounces)
+  subscriber reset-bounces <list> <email>  Reset a member's bounce count
   subscriber list <list>         List subscribers
   subscriber import <list> <file>  Import from CSV
   moderation list <list>           List held messages awaiting approval
@@ -1147,6 +1149,49 @@ func cmdSubscriber(args []string) int {
 		}
 		verb := map[string]string{"approve": "approved", "reject": "rejected"}[args[0]]
 		fmt.Printf("Subscription of %s to %s %s\n", sub.Email, l.Address(), verb)
+		return 0
+
+	case "re-enable", "reset-bounces":
+		if len(args) < 3 {
+			fmt.Fprintf(os.Stderr, "usage: xlistman subscriber %s <list-addr> <email>\n", args[0])
+			return 1
+		}
+		listName, domain, _ := parseListAddr(args[1])
+		l, err := s.GetList(ctx, listName, domain)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "get list:", err)
+			return 1
+		}
+		sub, err := s.GetSubscriber(ctx, strings.ToLower(args[2]))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "unknown subscriber: %s\n", args[2])
+			return 1
+		}
+		subscr, err := s.GetSubscription(ctx, l.ID, sub.ID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s is not a member of %s\n", args[2], args[1])
+			return 1
+		}
+		switch args[0] {
+		case "re-enable":
+			if subscr.Status != model.SubscriptionStatusDisabled {
+				fmt.Fprintf(os.Stderr, "subscription of %s is not disabled (status: %s)\n", sub.Email, subscr.Status)
+				return 1
+			}
+			if err := s.ReenableSubscription(ctx, subscr.ID); err != nil {
+				fmt.Fprintln(os.Stderr, "re-enable:", err)
+				return 1
+			}
+			recordAudit(ctx, s, l, model.ActionMemberReenable, sub.Email, "")
+			fmt.Printf("Re-enabled %s on %s (bounce count reset)\n", sub.Email, l.Address())
+		case "reset-bounces":
+			if err := s.ResetBounceCount(ctx, subscr.ID); err != nil {
+				fmt.Fprintln(os.Stderr, "reset bounces:", err)
+				return 1
+			}
+			recordAudit(ctx, s, l, model.ActionMemberResetBounces, sub.Email, "")
+			fmt.Printf("Reset bounce count for %s on %s\n", sub.Email, l.Address())
+		}
 		return 0
 
 	case "list":

@@ -108,6 +108,15 @@ export interface ConsoleMember {
 	roles: string[];
 }
 
+export interface BounceMember {
+	subscriber_id: number;
+	email: string;
+	status: string;
+	delivery_mode: string;
+	bounce_count: number;
+	bounce_threshold: number;
+}
+
 export interface HeldMessage {
 	id: number;
 	subject: string;

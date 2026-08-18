@@ -269,6 +269,69 @@ func TestAuditTrailRecorded(t *testing.T) {
 	}
 }
 
+// TestRecordBounceAutoDisables verifies the shared auto-disable flow
+// (ADR 0019): increments accumulate, the subscription disables at the list's
+// threshold, and owners are notified only when OwnerAutoDisableNotice is on.
+func TestRecordBounceAutoDisables(t *testing.T) {
+	s, _, p, l := moderationFixture(t)
+	ctx := context.Background()
+	alice, _ := s.GetSubscriber(ctx, "alice@example.com")
+	subscr, _ := s.GetSubscription(ctx, l.ID, alice.ID)
+	threshold := l.Settings.BounceThreshold
+
+	// Below threshold: increments but stays active, no owner notice.
+	for i := 0; i < threshold-1; i++ {
+		if err := p.RecordBounce(ctx, l, subscr); err != nil {
+			t.Fatalf("RecordBounce: %v", err)
+		}
+	}
+	subscr, _ = s.GetSubscription(ctx, l.ID, alice.ID)
+	if subscr.Status != model.SubscriptionStatusActive || subscr.BounceCount != threshold-1 {
+		t.Fatalf("below threshold: status=%q count=%d, want active/%d", subscr.Status, subscr.BounceCount, threshold-1)
+	}
+	if rcpts := strings.Join(queuedRecipients(t, s, ctx), ","); strings.Contains(rcpts, "admin@example.com") {
+		t.Errorf("owner notified below threshold: %q", rcpts)
+	}
+
+	// At threshold: disabled. OwnerAutoDisableNotice is off by default, so no notice.
+	if err := p.RecordBounce(ctx, l, subscr); err != nil {
+		t.Fatalf("RecordBounce: %v", err)
+	}
+	subscr, _ = s.GetSubscription(ctx, l.ID, alice.ID)
+	if subscr.Status != model.SubscriptionStatusDisabled {
+		t.Errorf("status at threshold = %q, want disabled", subscr.Status)
+	}
+	if rcpts := strings.Join(queuedRecipients(t, s, ctx), ","); strings.Contains(rcpts, "admin@example.com") {
+		t.Errorf("owner notified with notice off: %q", rcpts)
+	}
+
+	// With the notice on, a fresh auto-disable emails the owner (deduped).
+	settings := l.Settings
+	settings.OwnerAutoDisableNotice = true
+	if err := s.UpdateListSettings(ctx, l.ID, settings); err != nil {
+		t.Fatal(err)
+	}
+	fresh, err := s.GetList(ctx, l.ListName, l.Domain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ReenableSubscription(ctx, subscr.ID); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < threshold; i++ {
+		if err := p.RecordBounce(ctx, fresh, subscr); err != nil {
+			t.Fatalf("RecordBounce: %v", err)
+		}
+	}
+	rcpts := strings.Join(queuedRecipients(t, s, ctx), ",")
+	if count(rcpts, "admin@example.com") != 1 {
+		t.Errorf("owner notified %d times (owner+moderator should dedupe); got %q", count(rcpts, "admin@example.com"), rcpts)
+	}
+	if !hasMailTo(t, s, ctx, "admin@example.com", "alice@example.com") {
+		t.Errorf("auto-disable notice does not mention alice")
+	}
+}
+
 func TestConfirmModeratedNotifiesPending(t *testing.T) {
 	p, s, l := adminFixture(t)
 	ctx := context.Background()

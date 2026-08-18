@@ -179,6 +179,9 @@ func TestCommandReEnable(t *testing.T) {
 	f.addActive(t, "alice@example.com")
 	sub, _ := f.s.GetSubscriber(f.ctx, "alice@example.com")
 	subscr, _ := f.s.GetSubscription(f.ctx, f.l.ID, sub.ID)
+	if err := f.s.IncrementBounceCount(f.ctx, subscr.ID); err != nil {
+		t.Fatal(err)
+	}
 	if err := f.s.SetSubscriptionStatus(f.ctx, subscr.ID, model.SubscriptionStatusDisabled); err != nil {
 		t.Fatal(err)
 	}
@@ -190,6 +193,10 @@ func TestCommandReEnable(t *testing.T) {
 	subscr, _ = f.s.GetSubscription(f.ctx, f.l.ID, sub.ID)
 	if subscr.Status != model.SubscriptionStatusActive {
 		t.Errorf("Status = %q, want active", subscr.Status)
+	}
+	// Re-enabling resets the bounce counter (ADR 0019).
+	if subscr.BounceCount != 0 {
+		t.Errorf("BounceCount = %d, want 0 after re-enable", subscr.BounceCount)
 	}
 
 	got = f.runRequest(t, "alice@example.com", "re-enable")

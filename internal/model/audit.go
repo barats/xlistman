@@ -21,6 +21,8 @@ const (
 	ActionSubscriptionReject  = "subscription.reject"
 	ActionMemberAdd           = "member.add"
 	ActionMemberRemove        = "member.remove"
+	ActionMemberReenable      = "member.re-enable"
+	ActionMemberResetBounces  = "member.reset-bounces"
 	ActionRoleGrant           = "role.grant"
 	ActionRoleRevoke          = "role.revoke"
 	ActionSenderAdd           = "sender.add"

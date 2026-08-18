@@ -540,7 +540,7 @@ func (s *Server) handleReEnable(w http.ResponseWriter, r *http.Request, subscr *
 		writeJSON(w, 409, map[string]string{"error": "subscription is not disabled"})
 		return
 	}
-	if err := s.Store.SetSubscriptionStatus(r.Context(), subscr.ID, model.SubscriptionStatusActive); err != nil {
+	if err := s.Store.ReenableSubscription(r.Context(), subscr.ID); err != nil {
 		writeJSON(w, 500, map[string]string{"error": "failed to re-enable subscription"})
 		return
 	}

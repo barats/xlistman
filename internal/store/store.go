@@ -49,6 +49,11 @@ type Store interface {
 	ListSubscriptionsBySubscriber(ctx context.Context, subscriberID int64) ([]model.Subscription, error)
 	UpdateSubscriptionDelivery(ctx context.Context, subID int64, mode model.DeliveryMode) error
 	SetSubscriptionStatus(ctx context.Context, subID int64, status model.SubscriptionStatus) error
+	// ReenableSubscription activates a Disabled Subscription and resets its
+	// bounce counter, giving the member a fresh runway (ADR 0019).
+	ReenableSubscription(ctx context.Context, subID int64) error
+	// ResetBounceCount clears a Subscription's accumulated bounce counter.
+	ResetBounceCount(ctx context.Context, subID int64) error
 	ConfirmSubscription(ctx context.Context, subID int64, status model.SubscriptionStatus) error
 	IncrementBounceCount(ctx context.Context, subID int64) error
 	DeleteSubscription(ctx context.Context, listID, subscriberID int64) error

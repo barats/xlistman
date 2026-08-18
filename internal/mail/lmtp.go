@@ -265,17 +265,9 @@ func (s *LMTPServer) handleBounce(ctx context.Context, p ParsedAddress) error {
 		return nil
 	}
 
-	// Increment bounce count and auto-disable if threshold exceeded.
-	if err := s.Store.IncrementBounceCount(ctx, subscr.ID); err != nil {
-		return err
-	}
-
-	updated, _ := s.Store.GetSubscription(ctx, l.ID, sub.ID)
-	if updated.BounceCount >= l.Settings.BounceThreshold {
-		s.Store.SetSubscriptionStatus(ctx, subscr.ID, model.SubscriptionStatusDisabled)
-	}
-
-	return nil
+	// Attribute the bounce: increment the counter, auto-disable at the list's
+	// threshold, and notify owners when configured (ADR 0019).
+	return s.Pipeline.RecordBounce(ctx, l, subscr)
 }
 
 func (s *LMTPServer) handleConfirm(ctx context.Context, p ParsedAddress) error {

@@ -210,7 +210,7 @@ func (s *LMTPServer) cmdReEnable(ctx context.Context, l *model.List, sender stri
 	if subscr.Status != model.SubscriptionStatusDisabled {
 		return fmt.Sprintf("Your subscription to %s is not disabled (status: %s).", l.Address(), subscr.Status)
 	}
-	if err := s.Store.SetSubscriptionStatus(ctx, subscr.ID, model.SubscriptionStatusActive); err != nil {
+	if err := s.Store.ReenableSubscription(ctx, subscr.ID); err != nil {
 		return "Could not re-enable your subscription."
 	}
 	return "Your subscription to " + l.Address() + " has been re-enabled."

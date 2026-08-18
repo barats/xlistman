@@ -404,6 +404,9 @@ func TestSelfService(t *testing.T) {
 	}
 
 	// Re-enable a disabled subscription.
+	if err := st.IncrementBounceCount(context.Background(), aliceSub.ID); err != nil {
+		t.Fatalf("increment bounce: %v", err)
+	}
 	if err := st.SetSubscriptionStatus(context.Background(), aliceSub.ID, model.SubscriptionStatusDisabled); err != nil {
 		t.Fatalf("disable: %v", err)
 	}
@@ -414,6 +417,10 @@ func TestSelfService(t *testing.T) {
 	s, _ = st.GetSubscriptionByID(context.Background(), aliceSub.ID)
 	if s.Status != model.SubscriptionStatusActive {
 		t.Fatalf("status after re-enable = %s, want active", s.Status)
+	}
+	// Re-enabling resets the bounce counter (ADR 0019).
+	if s.BounceCount != 0 {
+		t.Fatalf("bounce count after re-enable = %d, want 0", s.BounceCount)
 	}
 	resp, _ = do(t, baseURL, "POST", "/api/me/subscriptions/"+itoa(aliceSub.ID)+"/re-enable", "", cookies)
 	if resp.StatusCode != http.StatusConflict {
