@@ -141,6 +141,8 @@ func (s *Server) handleConsoleList(w http.ResponseWriter, r *http.Request) {
 		h = func(w http.ResponseWriter, r *http.Request, l *model.List) {
 			s.handleConsoleRole(w, r, l, parts[3], parts[4])
 		}
+	case len(parts) >= 3 && parts[2] == "audit" && len(parts) == 3:
+		h = s.handleConsoleAudit
 	default:
 		http.NotFound(w, r)
 		return
@@ -271,19 +273,21 @@ func (s *Server) handleConsoleHeldAction(w http.ResponseWriter, r *http.Request,
 		return
 	}
 	ctx := r.Context()
+	actor, _ := subscriberFrom(r)
+	actorRef := subscriberActor(actor)
 	switch action {
 	case "approve":
-		if err := s.Pipeline.ApproveHeld(ctx, m.ID); err != nil {
+		if err := s.Pipeline.ApproveHeld(ctx, m.ID, actorRef); err != nil {
 			s.heldActionError(w, err)
 			return
 		}
 	case "reject":
-		if err := s.Pipeline.RejectHeld(ctx, m.ID); err != nil {
+		if err := s.Pipeline.RejectHeld(ctx, m.ID, actorRef); err != nil {
 			s.heldActionError(w, err)
 			return
 		}
 	case "discard":
-		if err := s.Pipeline.DiscardHeld(ctx, m.ID); err != nil {
+		if err := s.Pipeline.DiscardHeld(ctx, m.ID, actorRef); err != nil {
 			s.heldActionError(w, err)
 			return
 		}
@@ -352,6 +356,8 @@ func (s *Server) handleConsoleSenders(w http.ResponseWriter, r *http.Request, l 
 			writeJSON(w, 500, map[string]string{"error": "failed to add sender"})
 			return
 		}
+		actor, _ := subscriberFrom(r)
+		s.audit(ctx, l, model.ActionSenderAdd, subscriberActor(actor), sub.Email, "")
 		writeJSON(w, 201, map[string]string{"status": "sender added"})
 		return
 	}
@@ -397,6 +403,8 @@ func (s *Server) handleConsoleSendersRemove(w http.ResponseWriter, r *http.Reque
 		writeJSON(w, 500, map[string]string{"error": "failed to remove sender"})
 		return
 	}
+	actor, _ := subscriberFrom(r)
+	s.audit(r.Context(), l, model.ActionSenderRemove, subscriberActor(actor), "", "")
 	writeJSON(w, 200, map[string]string{"status": "sender removed"})
 }
 
@@ -430,6 +438,12 @@ func (s *Server) handleConsoleSettings(w http.ResponseWriter, r *http.Request, l
 			writeJSON(w, 500, map[string]string{"error": "failed to update settings"})
 			return
 		}
+		changed := l.Settings.ChangedFrom(body.Settings)
+		if body.Description != l.Description {
+			changed = append(changed, "description")
+		}
+		actor, _ := subscriberFrom(r)
+		s.audit(ctx, l, model.ActionSettingsUpdate, subscriberActor(actor), l.Address(), strings.Join(changed, ", "))
 		writeJSON(w, 200, map[string]string{"status": "settings updated"})
 		return
 	}
@@ -462,7 +476,8 @@ func (s *Server) handleConsoleMembers(w http.ResponseWriter, r *http.Request, l 
 			writeJSON(w, 400, map[string]string{"error": "a valid email is required"})
 			return
 		}
-		if _, err := s.Pipeline.AddMember(ctx, l.ListName, l.Domain, email); err != nil {
+		actor, _ := subscriberFrom(r)
+		if _, err := s.Pipeline.AddMember(ctx, l.ListName, l.Domain, email, subscriberActor(actor)); err != nil {
 			writeJSON(w, 400, map[string]string{"error": err.Error()})
 			return
 		}
@@ -564,7 +579,8 @@ func (s *Server) handleConsoleMemberRemove(w http.ResponseWriter, r *http.Reques
 		http.NotFound(w, r)
 		return
 	}
-	if err := s.Pipeline.RemoveMember(r.Context(), l.ID, subID); err != nil {
+	actor, _ := subscriberFrom(r)
+	if err := s.Pipeline.RemoveMember(r.Context(), l.ID, subID, subscriberActor(actor)); err != nil {
 		writeJSON(w, 400, map[string]string{"error": err.Error()})
 		return
 	}
@@ -584,11 +600,13 @@ func (s *Server) handleConsoleMemberAction(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	ctx := r.Context()
+	actor, _ := subscriberFrom(r)
+	actorRef := subscriberActor(actor)
 	switch action {
 	case "approve":
-		err = s.Pipeline.ApproveSubscription(ctx, l.ID, subID)
+		err = s.Pipeline.ApproveSubscription(ctx, l.ID, subID, actorRef)
 	case "reject":
-		err = s.Pipeline.RejectSubscription(ctx, l.ID, subID)
+		err = s.Pipeline.RejectSubscription(ctx, l.ID, subID, actorRef)
 	default:
 		http.NotFound(w, r)
 		return
@@ -613,11 +631,13 @@ func (s *Server) handleConsoleRole(w http.ResponseWriter, r *http.Request, l *mo
 		return
 	}
 	ctx := r.Context()
+	actor, _ := subscriberFrom(r)
+	actorRef := subscriberActor(actor)
 	switch r.Method {
 	case http.MethodPost:
-		err = s.Pipeline.GrantRole(ctx, l.ID, subID, role)
+		err = s.Pipeline.GrantRole(ctx, l.ID, subID, role, actorRef)
 	case http.MethodDelete:
-		err = s.Pipeline.RevokeRole(ctx, l.ID, subID, role)
+		err = s.Pipeline.RevokeRole(ctx, l.ID, subID, role, actorRef)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return

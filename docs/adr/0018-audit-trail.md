@@ -35,11 +35,12 @@ member.
 **Recording point**: actions that already funnel through the shared
 `Pipeline` (moderation, subscription approval/rejection, member add/remove,
 role grant/revoke) record the event inside the Pipeline, taking the actor from
-the email/CLI/web caller, so the three surfaces cannot drift. Store-direct
-operations (domain/list lifecycle, settings, allowlist, Administrators) record
-at the web handler and CLI call site, mirroring how validation is already
-duplicated between those two surfaces. A failed audit write fails the action:
-an accountable action that cannot be recorded does not happen.
+the email/CLI/web caller, so the three surfaces cannot drift, and a failed
+audit write fails the action there. Store-direct operations (domain/list
+lifecycle, settings, allowlist, Administrators) record at the web handler and
+CLI call site, mirroring how validation is already duplicated between those
+two surfaces; the schema has no transaction spanning the state change and its
+audit row, so an audit failure there is logged loudly rather than rolled back.
 
 **Surfaces**: a per-list **Audit** tab in the web role console visible to
 Owners only (Moderators keep the moderation-only boundary), an instance-wide
@@ -62,7 +63,9 @@ schema). Never pruned. `DeleteList` deliberately does not remove audit rows.
   rejected: forces the operator to be a member, adds configuration, and breaks
   when that subscriber is removed; a distinct CLI actor is simpler and honest.
 - Best-effort audit writes — rejected: a silent recording failure would
-  undermine the feature's purpose, so an unrecordable action fails instead.
+  undermine the feature's purpose. Pipeline-mediated actions fail when their
+  audit write fails; store-direct operations, which cannot span the state
+  change and its audit row in one transaction, log a loud error instead.
 - A moderation-only surface (no instance-wide view) — rejected: instance-level
   events (domain create/delete, admin designate/revoke) and a deleted list's
   history are only meaningful to Administrators.

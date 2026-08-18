@@ -143,3 +143,17 @@ export interface AdminAdministrator {
 	id: number;
 	email: string;
 }
+
+// --- Audit trail (ADR 0018) ---
+
+export interface AuditEvent {
+	id: number;
+	at: string;
+	list_addr?: string;
+	action: string;
+	actor_kind: string;
+	actor_email?: string;
+	actor_detail?: string;
+	target: string;
+	detail: string;
+}

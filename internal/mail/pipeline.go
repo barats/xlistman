@@ -270,7 +270,7 @@ func buildNotice(from, to, replyTo, subject, bodyText string) []byte {
 
 // ApproveHeld delivers a held message to the list, overriding the posting
 // policy, and removes it from the moderation queue.
-func (p *Pipeline) ApproveHeld(ctx context.Context, heldID int64) error {
+func (p *Pipeline) ApproveHeld(ctx context.Context, heldID int64, actor model.AuditActor) error {
 	held, l, err := p.heldContext(ctx, heldID)
 	if err != nil {
 		return err
@@ -278,11 +278,14 @@ func (p *Pipeline) ApproveHeld(ctx context.Context, heldID int64) error {
 	if err := p.deliverToList(ctx, l, held.Sender, held.Body); err != nil {
 		return err
 	}
-	return p.Store.DeleteHeldMessage(ctx, held.ID)
+	if err := p.Store.DeleteHeldMessage(ctx, held.ID); err != nil {
+		return err
+	}
+	return p.recordAudit(ctx, l, model.ActionModerationApprove, actor, held.Subject, "")
 }
 
 // RejectHeld discards a held message and notifies its original sender.
-func (p *Pipeline) RejectHeld(ctx context.Context, heldID int64) error {
+func (p *Pipeline) RejectHeld(ctx context.Context, heldID int64, actor model.AuditActor) error {
 	held, l, err := p.heldContext(ctx, heldID)
 	if err != nil {
 		return err
@@ -290,16 +293,34 @@ func (p *Pipeline) RejectHeld(ctx context.Context, heldID int64) error {
 	if err := p.rejectMessage(ctx, l, held.Sender, held.Body); err != nil {
 		return err
 	}
-	return p.Store.DeleteHeldMessage(ctx, held.ID)
+	if err := p.Store.DeleteHeldMessage(ctx, held.ID); err != nil {
+		return err
+	}
+	return p.recordAudit(ctx, l, model.ActionModerationReject, actor, held.Subject, "")
 }
 
 // DiscardHeld removes a held message silently.
-func (p *Pipeline) DiscardHeld(ctx context.Context, heldID int64) error {
-	held, _, err := p.heldContext(ctx, heldID)
+func (p *Pipeline) DiscardHeld(ctx context.Context, heldID int64, actor model.AuditActor) error {
+	held, l, err := p.heldContext(ctx, heldID)
 	if err != nil {
 		return err
 	}
-	return p.Store.DeleteHeldMessage(ctx, held.ID)
+	if err := p.Store.DeleteHeldMessage(ctx, held.ID); err != nil {
+		return err
+	}
+	return p.recordAudit(ctx, l, model.ActionModerationDiscard, actor, held.Subject, "")
+}
+
+// recordAudit writes an Audit Event for a privileged action on a list
+// (ADR 0018). It returns the error so an unrecordable action fails: an
+// accountable action that cannot be recorded does not happen.
+func (p *Pipeline) recordAudit(ctx context.Context, l *model.List, action string, actor model.AuditActor, target, detail string) error {
+	listID := l.ID
+	e := model.NewAuditEvent(&listID, l.Address(), action, actor, target, detail)
+	if err := p.Store.CreateAuditEvent(ctx, e); err != nil {
+		return fmt.Errorf("record audit %s: %w", action, err)
+	}
+	return nil
 }
 
 // heldContext loads a held message and its list, rejecting expired messages.

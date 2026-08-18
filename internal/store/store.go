@@ -120,6 +120,12 @@ type Store interface {
 	GetSession(ctx context.Context, id string) (*model.Session, error)
 	DeleteSession(ctx context.Context, id string) error
 
+	// Audit operations
+	CreateAuditEvent(ctx context.Context, e model.AuditEvent) error
+	// ListAuditEvents returns events newest-first. listID nil returns all
+	// events (instance-wide view); action "" means no action filter.
+	ListAuditEvents(ctx context.Context, listID *int64, action string, limit int) ([]model.AuditEvent, error)
+
 	// Database maintenance
 	Close() error
 }

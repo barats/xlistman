@@ -29,6 +29,11 @@ func adminFixture(t *testing.T) (*Pipeline, *sqlite.Store, *model.List) {
 	return &Pipeline{Store: s, WebBaseURL: "http://localhost:8080"}, s, l
 }
 
+// testActor is a fixed Subscriber actor used when exercising audited actions.
+func testActor() model.AuditActor {
+	return model.AuditActor{Kind: model.AuditActorSubscriber, ID: 1, Email: "owner@example.com"}
+}
+
 // queuedTo returns every queued recipient address.
 func queuedTo(t *testing.T, s *sqlite.Store, ctx context.Context) []string {
 	t.Helper()
@@ -62,7 +67,7 @@ func TestAddMemberAuthoritative(t *testing.T) {
 	p, s, l := adminFixture(t)
 	ctx := context.Background()
 
-	subscription, err := p.AddMember(ctx, l.ListName, l.Domain, "bob@example.com")
+	subscription, err := p.AddMember(ctx, l.ListName, l.Domain, "bob@example.com", testActor())
 	if err != nil {
 		t.Fatalf("AddMember: %v", err)
 	}
@@ -78,7 +83,7 @@ func TestAddMemberAuthoritative(t *testing.T) {
 	}
 
 	// Adding an already-subscribed address errors.
-	if _, err := p.AddMember(ctx, l.ListName, l.Domain, "bob@example.com"); err == nil {
+	if _, err := p.AddMember(ctx, l.ListName, l.Domain, "bob@example.com", testActor()); err == nil {
 		t.Errorf("AddMember on existing member: want error")
 	}
 }
@@ -87,11 +92,11 @@ func TestRemoveMemberSendsGoodbye(t *testing.T) {
 	p, s, l := adminFixture(t)
 	ctx := context.Background()
 
-	subscription, err := p.AddMember(ctx, l.ListName, l.Domain, "erin@example.com")
+	subscription, err := p.AddMember(ctx, l.ListName, l.Domain, "erin@example.com", testActor())
 	if err != nil {
 		t.Fatalf("AddMember: %v", err)
 	}
-	if err := p.RemoveMember(ctx, l.ID, subscription.SubscriberID); err != nil {
+	if err := p.RemoveMember(ctx, l.ID, subscription.SubscriberID, testActor()); err != nil {
 		t.Fatalf("RemoveMember: %v", err)
 	}
 	if _, err := s.GetSubscription(ctx, l.ID, subscription.SubscriberID); err == nil {
@@ -102,7 +107,7 @@ func TestRemoveMemberSendsGoodbye(t *testing.T) {
 	}
 
 	// Removing a non-member errors.
-	if err := p.RemoveMember(ctx, l.ID, subscription.SubscriberID); err == nil {
+	if err := p.RemoveMember(ctx, l.ID, subscription.SubscriberID, testActor()); err == nil {
 		t.Errorf("RemoveMember on non-member: want error")
 	}
 }
@@ -123,7 +128,7 @@ func TestApproveSubscription(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := p.ApproveSubscription(ctx, l.ID, carol.ID); err != nil {
+	if err := p.ApproveSubscription(ctx, l.ID, carol.ID, testActor()); err != nil {
 		t.Fatalf("ApproveSubscription: %v", err)
 	}
 	updated, _ := s.GetSubscription(ctx, l.ID, carol.ID)
@@ -139,7 +144,7 @@ func TestApproveSubscription(t *testing.T) {
 	if _, err := s.CreateSubscription(ctx, l.ID, dave.ID); err != nil {
 		t.Fatal(err)
 	}
-	if err := p.ApproveSubscription(ctx, l.ID, dave.ID); err == nil {
+	if err := p.ApproveSubscription(ctx, l.ID, dave.ID, testActor()); err == nil {
 		t.Errorf("ApproveSubscription on non-held: want error")
 	}
 }
@@ -160,7 +165,7 @@ func TestRejectSubscription(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := p.RejectSubscription(ctx, l.ID, frank.ID); err != nil {
+	if err := p.RejectSubscription(ctx, l.ID, frank.ID, testActor()); err != nil {
 		t.Fatalf("RejectSubscription: %v", err)
 	}
 	if _, err := s.GetSubscription(ctx, l.ID, frank.ID); err == nil {
@@ -175,7 +180,7 @@ func TestRejectSubscription(t *testing.T) {
 	if _, err := s.CreateSubscription(ctx, l.ID, gina.ID); err != nil {
 		t.Fatal(err)
 	}
-	if err := p.RejectSubscription(ctx, l.ID, gina.ID); err == nil {
+	if err := p.RejectSubscription(ctx, l.ID, gina.ID, testActor()); err == nil {
 		t.Errorf("RejectSubscription on non-held: want error")
 	}
 }
@@ -186,37 +191,81 @@ func TestRoleLastOwnerGuard(t *testing.T) {
 
 	owner, _ := s.GetOrCreateSubscriber(ctx, "owner@example.com")
 	other, _ := s.GetOrCreateSubscriber(ctx, "other@example.com")
-	if err := p.GrantRole(ctx, l.ID, owner.ID, RoleOwner); err != nil {
+	if err := p.GrantRole(ctx, l.ID, owner.ID, RoleOwner, testActor()); err != nil {
 		t.Fatalf("grant owner: %v", err)
 	}
 
 	// The last owner cannot be removed.
-	if err := p.RevokeRole(ctx, l.ID, owner.ID, RoleOwner); err == nil {
+	if err := p.RevokeRole(ctx, l.ID, owner.ID, RoleOwner, testActor()); err == nil {
 		t.Errorf("revoking the last owner: want error")
 	}
 
 	// With a second owner, revocation works.
-	if err := p.GrantRole(ctx, l.ID, other.ID, RoleOwner); err != nil {
+	if err := p.GrantRole(ctx, l.ID, other.ID, RoleOwner, testActor()); err != nil {
 		t.Fatalf("grant second owner: %v", err)
 	}
-	if err := p.RevokeRole(ctx, l.ID, owner.ID, RoleOwner); err != nil {
+	if err := p.RevokeRole(ctx, l.ID, owner.ID, RoleOwner, testActor()); err != nil {
 		t.Fatalf("revoke non-last owner: %v", err)
 	}
 
 	// Moderators are freely added and removed.
-	if err := p.GrantRole(ctx, l.ID, other.ID, RoleModerator); err != nil {
+	if err := p.GrantRole(ctx, l.ID, other.ID, RoleModerator, testActor()); err != nil {
 		t.Fatalf("grant moderator: %v", err)
 	}
 	if ok, _ := s.IsModerator(ctx, l.ID, other.ID); !ok {
 		t.Errorf("other is not a moderator after grant")
 	}
-	if err := p.RevokeRole(ctx, l.ID, other.ID, RoleModerator); err != nil {
+	if err := p.RevokeRole(ctx, l.ID, other.ID, RoleModerator, testActor()); err != nil {
 		t.Fatalf("revoke moderator: %v", err)
 	}
 
 	// Unknown roles error.
-	if err := p.GrantRole(ctx, l.ID, other.ID, "boss"); err == nil {
+	if err := p.GrantRole(ctx, l.ID, other.ID, "boss", testActor()); err == nil {
 		t.Errorf("grant unknown role: want error")
+	}
+}
+
+// TestAuditTrailRecorded verifies the shared Pipeline records Audit Events
+// (ADR 0018) for member and role actions, newest-first, scoped to the list.
+func TestAuditTrailRecorded(t *testing.T) {
+	p, s, l := adminFixture(t)
+	ctx := context.Background()
+
+	if _, err := p.AddMember(ctx, l.ListName, l.Domain, "bob@example.com", testActor()); err != nil {
+		t.Fatalf("AddMember: %v", err)
+	}
+	carol, _ := s.GetOrCreateSubscriber(ctx, "carol@example.com")
+	if err := p.GrantRole(ctx, l.ID, carol.ID, RoleModerator, testActor()); err != nil {
+		t.Fatalf("GrantRole: %v", err)
+	}
+
+	listID := l.ID
+	events, err := s.ListAuditEvents(ctx, &listID, "", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 2 {
+		t.Fatalf("audit events = %d, want 2; %+v", len(events), events)
+	}
+	// Newest first: the role grant, then the member add.
+	if events[0].Action != model.ActionRoleGrant || events[0].Target != "carol@example.com" ||
+		events[0].ActorEmail != "owner@example.com" || events[0].ActorKind != string(model.AuditActorSubscriber) {
+		t.Errorf("events[0] = %+v, want role.grant on carol by owner", events[0])
+	}
+	if events[1].Action != model.ActionMemberAdd || events[1].Target != "bob@example.com" {
+		t.Errorf("events[1] = %+v, want member.add on bob", events[1])
+	}
+	if events[1].ListAddr != "dev@example.com" {
+		t.Errorf("events[1] list_addr = %q, want dev@example.com", events[1].ListAddr)
+	}
+
+	// A second list sees none of these events (per-list scoping).
+	d, _ := s.GetDomain(ctx, "example.com")
+	other, _ := s.CreateList(ctx, "other", d.ID, "example.com", "", model.ListTypeDiscussion)
+	otherID := other.ID
+	otherEvents, _ := s.ListAuditEvents(ctx, &otherID, "", 0)
+	if len(otherEvents) != 0 {
+		t.Errorf("other list audit = %d events, want 0", len(otherEvents))
 	}
 }
 

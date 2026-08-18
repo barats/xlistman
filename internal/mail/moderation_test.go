@@ -195,6 +195,40 @@ func TestModerateDiscard(t *testing.T) {
 	}
 }
 
+func TestModerateEmailRecordsAudit(t *testing.T) {
+	s, srv, p, l := moderationFixture(t)
+	ctx := context.Background()
+
+	raw := []byte("From: charlie@example.com\r\nTo: dev@example.com\r\nSubject: held for audit\r\n\r\nhello\r\n")
+	if err := p.ProcessPost(ctx, "dev", "example.com", "charlie@example.com", raw); err != nil {
+		t.Fatal(err)
+	}
+	held, _ := s.ListHeldMessages(ctx, l.ID)
+
+	// A moderator approves via the email path (listname-moderate+token@domain).
+	reply := []byte("From: mod@example.com\r\nTo: dev-moderate+" + held[0].Token + "@example.com\r\nSubject: Re: held\r\n\r\napprove\r\n")
+	parsed, _ := ParseAddress("dev-moderate+" + held[0].Token + "@example.com")
+	if err := srv.handleModerate(ctx, parsed, reply); err != nil {
+		t.Fatalf("handleModerate: %v", err)
+	}
+
+	listID := l.ID
+	events, err := s.ListAuditEvents(ctx, &listID, "", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("audit events = %d, want 1; %+v", len(events), events)
+	}
+	if events[0].Action != model.ActionModerationApprove || events[0].Target != "held for audit" {
+		t.Errorf("event = %+v, want moderation.approve on the held subject", events[0])
+	}
+	// The email path resolves the actor from the reply's From address.
+	if events[0].ActorEmail != "mod@example.com" || events[0].ActorKind != string(model.AuditActorSubscriber) {
+		t.Errorf("event actor = %+v, want mod@example.com", events[0])
+	}
+}
+
 func TestModerateRejectsNonModerator(t *testing.T) {
 	s, srv, p, l := moderationFixture(t)
 	ctx := context.Background()

@@ -34,7 +34,8 @@
 		{ href: '/server', label: 'Overview' },
 		{ href: '/server/domains', label: 'Domains' },
 		{ href: '/server/lists', label: 'Lists' },
-		{ href: '/server/administrators', label: 'Administrators' }
+		{ href: '/server/administrators', label: 'Administrators' },
+		{ href: '/server/audit', label: 'Audit' }
 	];
 
 	function isActive(href: string): boolean {

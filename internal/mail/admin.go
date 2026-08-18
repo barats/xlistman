@@ -20,7 +20,7 @@ const (
 // caller (an Owner or server administrator) is the trusted actor. An unknown
 // address is created as a Subscriber first. Sends the list's welcome email
 // when enabled.
-func (p *Pipeline) AddMember(ctx context.Context, listName, domain, email string) (*model.Subscription, error) {
+func (p *Pipeline) AddMember(ctx context.Context, listName, domain, email string, actor model.AuditActor) (*model.Subscription, error) {
 	sub, err := p.Store.GetOrCreateSubscriber(ctx, email)
 	if err != nil {
 		return nil, err
@@ -44,11 +44,11 @@ func (p *Pipeline) AddMember(ctx context.Context, listName, domain, email string
 			return nil, err
 		}
 	}
-	return subscription, nil
+	return subscription, p.recordAudit(ctx, l, model.ActionMemberAdd, actor, sub.Email, "")
 }
 
 // RemoveMember unsubscribes a member, sending the goodbye email when enabled.
-func (p *Pipeline) RemoveMember(ctx context.Context, listID, subscriberID int64) error {
+func (p *Pipeline) RemoveMember(ctx context.Context, listID, subscriberID int64, actor model.AuditActor) error {
 	if _, err := p.Store.GetSubscription(ctx, listID, subscriberID); err != nil {
 		return fmt.Errorf("not subscribed")
 	}
@@ -68,12 +68,12 @@ func (p *Pipeline) RemoveMember(ctx context.Context, listID, subscriberID int64)
 			return err
 		}
 	}
-	return nil
+	return p.recordAudit(ctx, l, model.ActionMemberRemove, actor, sub.Email, "")
 }
 
 // ApproveSubscription activates a Held Subscription (the Owner's Subscription
 // Approval) and sends the list's welcome email when enabled.
-func (p *Pipeline) ApproveSubscription(ctx context.Context, listID, subscriberID int64) error {
+func (p *Pipeline) ApproveSubscription(ctx context.Context, listID, subscriberID int64, actor model.AuditActor) error {
 	sub, l, subscriber, err := p.subscriptionContext(ctx, listID, subscriberID)
 	if err != nil {
 		return err
@@ -89,12 +89,12 @@ func (p *Pipeline) ApproveSubscription(ctx context.Context, listID, subscriberID
 			return err
 		}
 	}
-	return nil
+	return p.recordAudit(ctx, l, model.ActionSubscriptionApprove, actor, subscriber.Email, "")
 }
 
 // RejectSubscription removes a Held Subscription and notifies the requester
 // that their request was not approved.
-func (p *Pipeline) RejectSubscription(ctx context.Context, listID, subscriberID int64) error {
+func (p *Pipeline) RejectSubscription(ctx context.Context, listID, subscriberID int64, actor model.AuditActor) error {
 	sub, l, subscriber, err := p.subscriptionContext(ctx, listID, subscriberID)
 	if err != nil {
 		return err
@@ -105,7 +105,10 @@ func (p *Pipeline) RejectSubscription(ctx context.Context, listID, subscriberID 
 	if err := p.Store.DeleteSubscription(ctx, listID, subscriberID); err != nil {
 		return err
 	}
-	return p.enqueueSubscriptionRejected(ctx, l, subscriber)
+	if err := p.enqueueSubscriptionRejected(ctx, l, subscriber); err != nil {
+		return err
+	}
+	return p.recordAudit(ctx, l, model.ActionSubscriptionReject, actor, subscriber.Email, "")
 }
 
 // NotifySubscriptionPending emails a subscriber that their confirmed request
@@ -119,20 +122,41 @@ func (p *Pipeline) NotifySubscriptionPending(ctx context.Context, l *model.List,
 }
 
 // GrantRole grants an Owner or Moderator List Role to a Subscriber.
-func (p *Pipeline) GrantRole(ctx context.Context, listID, subscriberID int64, role string) error {
+func (p *Pipeline) GrantRole(ctx context.Context, listID, subscriberID int64, role string, actor model.AuditActor) error {
+	l, err := p.Store.GetListByID(ctx, listID)
+	if err != nil {
+		return err
+	}
+	sub, err := p.Store.GetSubscriberByID(ctx, subscriberID)
+	if err != nil {
+		return err
+	}
 	switch role {
 	case RoleOwner:
-		return p.Store.AddOwner(ctx, listID, subscriberID)
+		if err := p.Store.AddOwner(ctx, listID, subscriberID); err != nil {
+			return err
+		}
 	case RoleModerator:
-		return p.Store.AddModerator(ctx, listID, subscriberID)
+		if err := p.Store.AddModerator(ctx, listID, subscriberID); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("unknown role: %s", role)
 	}
+	return p.recordAudit(ctx, l, model.ActionRoleGrant, actor, sub.Email, role)
 }
 
 // RevokeRole revokes an Owner or Moderator List Role, refusing to remove the
 // last Owner so a list can never become ownerless.
-func (p *Pipeline) RevokeRole(ctx context.Context, listID, subscriberID int64, role string) error {
+func (p *Pipeline) RevokeRole(ctx context.Context, listID, subscriberID int64, role string, actor model.AuditActor) error {
+	l, err := p.Store.GetListByID(ctx, listID)
+	if err != nil {
+		return err
+	}
+	sub, err := p.Store.GetSubscriberByID(ctx, subscriberID)
+	if err != nil {
+		return err
+	}
 	switch role {
 	case RoleOwner:
 		owners, err := p.Store.ListOwners(ctx, listID)
@@ -142,12 +166,17 @@ func (p *Pipeline) RevokeRole(ctx context.Context, listID, subscriberID int64, r
 		if len(owners) == 1 && owners[0].SubscriberID == subscriberID {
 			return fmt.Errorf("cannot remove the last owner")
 		}
-		return p.Store.RemoveOwner(ctx, listID, subscriberID)
+		if err := p.Store.RemoveOwner(ctx, listID, subscriberID); err != nil {
+			return err
+		}
 	case RoleModerator:
-		return p.Store.RemoveModerator(ctx, listID, subscriberID)
+		if err := p.Store.RemoveModerator(ctx, listID, subscriberID); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("unknown role: %s", role)
 	}
+	return p.recordAudit(ctx, l, model.ActionRoleRevoke, actor, sub.Email, role)
 }
 
 // subscriptionContext loads a subscription, its list, and its subscriber.

@@ -1,0 +1,44 @@
+// Canonical Audit Event action names and their display labels (ADR 0018).
+export const auditActions = [
+	'moderation.approve',
+	'moderation.reject',
+	'moderation.discard',
+	'subscription.approve',
+	'subscription.reject',
+	'member.add',
+	'member.remove',
+	'role.grant',
+	'role.revoke',
+	'sender.add',
+	'sender.remove',
+	'settings.update',
+	'list.create',
+	'list.delete',
+	'list.type',
+	'domain.create',
+	'domain.delete',
+	'admin.designate',
+	'admin.revoke'
+] as const;
+
+export const auditActionLabels: Record<string, string> = {
+	'moderation.approve': 'Approved a held message',
+	'moderation.reject': 'Rejected a held message',
+	'moderation.discard': 'Discarded a held message',
+	'subscription.approve': 'Approved a subscription',
+	'subscription.reject': 'Rejected a subscription',
+	'member.add': 'Added a member',
+	'member.remove': 'Removed a member',
+	'role.grant': 'Granted a role',
+	'role.revoke': 'Revoked a role',
+	'sender.add': 'Added a designated sender',
+	'sender.remove': 'Removed a designated sender',
+	'settings.update': 'Updated settings',
+	'list.create': 'Created a list',
+	'list.delete': 'Deleted a list',
+	'list.type': 'Changed a list type',
+	'domain.create': 'Created a domain',
+	'domain.delete': 'Deleted a domain',
+	'admin.designate': 'Designated an administrator',
+	'admin.revoke': 'Revoked an administrator'
+};

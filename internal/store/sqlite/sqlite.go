@@ -66,6 +66,7 @@ func (s *Store) migrate() error {
 		&model.ConfirmationToken{},
 		&model.MagicLink{},
 		&model.Session{},
+		&model.AuditEvent{},
 	); err != nil {
 		return fmt.Errorf("auto-migrate: %w", err)
 	}
@@ -784,6 +785,32 @@ func (s *Store) GetSession(ctx context.Context, id string) (*model.Session, erro
 
 func (s *Store) DeleteSession(ctx context.Context, id string) error {
 	return s.db.WithContext(ctx).Where("id = ?", id).Delete(&model.Session{}).Error
+}
+
+// --- Audit operations ---
+
+func (s *Store) CreateAuditEvent(ctx context.Context, e model.AuditEvent) error {
+	return s.db.WithContext(ctx).Create(&e).Error
+}
+
+// ListAuditEvents returns events newest-first, optionally scoped to a single
+// list (listID != nil) and/or a single action (action != "").
+func (s *Store) ListAuditEvents(ctx context.Context, listID *int64, action string, limit int) ([]model.AuditEvent, error) {
+	q := s.db.WithContext(ctx)
+	if listID != nil {
+		q = q.Where("list_id = ?", *listID)
+	}
+	if action != "" {
+		q = q.Where("action = ?", action)
+	}
+	if limit <= 0 || limit > 500 {
+		limit = 200
+	}
+	var events []model.AuditEvent
+	if err := q.Order("at DESC, id DESC").Limit(limit).Find(&events).Error; err != nil {
+		return nil, fmt.Errorf("list audit events: %w", err)
+	}
+	return events, nil
 }
 
 // --- helpers ---

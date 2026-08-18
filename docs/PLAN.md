@@ -115,9 +115,10 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
   capturing who (a Subscriber snapshot, or the local CLI operator), when, and
   what it acted on (ADR 0018).
 - Recorded inside the shared Pipeline for the actions email/CLI/web already
-  funnel through (moderation, subscriptions, members, roles) and at the web and
-  CLI call sites for store-direct operations (list/domain/admin/settings),
-  so no privileged action is unrecorded; a failed audit write fails the action.
+  funnel through (moderation, subscriptions, members, roles) — a failed audit
+  write fails the action there — and at the web and CLI call sites for
+  store-direct operations (list/domain/admin/settings), where audit failures
+  are logged loudly (no cross-row transaction exists in the schema).
 - Excluded: automated events (expiry sweep, bounce auto-disable), self-service
   actions, and failed attempts. Events are never edited, deleted, or pruned,
   and survive list deletion.

@@ -349,11 +349,11 @@ func (s *LMTPServer) handleModerate(ctx context.Context, p ParsedAddress, rawMsg
 
 	switch moderationAction(rawMsg) {
 	case "approve":
-		return s.Pipeline.ApproveHeld(ctx, held.ID)
+		return s.Pipeline.ApproveHeld(ctx, held.ID, model.AuditActor{Kind: model.AuditActorSubscriber, ID: sub.ID, Email: sub.Email})
 	case "reject":
-		return s.Pipeline.RejectHeld(ctx, held.ID)
+		return s.Pipeline.RejectHeld(ctx, held.ID, model.AuditActor{Kind: model.AuditActorSubscriber, ID: sub.ID, Email: sub.Email})
 	case "discard":
-		return s.Pipeline.DiscardHeld(ctx, held.ID)
+		return s.Pipeline.DiscardHeld(ctx, held.ID, model.AuditActor{Kind: model.AuditActorSubscriber, ID: sub.ID, Email: sub.Email})
 	default:
 		return fmt.Errorf("unknown moderation action (use approve, reject, or discard)")
 	}

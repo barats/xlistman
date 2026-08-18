@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"os/user"
 	"strconv"
 	"strings"
 	"syscall"
@@ -58,6 +59,8 @@ func Run(args []string, webBuild fs.FS) int {
 		return cmdSubscriber(rest)
 	case "moderation":
 		return cmdModeration(rest)
+	case "audit":
+		return cmdAudit(rest)
 	case "queue":
 		return cmdQueue(rest)
 	case "config":
@@ -115,6 +118,8 @@ Commands:
   moderation approve <id>          Approve and deliver a held message
   moderation reject <id>           Reject a held message (notifies sender)
   moderation discard <id>          Discard a held message silently
+  audit list <addr> [action]      Show audit events for a list (ADR 0018)
+  audit server [action]           Show all audit events instance-wide
   queue list                     List pending outbound messages
   queue discard <id>             Discard a stuck message
   config check                   Validate config file
@@ -135,6 +140,52 @@ func loadConfig() (*config.Config, error) {
 
 func openStore(cfg *config.Config) (*sqlite.Store, error) {
 	return sqlite.Open(cfg.Database.Path)
+}
+
+// cliActor returns the local CLI operator as the actor for Audit Events
+// (ADR 0018): the CLI has no subscriber identity, so its OS user is captured.
+func cliActor() model.AuditActor {
+	name := "unknown"
+	if u, err := user.Current(); err == nil && u.Username != "" {
+		name = u.Username
+	}
+	if host, err := os.Hostname(); err == nil && host != "" {
+		return model.AuditActor{Kind: model.AuditActorCLI, Detail: "run by " + name + "@" + host}
+	}
+	return model.AuditActor{Kind: model.AuditActorCLI, Detail: "run by " + name}
+}
+
+// recordAudit writes an Audit Event for a store-direct CLI action. The state
+// change is already committed; a failure is reported to stderr rather than
+// rolled back, since the schema has no cross-row transaction.
+func recordAudit(ctx context.Context, st *sqlite.Store, l *model.List, action, target, detail string) {
+	var listID *int64
+	listAddr := ""
+	if l != nil {
+		id := l.ID
+		listID = &id
+		listAddr = l.Address()
+	}
+	e := model.NewAuditEvent(listID, listAddr, action, cliActor(), target, detail)
+	if err := st.CreateAuditEvent(ctx, e); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: could not record audit event (%s): %v\n", action, err)
+	}
+}
+
+// printAuditEvents prints audit events newest-first in a tabular form.
+func printAuditEvents(events []model.AuditEvent) {
+	if len(events) == 0 {
+		fmt.Println("No audit events.")
+		return
+	}
+	for _, e := range events {
+		actor := e.ActorLabel()
+		if e.ActorKind == string(model.AuditActorCLI) && e.ActorDetail != "" {
+			actor += " (" + e.ActorDetail + ")"
+		}
+		fmt.Printf("%s\t%s\t%s\t%s\t%s\t%s\n",
+			e.At.Format("2006-01-02 15:04:05"), e.ListAddr, e.Action, actor, e.Target, e.Detail)
+	}
 }
 
 // parseListAddr splits "dev@example.com" into ("dev", "example.com").
@@ -428,6 +479,7 @@ func cmdDomain(args []string) int {
 			fmt.Fprintln(os.Stderr, "create domain:", err)
 			return 1
 		}
+		recordAudit(ctx, s, nil, model.ActionDomainCreate, d.Name, desc)
 		fmt.Printf("Created domain: %s (id=%d)\n", d.Name, d.ID)
 		return 0
 
@@ -440,6 +492,7 @@ func cmdDomain(args []string) int {
 			fmt.Fprintln(os.Stderr, "delete domain:", err)
 			return 1
 		}
+		recordAudit(ctx, s, nil, model.ActionDomainDelete, args[1], "")
 		fmt.Printf("Removed domain: %s\n", args[1])
 		return 0
 
@@ -497,6 +550,7 @@ func cmdAdmin(args []string) int {
 			fmt.Fprintln(os.Stderr, "add administrator:", err)
 			return 1
 		}
+		recordAudit(ctx, s, nil, model.ActionAdminDesignate, sub.Email, "")
 		fmt.Printf("Designated %s as Administrator\n", sub.Email)
 		return 0
 
@@ -514,6 +568,7 @@ func cmdAdmin(args []string) int {
 			fmt.Fprintln(os.Stderr, "remove administrator:", err)
 			return 1
 		}
+		recordAudit(ctx, s, nil, model.ActionAdminRevoke, sub.Email, "")
 		fmt.Printf("Revoked Administrator from %s\n", sub.Email)
 		return 0
 
@@ -618,6 +673,7 @@ func cmdList(args []string) int {
 			owner, _ := s.GetOrCreateSubscriber(ctx, ownerEmail)
 			s.AddOwner(ctx, l.ID, owner.ID)
 		}
+		recordAudit(ctx, s, l, model.ActionListCreate, l.Address(), string(listType))
 		fmt.Printf("Created list: %s (type=%s, id=%d)\n", l.Address(), l.ListType, l.ID)
 		return 0
 
@@ -627,10 +683,16 @@ func cmdList(args []string) int {
 			return 1
 		}
 		listName, domain, _ := parseListAddr(args[1])
+		l, err := s.GetList(ctx, listName, domain)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "get list:", err)
+			return 1
+		}
 		if err := s.DeleteList(ctx, listName, domain); err != nil {
 			fmt.Fprintln(os.Stderr, "delete list:", err)
 			return 1
 		}
+		recordAudit(ctx, s, l, model.ActionListDelete, l.Address(), "")
 		fmt.Printf("Deleted list: %s\n", args[1])
 		return 0
 
@@ -654,6 +716,7 @@ func cmdList(args []string) int {
 			fmt.Fprintln(os.Stderr, "change list type:", err)
 			return 1
 		}
+		recordAudit(ctx, s, l, model.ActionListType, l.Address(), string(listType))
 		fmt.Printf("Changed %s to type %s\n", l.Address(), listType)
 		return 0
 
@@ -711,7 +774,9 @@ func cmdList(args []string) int {
 			return 1
 		}
 		settings := l.Settings
+		oldSettings := l.Settings
 		desc := l.Description
+		oldDesc := l.Description
 		descSet := false
 		for _, kv := range args[2:] {
 			eq := strings.Index(kv, "=")
@@ -745,6 +810,11 @@ func cmdList(args []string) int {
 				return 1
 			}
 		}
+		changed := settings.ChangedFrom(oldSettings)
+		if descSet && desc != oldDesc {
+			changed = append(changed, "description")
+		}
+		recordAudit(ctx, s, l, model.ActionSettingsUpdate, l.Address(), strings.Join(changed, ", "))
 		fmt.Printf("Updated settings for %s\n", l.Address())
 		return 0
 
@@ -802,6 +872,7 @@ func cmdList(args []string) int {
 			fmt.Fprintln(os.Stderr, "add sender:", err)
 			return 1
 		}
+		recordAudit(ctx, s, l, model.ActionSenderAdd, sub.Email, "")
 		fmt.Printf("Added %s as a designated sender of %s\n", sub.Email, l.Address())
 		return 0
 
@@ -821,10 +892,16 @@ func cmdList(args []string) int {
 			fmt.Fprintln(os.Stderr, "invalid subscriber id:", args[2])
 			return 1
 		}
+		sub, _ := s.GetSubscriberByID(ctx, subID)
+		email := ""
+		if sub != nil {
+			email = sub.Email
+		}
 		if err := s.RemoveDesignatedSender(ctx, l.ID, subID); err != nil {
 			fmt.Fprintln(os.Stderr, "remove sender:", err)
 			return 1
 		}
+		recordAudit(ctx, s, l, model.ActionSenderRemove, email, "")
 		fmt.Printf("Removed designated sender %d from %s\n", subID, l.Address())
 		return 0
 	}
@@ -871,9 +948,11 @@ func cmdOwner(args []string) int {
 		}
 		if args[0] == "add" {
 			s.AddOwner(ctx, l.ID, sub.ID)
+			recordAudit(ctx, s, l, model.ActionRoleGrant, sub.Email, "owner")
 			fmt.Printf("Added owner: %s to %s\n", args[2], args[1])
 		} else {
 			s.RemoveOwner(ctx, l.ID, sub.ID)
+			recordAudit(ctx, s, l, model.ActionRoleRevoke, sub.Email, "owner")
 			fmt.Printf("Removed owner: %s from %s\n", args[2], args[1])
 		}
 		return 0
@@ -940,9 +1019,9 @@ func cmdModerator(args []string) int {
 		}
 		p := &mail.Pipeline{Store: s, WebBaseURL: cfg.Web.BaseURL}
 		if args[0] == "add" {
-			err = p.GrantRole(ctx, l.ID, sub.ID, mail.RoleModerator)
+			err = p.GrantRole(ctx, l.ID, sub.ID, mail.RoleModerator, cliActor())
 		} else {
-			err = p.RevokeRole(ctx, l.ID, sub.ID, mail.RoleModerator)
+			err = p.RevokeRole(ctx, l.ID, sub.ID, mail.RoleModerator, cliActor())
 		}
 		if err != nil {
 			fmt.Fprintln(os.Stderr, args[0]+" moderator:", err)
@@ -1031,9 +1110,11 @@ func cmdSubscriber(args []string) int {
 			// Manual owner action: bypasses double opt-in (CLI add/import
 			// create Active subscriptions directly).
 			s.SetSubscriptionStatus(ctx, subscr.ID, model.SubscriptionStatusActive)
+			recordAudit(ctx, s, l, model.ActionMemberAdd, sub.Email, "")
 			fmt.Printf("Added subscriber: %s to %s\n", args[2], args[1])
 		} else {
 			s.DeleteSubscription(ctx, l.ID, sub.ID)
+			recordAudit(ctx, s, l, model.ActionMemberRemove, sub.Email, "")
 			fmt.Printf("Removed subscriber: %s from %s\n", args[2], args[1])
 		}
 		return 0
@@ -1056,9 +1137,9 @@ func cmdSubscriber(args []string) int {
 		}
 		p := &mail.Pipeline{Store: s, WebBaseURL: cfg.Web.BaseURL}
 		if args[0] == "approve" {
-			err = p.ApproveSubscription(ctx, l.ID, sub.ID)
+			err = p.ApproveSubscription(ctx, l.ID, sub.ID, cliActor())
 		} else {
-			err = p.RejectSubscription(ctx, l.ID, sub.ID)
+			err = p.RejectSubscription(ctx, l.ID, sub.ID, cliActor())
 		}
 		if err != nil {
 			fmt.Fprintln(os.Stderr, args[0]+" subscription:", err)
@@ -1127,6 +1208,7 @@ func cmdSubscriber(args []string) int {
 			s.SetSubscriptionStatus(ctx, subscr.ID, model.SubscriptionStatusActive)
 			count++
 		}
+		recordAudit(ctx, s, l, model.ActionMemberAdd, l.Address(), fmt.Sprintf("imported %d subscribers", count))
 		fmt.Printf("Imported %d subscribers to %s\n", count, args[1])
 		return 0
 	}
@@ -1192,11 +1274,11 @@ func cmdModeration(args []string) int {
 		p := &mail.Pipeline{Store: s, WebBaseURL: cfg.Web.BaseURL}
 		switch args[0] {
 		case "approve":
-			err = p.ApproveHeld(ctx, id)
+			err = p.ApproveHeld(ctx, id, cliActor())
 		case "reject":
-			err = p.RejectHeld(ctx, id)
+			err = p.RejectHeld(ctx, id, cliActor())
 		case "discard":
-			err = p.DiscardHeld(ctx, id)
+			err = p.DiscardHeld(ctx, id, cliActor())
 		}
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "moderation:", err)
@@ -1207,6 +1289,69 @@ func cmdModeration(args []string) int {
 		}[args[0]])
 		return 0
 	}
+	return 1
+}
+
+// --- audit ---
+
+func cmdAudit(args []string) int {
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "usage: xlistman audit <list <addr> [action]|server [action]>")
+		return 1
+	}
+	cfg, err := loadConfig()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	s, err := openStore(cfg)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "open store:", err)
+		return 1
+	}
+	defer s.Close()
+	ctx := context.Background()
+
+	action := ""
+	if len(args) >= 3 {
+		action = args[2]
+	}
+
+	switch args[0] {
+	case "list":
+		if len(args) < 2 {
+			fmt.Fprintln(os.Stderr, "usage: xlistman audit list <list-addr> [action]")
+			return 1
+		}
+		listName, domain, err := parseListAddr(args[1])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		l, err := s.GetList(ctx, listName, domain)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "get list:", err)
+			return 1
+		}
+		listID := l.ID
+		events, err := s.ListAuditEvents(ctx, &listID, action, 0)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "list audit events:", err)
+			return 1
+		}
+		printAuditEvents(events)
+		return 0
+
+	case "server":
+		events, err := s.ListAuditEvents(ctx, nil, action, 0)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "list audit events:", err)
+			return 1
+		}
+		printAuditEvents(events)
+		return 0
+	}
+	fmt.Fprintln(os.Stderr, "unknown audit subcommand:", args[0])
 	return 1
 }
 

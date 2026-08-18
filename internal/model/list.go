@@ -1,6 +1,9 @@
 package model
 
-import "time"
+import (
+	"reflect"
+	"time"
+)
 
 // ListSettings holds per-list configuration. All fields have sensible defaults
 // applied when a list is created. Serialized as JSON in the database.
@@ -66,6 +69,26 @@ func DefaultListSettings(listType ListType) ListSettings {
 	}
 
 	return s
+}
+
+// ChangedFrom returns the JSON names of the settings fields that differ
+// between the receiver and old, used for settings.update audit trail detail.
+func (s ListSettings) ChangedFrom(old ListSettings) []string {
+	ov := reflect.ValueOf(old)
+	cv := reflect.ValueOf(s)
+	ot := ov.Type()
+	var changed []string
+	for i := 0; i < ot.NumField(); i++ {
+		if reflect.DeepEqual(ov.Field(i).Interface(), cv.Field(i).Interface()) {
+			continue
+		}
+		name := ot.Field(i).Tag.Get("json")
+		if name == "" {
+			name = ot.Field(i).Name
+		}
+		changed = append(changed, name)
+	}
+	return changed
 }
 
 // List is a mailing list, identified by (listname, domain).

@@ -27,6 +27,7 @@ func (s *Server) registerAdminRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/console/admin/lists/", s.requireAuth(s.requireAdmin(s.handleAdminListAction)))
 	mux.HandleFunc("/api/console/admin/administrators", s.requireAuth(s.requireAdmin(s.handleAdminAdministrators)))
 	mux.HandleFunc("/api/console/admin/administrators/", s.requireAuth(s.requireAdmin(s.handleAdminAdministratorRemoveHandler)))
+	mux.HandleFunc("/api/console/admin/audit", s.requireAuth(s.requireAdmin(s.handleAdminAudit)))
 }
 
 // handleAdminInfo reports whether the signed-in Subscriber holds the
@@ -89,6 +90,8 @@ func (s *Server) handleAdminDomains(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, 500, map[string]string{"error": "failed to create domain"})
 			return
 		}
+		actor, _ := subscriberFrom(r)
+		s.audit(ctx, nil, model.ActionDomainCreate, subscriberActor(actor), name, strings.TrimSpace(body.Description))
 		writeJSON(w, 201, map[string]string{"status": "domain created"})
 		return
 	}
@@ -189,6 +192,8 @@ func (s *Server) handleAdminLists(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+		actor, _ := subscriberFrom(r)
+		s.audit(ctx, l, model.ActionListCreate, subscriberActor(actor), l.Address(), string(l.ListType))
 		writeJSON(w, 201, map[string]any{"status": "list created", "address": l.Address()})
 		return
 	}
@@ -254,8 +259,14 @@ func (s *Server) handleAdminListAction(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleAdminListDelete(w http.ResponseWriter, r *http.Request, listName, domain string) {
 	ctx := r.Context()
 	admin, _ := subscriberFrom(r)
+	l, err := s.Store.GetList(ctx, listName, domain)
+	if err != nil {
+		writeJSON(w, 404, map[string]string{"error": "list not found"})
+		return
+	}
 	// Hard delete: the store removes the list and every related row (archive,
-	// held, subscriptions, roles, queue) in one transaction.
+	// held, subscriptions, roles, queue) in one transaction. Audit events are
+	// not removed, so a deleted list's history stays visible to Administrators.
 	if err := s.Store.DeleteList(ctx, listName, domain); err != nil {
 		s.Logger.Error("admin delete list", "list", listName+"@"+domain, "error", err)
 		writeJSON(w, 500, map[string]string{"error": "failed to delete list"})
@@ -264,6 +275,7 @@ func (s *Server) handleAdminListDelete(w http.ResponseWriter, r *http.Request, l
 	if admin != nil {
 		s.Logger.Info("list deleted", "list", listName+"@"+domain, "by", admin.Email)
 	}
+	s.audit(ctx, l, model.ActionListDelete, subscriberActor(admin), l.Address(), "")
 	writeJSON(w, 200, map[string]string{"status": "list deleted"})
 }
 
@@ -290,6 +302,8 @@ func (s *Server) handleAdminListType(w http.ResponseWriter, r *http.Request, lis
 		writeJSON(w, 500, map[string]string{"error": "failed to change list type"})
 		return
 	}
+	actor, _ := subscriberFrom(r)
+	s.audit(r.Context(), l, model.ActionListType, subscriberActor(actor), l.Address(), string(listType))
 	writeJSON(w, 200, map[string]string{"status": "list type updated"})
 }
 
@@ -320,6 +334,8 @@ func (s *Server) handleAdminAdministrators(w http.ResponseWriter, r *http.Reques
 			writeJSON(w, 500, map[string]string{"error": "failed to add administrator"})
 			return
 		}
+		actor, _ := subscriberFrom(r)
+		s.audit(ctx, nil, model.ActionAdminDesignate, subscriberActor(actor), email, "")
 		writeJSON(w, 201, map[string]string{"status": "administrator added"})
 		return
 	}
@@ -361,10 +377,17 @@ func (s *Server) handleAdminAdministratorRemoveHandler(w http.ResponseWriter, r 
 		http.NotFound(w, r)
 		return
 	}
+	sub, _ := s.Store.GetSubscriberByID(r.Context(), subID)
+	email := ""
+	if sub != nil {
+		email = sub.Email
+	}
 	if err := s.Store.RemoveAdministrator(r.Context(), subID); err != nil {
 		writeJSON(w, 500, map[string]string{"error": "failed to remove administrator"})
 		return
 	}
+	actor, _ := subscriberFrom(r)
+	s.audit(r.Context(), nil, model.ActionAdminRevoke, subscriberActor(actor), email, "")
 	writeJSON(w, 200, map[string]string{"status": "administrator removed"})
 }
 

@@ -5,6 +5,7 @@ import type {
 	AdminList,
 	ArchiveEntry,
 	ArchiveMessage,
+	AuditEvent,
 	ConsoleList,
 	ConsoleListInfo,
 	ConsoleMember,
@@ -414,4 +415,26 @@ export async function addAdminAdministrator(email: string): Promise<void> {
 export async function removeAdminAdministrator(subscriberId: number): Promise<void> {
 	const res = await fetch(`/api/console/admin/administrators/${subscriberId}`, { method: 'DELETE' });
 	await throwOnError(res);
+}
+
+// --- Audit trail (ADR 0018) ---
+
+export async function getAuditEvents(
+	domain: string,
+	listName: string,
+	action?: string
+): Promise<AuditEvent[]> {
+	const qs = action ? `?action=${encodeURIComponent(action)}` : '';
+	const res = await fetch(
+		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/audit${qs}`
+	);
+	await throwOnError(res);
+	return res.json();
+}
+
+export async function getAdminAuditEvents(action?: string): Promise<AuditEvent[]> {
+	const qs = action ? `?action=${encodeURIComponent(action)}` : '';
+	const res = await fetch(`/api/console/admin/audit${qs}`);
+	await throwOnError(res);
+	return res.json();
 }
