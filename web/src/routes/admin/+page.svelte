@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { ApiError, getConsoleLists } from '$lib/api';
 	import type { ConsoleList } from '$lib/types';
+	import { webStatus } from '$lib/access';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Card } from '$lib/components/ui/card';
 	import { Skeleton } from '$lib/components/ui/skeleton';
@@ -34,7 +35,14 @@
 	Review held messages and manage lists where you hold a role.
 </p>
 
-{#if phase === 'denied'}
+{#if $webStatus?.management_enabled === false}
+	<Card class="mx-auto mt-8 max-w-md p-6 text-center">
+		<h2 class="text-lg font-semibold">Web management is disabled</h2>
+		<p class="mt-1 text-sm text-muted-foreground">
+			The server operator has switched off web management. List consoles are unavailable.
+		</p>
+	</Card>
+{:else if phase === 'denied'}
 	<Card class="mx-auto mt-8 max-w-md p-6 text-center">
 		<h2 class="text-lg font-semibold">Sign in required</h2>
 		<p class="mt-1 text-sm text-muted-foreground">

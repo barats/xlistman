@@ -21,13 +21,13 @@ var (
 )
 
 func (s *Server) registerAdminRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/api/console/admin/info", s.requireAuth(s.handleAdminInfo))
-	mux.HandleFunc("/api/console/admin/domains", s.requireAuth(s.requireAdmin(s.handleAdminDomains)))
-	mux.HandleFunc("/api/console/admin/lists", s.requireAuth(s.requireAdmin(s.handleAdminLists)))
-	mux.HandleFunc("/api/console/admin/lists/", s.requireAuth(s.requireAdmin(s.handleAdminListAction)))
-	mux.HandleFunc("/api/console/admin/administrators", s.requireAuth(s.requireAdmin(s.handleAdminAdministrators)))
-	mux.HandleFunc("/api/console/admin/administrators/", s.requireAuth(s.requireAdmin(s.handleAdminAdministratorRemoveHandler)))
-	mux.HandleFunc("/api/console/admin/audit", s.requireAuth(s.requireAdmin(s.handleAdminAudit)))
+	mux.HandleFunc("/api/console/admin/info", s.requireAuth(s.requireManagement(s.handleAdminInfo)))
+	mux.HandleFunc("/api/console/admin/domains", s.requireAuth(s.requireManagement(s.requireAdmin(s.handleAdminDomains))))
+	mux.HandleFunc("/api/console/admin/lists", s.requireAuth(s.requireManagement(s.requireAdmin(s.handleAdminLists))))
+	mux.HandleFunc("/api/console/admin/lists/", s.requireAuth(s.requireManagement(s.requireAdmin(s.handleAdminListAction))))
+	mux.HandleFunc("/api/console/admin/administrators", s.requireAuth(s.requireManagement(s.requireAdmin(s.handleAdminAdministrators))))
+	mux.HandleFunc("/api/console/admin/administrators/", s.requireAuth(s.requireManagement(s.requireAdmin(s.handleAdminAdministratorRemoveHandler))))
+	mux.HandleFunc("/api/console/admin/audit", s.requireAuth(s.requireManagement(s.requireAdmin(s.handleAdminAudit))))
 }
 
 // handleAdminInfo reports whether the signed-in Subscriber holds the

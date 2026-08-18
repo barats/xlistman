@@ -128,6 +128,14 @@ type Store interface {
 	CreateSession(ctx context.Context, subscriberID int64, email string, expiresAt time.Time) (string, error)
 	GetSession(ctx context.Context, id string) (*model.Session, error)
 	DeleteSession(ctx context.Context, id string) error
+	// DeleteAllSessions ends every web Session at once (used when web login
+	// is disabled, ADR 0020), returning how many were ended.
+	DeleteAllSessions(ctx context.Context) (int64, error)
+
+	// Web access control operations (ADR 0020)
+	GetWebSettings(ctx context.Context) (*model.WebSettings, error)
+	SetWebLoginEnabled(ctx context.Context, enabled bool) error
+	SetWebManagementEnabled(ctx context.Context, enabled bool) error
 
 	// Audit operations
 	CreateAuditEvent(ctx context.Context, e model.AuditEvent) error

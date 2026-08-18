@@ -20,8 +20,8 @@ import (
 type listHandler func(w http.ResponseWriter, r *http.Request, l *model.List)
 
 func (s *Server) registerConsoleRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/api/console/lists", s.requireAuth(s.handleConsoleLists))
-	mux.HandleFunc("/api/console/lists/", s.requireAuth(s.handleConsoleList))
+	mux.HandleFunc("/api/console/lists", s.requireAuth(s.requireManagement(s.handleConsoleLists)))
+	mux.HandleFunc("/api/console/lists/", s.requireAuth(s.requireManagement(s.handleConsoleList)))
 }
 
 // handleConsoleLists returns every List where the signed-in Subscriber holds

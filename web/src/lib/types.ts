@@ -6,6 +6,12 @@ export interface ListSummary {
 	list_type: string;
 }
 
+// WebStatus is the instance-wide web access control state (ADR 0020).
+export interface WebStatus {
+	login_enabled: boolean;
+	management_enabled: boolean;
+}
+
 export interface ListInfo {
 	address: string;
 	list_name: string;

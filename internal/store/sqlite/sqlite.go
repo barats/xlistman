@@ -67,8 +67,16 @@ func (s *Store) migrate() error {
 		&model.MagicLink{},
 		&model.Session{},
 		&model.AuditEvent{},
+		&model.WebSettings{},
 	); err != nil {
 		return fmt.Errorf("auto-migrate: %w", err)
+	}
+
+	// Seed the singleton web access control row (ADR 0020), defaulting both
+	// switches to enabled so existing installs are unaffected on upgrade.
+	ws := &model.WebSettings{ID: 1, LoginEnabled: true, ManagementEnabled: true}
+	if err := s.db.Clauses(onConflictDoNothing).Create(ws).Error; err != nil {
+		return fmt.Errorf("seed web settings: %w", err)
 	}
 
 	// FTS5 virtual table for archive full-text search (not managed by AutoMigrate).
@@ -810,6 +818,34 @@ func (s *Store) GetSession(ctx context.Context, id string) (*model.Session, erro
 
 func (s *Store) DeleteSession(ctx context.Context, id string) error {
 	return s.db.WithContext(ctx).Where("id = ?", id).Delete(&model.Session{}).Error
+}
+
+// DeleteAllSessions ends every web Session at once (ADR 0020). Used when web
+// login is disabled, so a lockdown logs everyone out, not just blocks new
+// sign-ins. Returns how many sessions were ended.
+func (s *Store) DeleteAllSessions(ctx context.Context) (int64, error) {
+	res := s.db.WithContext(ctx).Where("1 = 1").Delete(&model.Session{})
+	return res.RowsAffected, res.Error
+}
+
+// --- Web access control operations (ADR 0020) ---
+
+func (s *Store) GetWebSettings(ctx context.Context) (*model.WebSettings, error) {
+	var ws model.WebSettings
+	if err := s.db.WithContext(ctx).First(&ws).Error; err != nil {
+		return nil, fmt.Errorf("get web settings: %w", err)
+	}
+	return &ws, nil
+}
+
+func (s *Store) SetWebLoginEnabled(ctx context.Context, enabled bool) error {
+	return s.db.WithContext(ctx).Model(&model.WebSettings{}).Where("id = ?", 1).
+		Update("login_enabled", enabled).Error
+}
+
+func (s *Store) SetWebManagementEnabled(ctx context.Context, enabled bool) error {
+	return s.db.WithContext(ctx).Model(&model.WebSettings{}).Where("id = ?", 1).
+		Update("management_enabled", enabled).Error
 }
 
 // --- Audit operations ---

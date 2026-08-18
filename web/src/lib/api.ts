@@ -17,7 +17,8 @@ import type {
 	HeldPost,
 	ListInfo,
 	ListSummary,
-	Subscription
+	Subscription,
+	WebStatus
 } from '$lib/types';
 
 const jsonHeaders = { 'Content-Type': 'application/json' };
@@ -45,6 +46,14 @@ async function throwOnError(res: Response): Promise<void> {
 
 export async function getLists(): Promise<ListSummary[]> {
 	const res = await fetch('/api/lists');
+	await throwOnError(res);
+	return res.json();
+}
+
+// getWebStatus reports the instance-wide web access control switches (ADR
+// 0020) so the UI can show disabled notices and hide the consoles.
+export async function getWebStatus(): Promise<WebStatus> {
+	const res = await fetch('/api/web-status');
 	await throwOnError(res);
 	return res.json();
 }

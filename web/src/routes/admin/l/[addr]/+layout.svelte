@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { ApiError, getConsoleListInfo } from '$lib/api';
 	import type { ConsoleListInfo } from '$lib/types';
+	import { webStatus } from '$lib/access';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Card } from '$lib/components/ui/card';
 	import { Skeleton } from '$lib/components/ui/skeleton';
@@ -78,7 +79,14 @@
 		</div>
 	</div>
 
-	{#if phase === 'denied'}
+	{#if $webStatus?.management_enabled === false}
+		<Card class="mt-8 p-6">
+			<h2 class="text-lg font-semibold">Web management is disabled</h2>
+			<p class="mt-1 text-sm text-muted-foreground">
+				The server operator has switched off web management. List consoles are unavailable.
+			</p>
+		</Card>
+	{:else if phase === 'denied'}
 		<Card class="mt-8 p-6">
 			<h2 class="text-lg font-semibold">Not authorized</h2>
 			<p class="mt-1 text-sm text-muted-foreground">

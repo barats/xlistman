@@ -35,6 +35,10 @@ const (
 	ActionDomainDelete        = "domain.delete"
 	ActionAdminDesignate      = "admin.designate"
 	ActionAdminRevoke         = "admin.revoke"
+	ActionWebLoginEnable      = "web.login-enable"
+	ActionWebLoginDisable     = "web.login-disable"
+	ActionWebManagementEnable = "web.management-enable"
+	ActionWebManagementDisable = "web.management-disable"
 )
 
 // AuditActor identifies who performed an audited action. For a Subscriber it

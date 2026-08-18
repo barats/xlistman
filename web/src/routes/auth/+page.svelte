@@ -2,6 +2,7 @@
 	import { page } from '$app/state';
 	import { requestMagicLink } from '$lib/api';
 	import { me } from '$lib/auth';
+	import { webStatus } from '$lib/access';
 	import { Button } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
@@ -13,6 +14,10 @@
 	let email = $state(prefill);
 	let phase: 'idle' | 'sending' | 'sent' | 'error' = $state('idle');
 	let error = $state('');
+
+	const loginDisabled = $derived(
+		$webStatus?.login_enabled === false || errorParam === 'disabled'
+	);
 
 	async function send() {
 		phase = 'sending';
@@ -27,7 +32,15 @@
 	}
 </script>
 
-{#if $me}
+{#if loginDisabled}
+	<Card class="mx-auto max-w-md p-6 text-center">
+		<h1 class="text-2xl font-bold tracking-tight">Sign in is disabled</h1>
+		<p class="mt-2 text-sm text-muted-foreground">
+			Web login has been switched off by the server operator. Existing subscriptions,
+			unsubscribe links, and public list pages still work.
+		</p>
+	</Card>
+{:else if $me}
 	<div class="mx-auto max-w-md text-center">
 		<h1 class="text-2xl font-bold tracking-tight">You're signed in</h1>
 		<p class="mt-2 text-muted-foreground">

@@ -128,6 +128,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/health", s.handleHealth)
+	mux.HandleFunc("/api/web-status", s.handleWebStatus)
 	mux.HandleFunc("/api/lists", s.handleLists)
 	mux.HandleFunc("/api/lists/", s.handleListDetail)
 	mux.HandleFunc("/api/auth/magic-link", s.handleMagicLink)
@@ -146,6 +147,52 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 		"status":      "ok",
 		"queue_depth": depth,
 	})
+}
+
+// handleWebStatus reports the instance-wide web access control switches
+// (ADR 0020), so the SPA can show disabled notices and hide the consoles.
+// Public: the /auth page needs it before a user is signed in.
+func (s *Server) handleWebStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	ws, err := s.Store.GetWebSettings(r.Context())
+	if err != nil {
+		s.Logger.Error("get web status", "error", err)
+		writeJSON(w, 500, map[string]string{"error": "failed to load web status"})
+		return
+	}
+	writeJSON(w, 200, map[string]any{
+		"login_enabled":      ws.LoginEnabled,
+		"management_enabled": ws.ManagementEnabled,
+	})
+}
+
+// webLoginEnabled reports whether web login is enabled (ADR 0020). It fails
+// closed: an unreadable settings row denies login rather than allowing it.
+func (s *Server) webLoginEnabled(ctx context.Context) bool {
+	ws, err := s.Store.GetWebSettings(ctx)
+	return err == nil && ws.LoginEnabled
+}
+
+// webManagementEnabled reports whether web management is enabled (ADR 0020).
+func (s *Server) webManagementEnabled(ctx context.Context) bool {
+	ws, err := s.Store.GetWebSettings(ctx)
+	return err == nil && ws.ManagementEnabled
+}
+
+// requireManagement gates a handler on web management being enabled (ADR
+// 0020). When management is disabled, both consoles are blocked while public
+// pages and subscriber self-service remain available.
+func (s *Server) requireManagement(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !s.webManagementEnabled(r.Context()) {
+			writeJSON(w, 403, map[string]string{"error": "web management is disabled"})
+			return
+		}
+		next(w, r)
+	}
 }
 
 func (s *Server) handleLists(w http.ResponseWriter, r *http.Request) {
@@ -269,6 +316,10 @@ func (s *Server) handleMagicLink(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	if !s.webLoginEnabled(r.Context()) {
+		writeJSON(w, 403, map[string]string{"error": "login is disabled"})
+		return
+	}
 	var body struct {
 		Email string `json:"email"`
 	}
@@ -315,6 +366,10 @@ func (s *Server) handleVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	base := s.Config.Web.BaseURL
+	if !s.webLoginEnabled(r.Context()) {
+		http.Redirect(w, r, base+"/auth?error=disabled", http.StatusFound)
+		return
+	}
 	token := r.URL.Query().Get("token")
 	if token == "" {
 		http.Redirect(w, r, base+"/auth?error=invalid", http.StatusFound)

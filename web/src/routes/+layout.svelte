@@ -4,11 +4,13 @@
 	import { LogOut, Mail } from '@lucide/svelte';
 	import { goto } from '$app/navigation';
 	import { me, refreshMe, signOut } from '$lib/auth';
+	import { webStatus, refreshWebStatus } from '$lib/access';
 
 	let { children } = $props();
 
 	onMount(() => {
 		refreshMe();
+		refreshWebStatus();
 	});
 </script>
 
@@ -25,12 +27,12 @@
 					<a href="/me" class="text-muted-foreground transition-colors hover:text-foreground"
 						>My subscriptions</a
 					>
-					{#if $me.has_list_role}
+					{#if $me.has_list_role && $webStatus?.management_enabled !== false}
 						<a href="/admin" class="text-muted-foreground transition-colors hover:text-foreground"
 							>My lists</a
 						>
 					{/if}
-					{#if $me.is_administrator}
+					{#if $me.is_administrator && $webStatus?.management_enabled !== false}
 						<a href="/server" class="text-muted-foreground transition-colors hover:text-foreground"
 							>Server</a
 						>

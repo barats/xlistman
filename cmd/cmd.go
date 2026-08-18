@@ -65,6 +65,12 @@ func Run(args []string, webBuild fs.FS) int {
 		return cmdQueue(rest)
 	case "config":
 		return cmdConfig(rest)
+	case "enable":
+		return cmdSetWebToggle(rest, true)
+	case "disable":
+		return cmdSetWebToggle(rest, false)
+	case "web":
+		return cmdWeb(rest)
 	case "version":
 		fmt.Println("xListman", Version)
 		return 0
@@ -124,6 +130,11 @@ Commands:
   audit server [action]           Show all audit events instance-wide
   queue list                     List pending outbound messages
   queue discard <id>             Discard a stuck message
+  enable login                   Enable web login (magic-link sign-in)
+  disable login                  Disable web login (block new sign-ins and log everyone out)
+  enable management              Enable web management (role console + server admin)
+  disable management             Disable web management (block both consoles)
+  web status                     Show web access control state (ADR 0020)
   config check                   Validate config file
   version                        Print version
 `)
@@ -1488,4 +1499,106 @@ func cmdConfig(args []string) int {
 		return 0
 	}
 	return 1
+}
+
+// --- web access control (ADR 0020) ---
+
+// cmdSetWebToggle enables or disables one of the two web access switches
+// (`xlistman enable|disable login|management`). Disabling login also ends
+// every existing Session, so a lockdown logs everyone out. Every toggle is
+// recorded as an Audit Event.
+func cmdSetWebToggle(args []string, enabled bool) int {
+	verb := "disable"
+	if enabled {
+		verb = "enable"
+	}
+	if len(args) < 1 {
+		fmt.Fprintf(os.Stderr, "usage: xlistman %s <login|management>\n", verb)
+		return 1
+	}
+	cfg, err := loadConfig()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	s, err := openStore(cfg)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "open store:", err)
+		return 1
+	}
+	defer s.Close()
+	ctx := context.Background()
+
+	switch args[0] {
+	case "login":
+		if err := s.SetWebLoginEnabled(ctx, enabled); err != nil {
+			fmt.Fprintln(os.Stderr, "set login:", err)
+			return 1
+		}
+		detail := "enabled=" + strconv.FormatBool(enabled)
+		if !enabled {
+			n, err := s.DeleteAllSessions(ctx)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "delete sessions:", err)
+				return 1
+			}
+			detail += fmt.Sprintf(", sessions_ended=%d", n)
+		}
+		action := model.ActionWebLoginEnable
+		if !enabled {
+			action = model.ActionWebLoginDisable
+		}
+		recordAudit(ctx, s, nil, action, "login", detail)
+		fmt.Printf("Web login %sd\n", verb)
+		return 0
+
+	case "management":
+		if err := s.SetWebManagementEnabled(ctx, enabled); err != nil {
+			fmt.Fprintln(os.Stderr, "set management:", err)
+			return 1
+		}
+		action := model.ActionWebManagementEnable
+		if !enabled {
+			action = model.ActionWebManagementDisable
+		}
+		recordAudit(ctx, s, nil, action, "management", "enabled="+strconv.FormatBool(enabled))
+		fmt.Printf("Web management %sd\n", verb)
+		return 0
+	}
+	fmt.Fprintf(os.Stderr, "unknown web toggle: %s (use login or management)\n", args[0])
+	return 1
+}
+
+// cmdWeb shows the current web access control state (`xlistman web status`).
+func cmdWeb(args []string) int {
+	if len(args) < 1 || args[0] != "status" {
+		fmt.Fprintln(os.Stderr, "usage: xlistman web status")
+		return 1
+	}
+	cfg, err := loadConfig()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	s, err := openStore(cfg)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "open store:", err)
+		return 1
+	}
+	defer s.Close()
+
+	ws, err := s.GetWebSettings(context.Background())
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "get web status:", err)
+		return 1
+	}
+	state := func(on bool) string {
+		if on {
+			return "enabled"
+		}
+		return "disabled"
+	}
+	fmt.Printf("web login:      %s\n", state(ws.LoginEnabled))
+	fmt.Printf("web management: %s\n", state(ws.ManagementEnabled))
+	return 0
 }

@@ -85,6 +85,14 @@ _Avoid_: Login link, sign-in token
 An authenticated web browsing context for a Subscriber, created when a Magic Link is followed and carried by a persistent session cookie. Expires automatically and can be ended by logging out. No passwords anywhere.
 _Avoid_: Login, auth state
 
+**Web Login**:
+The passwordless sign-in flow to the web UI, establishing a Session from a Magic Link. Can be disabled instance-wide by an Administrator via the CLI; when disabled, no new Sessions can be created and all existing Sessions are ended.
+_Avoid_: Sign-in, authentication
+
+**Web Management**:
+The instance-wide ability to use the web management consoles: the per-list role console (Owners and Moderators) and the server-admin area (Administrators). Can be disabled instance-wide by an Administrator via the CLI; when disabled, both consoles are blocked while public pages and subscriber self-service remain available.
+_Avoid_: Admin console, control panel
+
 **Archive**:
 The stored history of posts to a List, browsable by Members via the web UI as threaded conversations with full-text search. Always members-only; no public access. Retained indefinitely by default, with an optional configurable max age per list.
 _Avoid_: Message store, history

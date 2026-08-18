@@ -471,6 +471,67 @@ func TestMagicLinkAndSession(t *testing.T) {
 	}
 }
 
+// TestWebSettings verifies the instance-wide web access control row (ADR
+// 0020): defaults to enabled, both switches can be toggled, and
+// DeleteAllSessions ends every Session.
+func TestWebSettings(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+
+	ws, err := s.GetWebSettings(ctx)
+	if err != nil {
+		t.Fatalf("GetWebSettings: %v", err)
+	}
+	if !ws.LoginEnabled || !ws.ManagementEnabled {
+		t.Errorf("defaults = login:%v management:%v, want both enabled", ws.LoginEnabled, ws.ManagementEnabled)
+	}
+
+	if err := s.SetWebLoginEnabled(ctx, false); err != nil {
+		t.Fatalf("SetWebLoginEnabled(false): %v", err)
+	}
+	ws, _ = s.GetWebSettings(ctx)
+	if ws.LoginEnabled || !ws.ManagementEnabled {
+		t.Errorf("after login disable = login:%v management:%v", ws.LoginEnabled, ws.ManagementEnabled)
+	}
+
+	if err := s.SetWebManagementEnabled(ctx, false); err != nil {
+		t.Fatalf("SetWebManagementEnabled(false): %v", err)
+	}
+	ws, _ = s.GetWebSettings(ctx)
+	if ws.LoginEnabled || ws.ManagementEnabled {
+		t.Errorf("after both disabled = login:%v management:%v", ws.LoginEnabled, ws.ManagementEnabled)
+	}
+
+	// Re-enable both.
+	if err := s.SetWebLoginEnabled(ctx, true); err != nil {
+		t.Fatalf("SetWebLoginEnabled(true): %v", err)
+	}
+	if err := s.SetWebManagementEnabled(ctx, true); err != nil {
+		t.Fatalf("SetWebManagementEnabled(true): %v", err)
+	}
+	ws, _ = s.GetWebSettings(ctx)
+	if !ws.LoginEnabled || !ws.ManagementEnabled {
+		t.Errorf("after re-enable = login:%v management:%v", ws.LoginEnabled, ws.ManagementEnabled)
+	}
+
+	// DeleteAllSessions ends every session.
+	sub, _ := s.GetOrCreateSubscriber(ctx, "alice@x.com")
+	expires := time.Now().Add(30 * 24 * time.Hour)
+	id1, _ := s.CreateSession(ctx, sub.ID, "alice@x.com", expires)
+	id2, _ := s.CreateSession(ctx, sub.ID, "alice@x.com", expires)
+	if n, err := s.DeleteAllSessions(ctx); err != nil {
+		t.Fatalf("DeleteAllSessions: %v", err)
+	} else if n != 2 {
+		t.Errorf("deleted sessions = %d, want 2", n)
+	}
+	if _, err := s.GetSession(ctx, id1); err == nil {
+		t.Error("session 1 still present after DeleteAllSessions")
+	}
+	if _, err := s.GetSession(ctx, id2); err == nil {
+		t.Error("session 2 still present after DeleteAllSessions")
+	}
+}
+
 func TestExpirySweep(t *testing.T) {
 	s := testStore(t)
 	ctx := context.Background()
