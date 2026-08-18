@@ -23,6 +23,7 @@ web:
 rate_limits:
   subscribe_per_hour: 10
   magic_link_per_hour: 5
+  magic_link_per_ip_per_hour: 100
   posts_per_hour: 20
 `
 	cfg, err := LoadFromBytes([]byte(yaml))
@@ -43,6 +44,9 @@ rate_limits:
 	}
 	if cfg.RateLimits.SubscribePerHour != 10 {
 		t.Errorf("RateLimits.SubscribePerHour = %d, want %d", cfg.RateLimits.SubscribePerHour, 10)
+	}
+	if cfg.RateLimits.MagicLinkPerIPPerHour != 100 {
+		t.Errorf("RateLimits.MagicLinkPerIPPerHour = %d, want %d", cfg.RateLimits.MagicLinkPerIPPerHour, 100)
 	}
 }
 
@@ -75,6 +79,9 @@ func TestLoadConfig_AppliesDefaults(t *testing.T) {
 	if cfg.RateLimits.MagicLinkPerHour != 3 {
 		t.Errorf("default RateLimits.MagicLinkPerHour = %d, want %d", cfg.RateLimits.MagicLinkPerHour, 3)
 	}
+	if cfg.RateLimits.MagicLinkPerIPPerHour != 50 {
+		t.Errorf("default RateLimits.MagicLinkPerIPPerHour = %d, want %d", cfg.RateLimits.MagicLinkPerIPPerHour, 50)
+	}
 	if cfg.RateLimits.PostsPerHour != 10 {
 		t.Errorf("default RateLimits.PostsPerHour = %d, want %d", cfg.RateLimits.PostsPerHour, 10)
 	}
@@ -94,9 +101,11 @@ smtp:
 	os.Setenv("XLISTMAN_HTTP_LISTEN", ":3000")
 	os.Setenv("XLISTMAN_SMTP_HOST", "relay.example.com")
 	os.Setenv("XLISTMAN_SMTP_PORT", "587")
+	os.Setenv("XLISTMAN_RATE_LIMITS_MAGIC_LINK_PER_IP_PER_HOUR", "77")
 	defer os.Unsetenv("XLISTMAN_HTTP_LISTEN")
 	defer os.Unsetenv("XLISTMAN_SMTP_HOST")
 	defer os.Unsetenv("XLISTMAN_SMTP_PORT")
+	defer os.Unsetenv("XLISTMAN_RATE_LIMITS_MAGIC_LINK_PER_IP_PER_HOUR")
 
 	cfg, err := LoadFromBytes([]byte(yaml))
 	if err != nil {
@@ -110,6 +119,9 @@ smtp:
 	}
 	if cfg.SMTP.Port != 587 {
 		t.Errorf("SMTP.Port = %d, want %d (env override)", cfg.SMTP.Port, 587)
+	}
+	if cfg.RateLimits.MagicLinkPerIPPerHour != 77 {
+		t.Errorf("RateLimits.MagicLinkPerIPPerHour = %d, want %d (env override)", cfg.RateLimits.MagicLinkPerIPPerHour, 77)
 	}
 }
 

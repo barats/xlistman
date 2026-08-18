@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"net"
 	"net/http"
 	netmail "net/mail"
 	"strconv"
@@ -27,6 +28,12 @@ const (
 	sessionCookieName = "xlistman_session"
 	magicLinkTTL      = 30 * time.Minute
 	sessionTTL        = 30 * 24 * time.Hour
+	// publicCacheMaxAge is the Cache-Control max-age on public list endpoints
+	// (ADR 0023): the index and list info change only on rare admin actions,
+	// so browsers and proxies may serve them for a minute without hitting the
+	// server. Stale data is cosmetic — the subscribe write path re-checks the
+	// DB server-side.
+	publicCacheMaxAge = 60
 )
 
 type contextKey string
@@ -42,6 +49,11 @@ type Server struct {
 	cookieSec bool
 	handler   http.Handler
 	httpSrv   *http.Server
+
+	// In-memory per-instance rate limiters (ADR 0023). See ratelimit.go.
+	magicLinkIPLimiter    *keyedRateLimiter
+	magicLinkEmailLimiter *keyedRateLimiter
+	subscribeLimiter      *keyedRateLimiter
 }
 
 // New creates a new HTTP server. webFS optionally carries the embedded
@@ -54,6 +66,11 @@ func New(cfg *config.Config, st store.Store, logger *slog.Logger, pipeline *xmai
 		Logger:    logger,
 		Pipeline:  pipeline,
 		cookieSec: strings.HasPrefix(cfg.Web.BaseURL, "https://"),
+		// Rate limiter allowances. The YAML loader applies the same defaults;
+		// guarding here keeps zero-value configs (e.g., tests) safe too.
+		magicLinkIPLimiter:    newKeyedRateLimiter(defaultInt(cfg.RateLimits.MagicLinkPerIPPerHour, 50), 2*time.Hour),
+		magicLinkEmailLimiter: newKeyedRateLimiter(defaultInt(cfg.RateLimits.MagicLinkPerHour, 3), 2*time.Hour),
+		subscribeLimiter:      newKeyedRateLimiter(defaultInt(cfg.RateLimits.SubscribePerHour, 5), 2*time.Hour),
 	}
 	mux := http.NewServeMux()
 	s.registerRoutes(mux)
@@ -223,6 +240,8 @@ func (s *Server) handleLists(w http.ResponseWriter, r *http.Request) {
 			ListType:    string(l.ListType),
 		}
 	}
+	// Public content: browsers and proxies may serve it for a minute (ADR 0023).
+	w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", publicCacheMaxAge))
 	writeJSON(w, 200, result)
 }
 
@@ -238,6 +257,20 @@ func (s *Server) handleListDetail(w http.ResponseWriter, r *http.Request) {
 	domain := parts[0]
 	listName := parts[1]
 
+	// Rate-limit subscribe before the list lookup so a flood never reaches
+	// the DB (ADR 0023). The gate is per client IP, matching the 5/hour
+	// subscribe allowance.
+	if len(parts) >= 3 && parts[2] == "subscribe" {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if !s.subscribeLimiter.allow(clientIP(r)) {
+			writeRateLimited(w, s.subscribeLimiter.retryAfter(clientIP(r)))
+			return
+		}
+	}
+
 	l, err := s.Store.GetList(r.Context(), listName, domain)
 	if err != nil {
 		writeJSON(w, 404, map[string]string{"error": "list not found"})
@@ -246,10 +279,6 @@ func (s *Server) handleListDetail(w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case len(parts) >= 3 && parts[2] == "subscribe":
-		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
 		s.handleSubscribe(w, r, l)
 	case len(parts) >= 3 && parts[2] == "archives" && len(parts) == 3:
 		s.handleArchives(w, r, l)
@@ -265,6 +294,8 @@ func (s *Server) handleListDetail(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleListInfo(w http.ResponseWriter, r *http.Request, l *model.List) {
+	// Public content: browsers and proxies may serve it for a minute (ADR 0023).
+	w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", publicCacheMaxAge))
 	writeJSON(w, 200, map[string]any{
 		"address":             l.Address(),
 		"list_name":           l.ListName,
@@ -310,10 +341,16 @@ func (s *Server) handleSubscribe(w http.ResponseWriter, r *http.Request, l *mode
 
 // handleMagicLink emails a one-time login link to an existing subscriber.
 // The response is always 202 so the endpoint cannot be used to enumerate
-// known addresses.
+// known addresses; rate limiting preserves this (ADR 0023).
 func (s *Server) handleMagicLink(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	// Per-IP flood gate: counts every request, before any DB work. Over the
+	// limit responds 429 with Retry-After (no enumeration risk for an IP key).
+	if !s.magicLinkIPLimiter.allow(clientIP(r)) {
+		writeRateLimited(w, s.magicLinkIPLimiter.retryAfter(clientIP(r)))
 		return
 	}
 	if !s.webLoginEnabled(r.Context()) {
@@ -333,19 +370,33 @@ func (s *Server) handleMagicLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Per-email send cap: reserve a token now, consume it only if a link is
+	// actually sent. Over the quota, still respond 202 so the endpoint cannot
+	// be used to probe which addresses are subscribers.
+	res := s.magicLinkEmailLimiter.reserve(email)
+	if res.Delay() > 0 {
+		res.Cancel()
+		writeJSON(w, 202, map[string]string{"status": "magic link sent"})
+		return
+	}
+
 	// Only send a link to a known subscriber; unknown addresses still get 202.
 	sub, err := s.Store.GetSubscriber(r.Context(), email)
 	if err != nil {
+		res.Cancel()
 		writeJSON(w, 202, map[string]string{"status": "magic link sent"})
 		return
 	}
 
 	token, err := s.Store.CreateMagicLink(r.Context(), sub.ID, email, time.Now().Add(magicLinkTTL))
 	if err != nil {
+		res.Cancel()
 		s.Logger.Error("create magic link", "email", email, "error", err)
 		writeJSON(w, 500, map[string]string{"error": "failed to send magic link"})
 		return
 	}
+	// The reservation is consumed: never Cancel, so the send counts against
+	// the per-email allowance.
 
 	link := s.Config.Web.BaseURL + "/api/auth/verify?token=" + token
 	msg := buildTextEmail("xListman", email, "Your xListman login link",
@@ -770,6 +821,34 @@ func queryIntDefault(r *http.Request, name string, def int) int {
 		return def
 	}
 	return n
+}
+
+// defaultInt returns v, or def when v is zero.
+func defaultInt(v, def int) int {
+	if v <= 0 {
+		return def
+	}
+	return v
+}
+
+// clientIP returns the caller's IP for rate-limit keys. There is no reverse
+// proxy in the single-binary deployment (ADR 0008), so RemoteAddr is the
+// peer; when a proxy is added, X-Forwarded-For handling belongs here.
+func clientIP(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
+}
+
+// writeRateLimited responds 429 with a Retry-After header (ADR 0023).
+func writeRateLimited(w http.ResponseWriter, retryAfter time.Duration) {
+	if retryAfter < 0 {
+		retryAfter = 0
+	}
+	w.Header().Set("Retry-After", strconv.Itoa(int(retryAfter.Round(time.Second).Seconds())))
+	writeJSON(w, 429, map[string]string{"error": "rate limit exceeded"})
 }
 
 func writeJSON(w http.ResponseWriter, status int, data any) {

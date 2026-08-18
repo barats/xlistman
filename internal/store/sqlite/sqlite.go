@@ -99,17 +99,6 @@ func (s *Store) Close() error {
 	return sqlDB.Close()
 }
 
-// populateDomain fills the Domain field by looking up the domain name.
-func (s *Store) populateDomain(ctx context.Context, l *model.List) {
-	if l == nil {
-		return
-	}
-	var d model.Domain
-	if err := s.db.WithContext(ctx).First(&d, l.DomainID).Error; err == nil {
-		l.Domain = d.Name
-	}
-}
-
 // --- Domain operations ---
 
 func (s *Store) CreateDomain(ctx context.Context, name, description string) (*model.Domain, error) {
@@ -140,6 +129,23 @@ func (s *Store) DeleteDomain(ctx context.Context, name string) error {
 	return s.db.WithContext(ctx).Where("name = ?", name).Delete(&model.Domain{}).Error
 }
 
+// listWithDomain is the scan target for list queries that join the domain
+// name, since List.Domain is gorm:"-" (derived from the join, not stored).
+type listWithDomain struct {
+	model.List
+	DomainName string
+}
+
+// TableName pins the scan target to the lists table (GORM would otherwise
+// derive "list_with_domains" from the struct name).
+func (listWithDomain) TableName() string { return "lists" }
+
+// toList copies the joined domain name onto the List.
+func (r listWithDomain) toList() model.List {
+	r.List.Domain = r.DomainName
+	return r.List
+}
+
 // --- List operations ---
 
 func (s *Store) CreateList(ctx context.Context, listName string, domainID int64, domainName, description string, listType model.ListType) (*model.List, error) {
@@ -160,38 +166,46 @@ func (s *Store) CreateList(ctx context.Context, listName string, domainID int64,
 }
 
 func (s *Store) GetList(ctx context.Context, listName, domainName string) (*model.List, error) {
-	var l model.List
+	var row listWithDomain
 	err := s.db.WithContext(ctx).
+		Select("lists.*, domains.name AS domain_name").
 		Joins("JOIN domains ON domains.id = lists.domain_id").
 		Where("lists.list_name = ? AND domains.name = ?", listName, domainName).
-		First(&l).Error
+		First(&row).Error
 	if err != nil {
 		return nil, fmt.Errorf("get list: %w", err)
 	}
-	s.populateDomain(ctx, &l)
+	l := row.toList()
 	return &l, nil
 }
 
 func (s *Store) GetListByID(ctx context.Context, id int64) (*model.List, error) {
-	var l model.List
-	if err := s.db.WithContext(ctx).First(&l, id).Error; err != nil {
+	var row listWithDomain
+	err := s.db.WithContext(ctx).
+		Select("lists.*, domains.name AS domain_name").
+		Joins("JOIN domains ON domains.id = lists.domain_id").
+		First(&row, id).Error
+	if err != nil {
 		return nil, fmt.Errorf("get list by id: %w", err)
 	}
-	s.populateDomain(ctx, &l)
+	l := row.toList()
 	return &l, nil
 }
 
 func (s *Store) ListLists(ctx context.Context, domainName string) ([]model.List, error) {
-	var lists []model.List
-	query := s.db.WithContext(ctx).Joins("JOIN domains ON domains.id = lists.domain_id")
+	var rows []listWithDomain
+	query := s.db.WithContext(ctx).
+		Select("lists.*, domains.name AS domain_name").
+		Joins("JOIN domains ON domains.id = lists.domain_id")
 	if domainName != "" {
 		query = query.Where("domains.name = ?", domainName)
 	}
-	if err := query.Order("domains.name, lists.list_name").Find(&lists).Error; err != nil {
+	if err := query.Order("domains.name, lists.list_name").Find(&rows).Error; err != nil {
 		return nil, fmt.Errorf("list lists: %w", err)
 	}
-	for i := range lists {
-		s.populateDomain(ctx, &lists[i])
+	lists := make([]model.List, len(rows))
+	for i := range rows {
+		lists[i] = rows[i].toList()
 	}
 	return lists, nil
 }

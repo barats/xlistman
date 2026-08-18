@@ -203,3 +203,22 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
   reverse leg.
 - Test suite green (`go test ./...`). The MTA validation harness lives in
   `validate/` (postfix/ and exim/ subfolders) and is kept in the repo.
+
+### Phase 13 — Web protecting: rate limiting, public page caching, and query fixes
+- In-memory token-bucket rate limiting on the web write endpoints (ADR 0023),
+  via `golang.org/x/time/rate`: per-email magic-link sends (default 3/hour,
+  silent 202 on over-quota so the endpoint cannot enumerate subscribers),
+  per-IP magic-link (default 50/hour, 429 + Retry-After), and per-IP subscribe
+  (5/hour, 429). New config `rate_limits.magic_link_per_ip_per_hour` (env
+  `XLISTMAN_RATE_LIMITS_MAGIC_LINK_PER_IP_PER_HOUR`). The previously dead
+  `rate_limits` config is now actually enforced; `posts_per_hour` targets the
+  LMTP/email inbound path and stays out of web scope.
+- HTTP caching on the public list endpoints: `Cache-Control: public,
+  max-age=60` on `GET /api/lists` and list detail. No server-side or in-process
+  cache; stale public data is cosmetic because the subscribe write path
+  re-checks policy in the DB.
+- Query fixes: `ListLists`/`GetList`/`GetListByID` now populate the domain name
+  from the already-joined row in one query, killing the N+1 where the public
+  index issued one domain lookup per list (and trimming a read off `/api/me`'s
+  per-subscription list lookups).
+- Test suite green (`go test ./...`).

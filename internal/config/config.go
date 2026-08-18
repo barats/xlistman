@@ -55,7 +55,10 @@ type WebConfig struct {
 type RateLimitConfig struct {
 	SubscribePerHour int `yaml:"subscribe_per_hour"`
 	MagicLinkPerHour int `yaml:"magic_link_per_hour"`
-	PostsPerHour     int `yaml:"posts_per_hour"`
+	// MagicLinkPerIPPerHour caps magic-link requests per client IP, a coarse
+	// anti-flood ceiling distinct from the per-email send cap above (ADR 0023).
+	MagicLinkPerIPPerHour int `yaml:"magic_link_per_ip_per_hour"`
+	PostsPerHour          int `yaml:"posts_per_hour"`
 }
 
 // QueueConfig controls the outbound queue worker.
@@ -156,6 +159,9 @@ func applyDefaults(cfg *Config) {
 	if cfg.RateLimits.MagicLinkPerHour == 0 {
 		cfg.RateLimits.MagicLinkPerHour = 3
 	}
+	if cfg.RateLimits.MagicLinkPerIPPerHour == 0 {
+		cfg.RateLimits.MagicLinkPerIPPerHour = 50
+	}
 	if cfg.RateLimits.PostsPerHour == 0 {
 		cfg.RateLimits.PostsPerHour = 10
 	}
@@ -178,6 +184,7 @@ func applyEnvOverrides(cfg *Config) {
 	setStrFromEnv(envPrefix+"WEB_BASE_URL", &cfg.Web.BaseURL)
 	setIntFromEnv(envPrefix+"RATE_LIMITS_SUBSCRIBE_PER_HOUR", &cfg.RateLimits.SubscribePerHour)
 	setIntFromEnv(envPrefix+"RATE_LIMITS_MAGIC_LINK_PER_HOUR", &cfg.RateLimits.MagicLinkPerHour)
+	setIntFromEnv(envPrefix+"RATE_LIMITS_MAGIC_LINK_PER_IP_PER_HOUR", &cfg.RateLimits.MagicLinkPerIPPerHour)
 	setIntFromEnv(envPrefix+"RATE_LIMITS_POSTS_PER_HOUR", &cfg.RateLimits.PostsPerHour)
 	setIntFromEnv(envPrefix+"QUEUE_MAX_RETRIES", &cfg.Queue.MaxRetries)
 }
