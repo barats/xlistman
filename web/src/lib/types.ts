@@ -28,6 +28,14 @@ export interface Subscription {
 	bounce_count: number;
 }
 
+export interface HeldPost {
+	id: number;
+	list_addr: string;
+	subject: string;
+	received_at: string;
+	expires_at: string;
+}
+
 export interface Me {
 	email: string;
 	subscriptions: Subscription[];

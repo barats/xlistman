@@ -76,6 +76,10 @@ type Store interface {
 	// Held message operations
 	CreateHeldMessage(ctx context.Context, listID int64, sender, subject string, body []byte, expiresAt time.Time) (*model.HeldMessage, error)
 	ListHeldMessages(ctx context.Context, listID int64) ([]model.HeldMessage, error)
+	// ListHeldMessagesBySender returns a sender's posts currently awaiting
+	// moderation approval across all lists, newest first (case-insensitive
+	// sender match). Powers the sender held-status view.
+	ListHeldMessagesBySender(ctx context.Context, senderEmail string) ([]model.HeldMessage, error)
 	GetHeldMessageByToken(ctx context.Context, token string) (*model.HeldMessage, error)
 	GetHeldMessageByID(ctx context.Context, id int64) (*model.HeldMessage, error)
 	DeleteHeldMessage(ctx context.Context, id int64) error

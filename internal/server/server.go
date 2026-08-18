@@ -134,6 +134,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/auth/verify", s.handleVerify)
 	mux.HandleFunc("/api/auth/logout", s.handleLogout)
 	mux.HandleFunc("/api/me", s.requireAuth(s.handleMe))
+	mux.HandleFunc("/api/me/held-posts", s.requireAuth(s.handleMyHeldPosts))
 	mux.HandleFunc("/api/me/subscriptions/", s.requireAuth(s.handleMySubscription))
 	s.registerConsoleRoutes(mux)
 	s.registerAdminRoutes(mux)
@@ -423,6 +424,49 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 		"is_administrator": isAdmin,
 		"has_list_role":    hasListRole,
 	})
+}
+
+// handleMyHeldPosts returns the authenticated subscriber's own posts currently
+// awaiting moderation approval, across all lists (the sender held-status
+// view). Read-only; moderation itself stays with Owners and Moderators.
+func (s *Server) handleMyHeldPosts(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	sub, ok := subscriberFrom(r)
+	if !ok {
+		writeJSON(w, 401, map[string]string{"error": "unauthorized"})
+		return
+	}
+	held, err := s.Store.ListHeldMessagesBySender(r.Context(), sub.Email)
+	if err != nil {
+		s.Logger.Error("list held posts", "email", sub.Email, "error", err)
+		writeJSON(w, 500, map[string]string{"error": "failed to load held posts"})
+		return
+	}
+	type heldPostInfo struct {
+		ID         int64  `json:"id"`
+		ListAddr   string `json:"list_addr"`
+		Subject    string `json:"subject"`
+		ReceivedAt string `json:"received_at"`
+		ExpiresAt  string `json:"expires_at"`
+	}
+	result := make([]heldPostInfo, 0, len(held))
+	for _, m := range held {
+		l, err := s.Store.GetListByID(r.Context(), m.ListID)
+		if err != nil {
+			continue
+		}
+		result = append(result, heldPostInfo{
+			ID:         m.ID,
+			ListAddr:   l.Address(),
+			Subject:    m.Subject,
+			ReceivedAt: m.ReceivedAt.UTC().Format("2006-01-02T15:04:05Z"),
+			ExpiresAt:  m.ExpiresAt.UTC().Format("2006-01-02T15:04:05Z"),
+		})
+	}
+	writeJSON(w, 200, result)
 }
 
 // handleMySubscription dispatches self-service actions on one of the caller's

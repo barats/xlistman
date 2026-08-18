@@ -514,6 +514,18 @@ func (s *Store) ListHeldMessages(ctx context.Context, listID int64) ([]model.Hel
 	return msgs, nil
 }
 
+// ListHeldMessagesBySender returns held messages awaiting approval whose
+// sender matches the email (case-insensitive), newest first.
+func (s *Store) ListHeldMessagesBySender(ctx context.Context, senderEmail string) ([]model.HeldMessage, error) {
+	var msgs []model.HeldMessage
+	if err := s.db.WithContext(ctx).
+		Where("LOWER(sender) = LOWER(?)", senderEmail).
+		Order("received_at DESC, id DESC").Find(&msgs).Error; err != nil {
+		return nil, fmt.Errorf("list held by sender: %w", err)
+	}
+	return msgs, nil
+}
+
 func (s *Store) GetHeldMessageByToken(ctx context.Context, token string) (*model.HeldMessage, error) {
 	var m model.HeldMessage
 	if err := s.db.WithContext(ctx).Where("token = ?", token).First(&m).Error; err != nil {

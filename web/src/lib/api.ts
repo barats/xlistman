@@ -13,6 +13,7 @@ import type {
 	DesignatedSender,
 	HeldMessage,
 	HeldMessageDetail,
+	HeldPost,
 	ListInfo,
 	ListSummary,
 	Subscription
@@ -102,6 +103,12 @@ export async function reEnable(subscriptionId: number): Promise<void> {
 export async function unsubscribeMe(subscriptionId: number): Promise<void> {
 	const res = await fetch(`/api/me/subscriptions/${subscriptionId}/unsubscribe`, { method: 'POST' });
 	await throwOnError(res);
+}
+
+export async function getMyHeldPosts(): Promise<HeldPost[]> {
+	const res = await fetch('/api/me/held-posts');
+	await throwOnError(res);
+	return res.json();
 }
 
 export async function getArchives(

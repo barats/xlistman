@@ -130,7 +130,20 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
   (owner audit tab, admin audit tab, moderation/role/settings events recorded
   and shown, filters, 401/403 gates, mobile viewport).
 
-### After Phase 8 (deferred catalog continues)
-- Sender held-status view.
+### Phase 9 — Sender held-status view
+- A subscriber's own posts currently awaiting moderation approval are visible
+  on the web UI: a **Posts awaiting approval** section on `/me` (self-service,
+  any signed-in Subscriber), backed by `GET /api/me/held-posts`, which lists
+  the sender's held posts across all lists (case-insensitive sender match)
+  with list address, subject, sent time, and expiry.
+- Read-only: moderation stays with Owners and Moderators. Pending posts are
+  the gap it closes — the `SenderHeldNotice` email is per-list and often the
+  only signal a sender has that their post is in the queue; approved/rejected
+  outcomes remain email-notified, and discarded posts stay silent by design.
+- Test suite green (`go test ./...`); verified end-to-end in the browser
+  (sender sees own held posts, empty state, case-insensitive scoping,
+  401 gate, mobile viewport).
+
+### After Phase 9 (deferred catalog continues)
 - Bounce management UI.
 - Optionally validate the LMTP loop against local `postfix` (installed here, not yet running).

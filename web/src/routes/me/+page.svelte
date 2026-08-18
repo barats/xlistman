@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { me, refreshMe } from '$lib/auth';
-	import { reEnable, setDelivery, unsubscribeMe } from '$lib/api';
-	import type { Subscription } from '$lib/types';
+	import { getMyHeldPosts, reEnable, setDelivery, unsubscribeMe } from '$lib/api';
+	import type { HeldPost, Subscription } from '$lib/types';
 	import { cn } from '$lib/utils';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
@@ -18,10 +18,22 @@
 	let busyId = $state<number | null>(null);
 	let actionError = $state('');
 	let actionOk = $state('');
+	let heldPosts = $state<HeldPost[] | null>(null);
 
-	onMount(() => {
+	onMount(async () => {
 		refreshMe();
+		try {
+			heldPosts = await getMyHeldPosts();
+		} catch {
+			heldPosts = [];
+		}
 	});
+
+	function fmtTime(iso: string): string {
+		const d = new Date(iso);
+		if (Number.isNaN(d.getTime())) return iso;
+		return d.toLocaleString();
+	}
 
 	async function run(sub: Subscription, label: string, fn: () => Promise<void>) {
 		busyId = sub.id;
@@ -158,5 +170,34 @@
 				</Card>
 			{/each}
 		</div>
+	{/if}
+
+	{#if heldPosts !== null}
+		<section class="mt-10">
+			<h2 class="text-lg font-semibold">Posts awaiting approval</h2>
+			<p class="mt-1 text-sm text-muted-foreground">
+				Posts you've sent that are waiting for a moderator's decision. You're notified by
+				email when a post is approved or rejected; discarded posts are removed silently.
+			</p>
+			{#if heldPosts.length === 0}
+				<p class="mt-3 text-sm text-muted-foreground">No posts awaiting approval.</p>
+			{:else}
+				<ul class="mt-3 divide-y rounded-lg border">
+					{#each heldPosts as p (p.id)}
+						<li class="px-4 py-3">
+							<div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+								<span class="text-sm font-medium">{p.subject || '(no subject)'}</span>
+								<span class="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+									{p.list_addr}
+								</span>
+							</div>
+							<p class="mt-1 text-sm text-muted-foreground">
+								Sent {fmtTime(p.received_at)} &middot; expires {fmtTime(p.expires_at)}
+							</p>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</section>
 	{/if}
 {/if}
