@@ -162,5 +162,23 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
   (owner bounces tab, re-enable + reset actions reflected in members, owner
   notice on auto-disable, 401/403 gates, empty state, mobile viewport).
 
-### After Phase 10 (deferred catalog continues)
-- Optionally validate the LMTP loop against local `postfix` (installed here, not yet running).
+### Phase 11 — LMTP loop validated against local Postfix — done
+- Validated the full loop live against a local Postfix (installed here): inbound
+  via LMTP, processing, outbound via SMTP back into Postfix, final local
+  delivery, and the VERP bounce reverse leg. Postfix wiring:
+  `virtual_mailbox_domains = lists.test` + `virtual_transport = lmtp:[127.0.0.1]:8024`
+  (ADR 0021).
+- Exercises passed: subscribe+confirm double opt-in, post round trip (subject
+  prefix, footer, `List-*` headers, VERP envelope sender, delivery to a local
+  subscriber mailbox), the `-request` email command (`which`), a raw SMTP
+  submission to `smtpd` on :25, and a deliberate delivery failure whose DSN
+  routed back through LMTP to auto-disable the member and notify the Owners.
+- Found and fixed a real bug during validation: the LMTP server rejected the
+  null envelope sender (`MAIL FROM:<>`, RFC 3464) with `503 MAIL first`, so
+  every real Postfix bounce DSN was dropped and the reverse leg never fired.
+  The handler now tracks "MAIL seen" separately from the (possibly empty)
+  sender address; a wire-level regression test covers it.
+- Test suite green (`go test ./...`).
+
+### After Phase 11 (deferred catalog continues)
+- Validate the LMTP loop against local `exim`

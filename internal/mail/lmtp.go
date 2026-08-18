@@ -68,6 +68,7 @@ type lmtpConn struct {
 	w      *bufio.Writer
 
 	mailFrom string
+	mailSet  bool
 	rcptTos  []string
 }
 
@@ -98,6 +99,7 @@ func (c *lmtpConn) serve(ctx context.Context) {
 			c.handleData(ctx)
 		case "RSET":
 			c.mailFrom = ""
+			c.mailSet = false
 			c.rcptTos = nil
 			c.send(250, "OK")
 		case "NOOP":
@@ -112,7 +114,9 @@ func (c *lmtpConn) serve(ctx context.Context) {
 }
 
 func (c *lmtpConn) handleMail(arg string) {
-	// Parse "FROM:<addr>".
+	// Parse "FROM:<addr>". The null sender "<>" is valid (bounce DSNs, RFC
+	// 3464), so track that MAIL was sent separately from the (possibly empty)
+	// address instead of using mailFrom == "" as the "no MAIL yet" signal.
 	if !strings.HasPrefix(strings.ToUpper(arg), "FROM:") {
 		c.send(501, "Syntax error")
 		return
@@ -120,12 +124,13 @@ func (c *lmtpConn) handleMail(arg string) {
 	addr := strings.TrimSpace(arg[5:])
 	addr = strings.Trim(addr, "<>")
 	c.mailFrom = addr
+	c.mailSet = true
 	c.rcptTos = nil
 	c.send(250, "OK")
 }
 
 func (c *lmtpConn) handleRcpt(arg string) {
-	if c.mailFrom == "" {
+	if !c.mailSet {
 		c.send(503, "MAIL first")
 		return
 	}
@@ -178,6 +183,7 @@ func (c *lmtpConn) handleData(ctx context.Context) {
 	}
 
 	c.mailFrom = ""
+	c.mailSet = false
 	c.rcptTos = nil
 }
 
