@@ -180,5 +180,26 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
   sender address; a wire-level regression test covers it.
 - Test suite green (`go test ./...`).
 
-### After Phase 11 (deferred catalog continues)
-- Validate the LMTP loop against local `exim`
+### Phase 12 — LMTP loop validated against local exim — done
+- Validated the full loop live against a user-space exim 4.99 instance (ADR
+  0022): inbound via LMTP, processing, outbound via SMTP back into exim, final
+  local delivery, and the VERP bounce reverse leg. exim wiring: a `manualroute`
+  router sends `lists.test` to an `smtp` transport with `protocol = lmtp` on
+  `127.0.0.2:8024` (a second loopback address named `lists.lmtp.local` in
+  `/etc/hosts`, because exim refuses to deliver to its own SMTP interface).
+- Exercises passed: subscribe+confirm double opt-in, post round trip (subject
+  prefix, footer, `List-*` headers, VERP envelope sender, delivery to the
+  fixture mbox), the `-request` email command, a raw SMTP submission to exim's
+  `smtpd` on :2525, and a deliberate delivery failure whose DSN routed back
+  through LMTP to auto-disable the member and notify the Owners.
+- This re-validated the ADR 0021 null-sender fix against a second,
+  independently implemented MTA: exim also delivers DSNs with `MAIL FROM:<>`,
+  and the bounce is now accepted, attributed, and acted on.
+- exim-specific harness notes recorded in ADR 0022: the `lmtp` driver is for
+  Unix-socket LMTP (TCP needs `smtp` + `protocol = lmtp`); the local-host loop
+  guard forces the second loopback address; taint checking forbids `$local_part`
+  in file paths; a `pipe` transport to a failing command (not a missing
+  appendfile path) produces the immediate permanent failure that drives the
+  reverse leg.
+- Test suite green (`go test ./...`). The MTA validation harness lives in
+  `validate/` (postfix/ and exim/ subfolders) and is kept in the repo.

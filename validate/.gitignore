@@ -1,0 +1,10 @@
+# Transient validation outputs; harness configs/scripts are tracked.
+*.db
+*.db-shm
+*.db-wal
+*.log
+*.pid
+*.sock
+spool/
+mail/
+log/

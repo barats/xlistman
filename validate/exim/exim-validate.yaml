@@ -1,0 +1,28 @@
+# xListman validation fixture for the LMTP loop against local exim.
+# Prerequisites: exim installed; 127.0.0.2 loopback alias + /etc/hosts entry
+# (validate/exim/start-loopback.sh). Set XLISTMAN_CONFIG=validate/exim/exim-validate.yaml
+# when running the daemon and CLI commands. Outbound goes to the exim dev
+# instance on localhost:2525.
+http:
+    listen: 127.0.0.1:8081
+lmtp:
+    listen: 127.0.0.2:8024
+socket:
+    path: ./validate/exim/exim.sock
+database:
+    path: ./validate/exim/exim.db
+smtp:
+    host: localhost
+    port: 2525
+    username: ""
+    password: ""
+    mode: smtp
+    sink_dir: /tmp/xlistman-mail
+web:
+    base_url: http://127.0.0.1:8081
+rate_limits:
+    subscribe_per_hour: 100
+    magic_link_per_hour: 100
+    posts_per_hour: 100
+queue:
+    max_retries: 8
