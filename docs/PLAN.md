@@ -106,8 +106,30 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
 - Nav is role-gated: **My lists** shows only to subscribers holding an Owner or Moderator role (via `has_list_role` on `/api/me`), **Server** only to Administrators — a plain member sees neither.
 - Test suite green (`go test ./...`); verified end-to-end in the browser (Console nav gate, overview/domains/lists/administrators tabs, domain + list creation, typed-address delete guard, list-type change warning, administrator designate/revoke, 401/403 gates, mobile viewport) via DOM/text-snapshot checks (no screenshots).
 
-### After Phase 7 (deferred catalog continues)
-- Moderation audit trail (now more valuable given destructive web ops).
+### Phase 8 — Audit trail: immutable record of privileged actions
+- New domain term: **Audit Event** (CONTEXT.md); an append-only `audit_events`
+  table that records every privileged human action — moderation
+  (approve/reject/discard), subscription approval/rejection, member add/remove,
+  role grant/revoke, sender allowlist changes, settings updates, list
+  create/delete/type, domain create/delete, and administrator designate/revoke —
+  capturing who (a Subscriber snapshot, or the local CLI operator), when, and
+  what it acted on (ADR 0018).
+- Recorded inside the shared Pipeline for the actions email/CLI/web already
+  funnel through (moderation, subscriptions, members, roles) and at the web and
+  CLI call sites for store-direct operations (list/domain/admin/settings),
+  so no privileged action is unrecorded; a failed audit write fails the action.
+- Excluded: automated events (expiry sweep, bounce auto-disable), self-service
+  actions, and failed attempts. Events are never edited, deleted, or pruned,
+  and survive list deletion.
+- Surfaces: per-list **Audit** tab in the web role console (Owners only),
+  instance-wide **Audit** tab in the server-admin area (Administrators only),
+  and a `xlistman audit` CLI command — all reverse-chronological with an
+  action filter.
+- Test suite green (`go test ./...`); verified end-to-end in the browser
+  (owner audit tab, admin audit tab, moderation/role/settings events recorded
+  and shown, filters, 401/403 gates, mobile viewport).
+
+### After Phase 8 (deferred catalog continues)
 - Sender held-status view.
 - Bounce management UI.
 - Optionally validate the LMTP loop against local `postfix` (installed here, not yet running).

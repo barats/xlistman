@@ -62,6 +62,10 @@ _Avoid_: Pending message, queued message
 One of Approve, Reject, or Discard, performed by an Owner or Moderator on a Held Message. Approve delivers the post to the list; Reject discards it and notifies the sender; Discard removes it without notifying the sender.
 _Avoid_: Decision, moderation decision
 
+**Audit Event**:
+An immutable record of a privileged action taken on an instance, List, or membership: a Moderation Action on a Held Message, a Subscription Approval, a membership or List Role change, a configuration change, or a List/Domain/Administrator lifecycle operation. Each Audit Event captures the action, the acting Subscriber, when it happened, and what it acted on. Kept forever; never edited or deleted. The record of record for accountability, not part of day-to-day user flow.
+_Avoid_: Audit log, change log, history
+
 **Bounce**:
 A delivery failure notification received for a Subscriber's address. Tracked per Subscription via VERP (Variable Envelope Return Path), which encodes the recipient in the envelope sender so bounces can be attributed to a specific Subscription.
 
