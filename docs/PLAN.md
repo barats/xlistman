@@ -144,6 +144,23 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
   (sender sees own held posts, empty state, case-insensitive scoping,
   401 gate, mobile viewport).
 
-### After Phase 9 (deferred catalog continues)
-- Bounce management UI.
+### Phase 10 — Bounce management
+- Per-list **Bounces** tab (Owners only) listing members with bounce activity
+  (bounce_count > 0 or Disabled), with **Re-enable** and **Reset count**
+  actions; CLI parity `subscriber re-enable|reset-bounces` (ADR 0019).
+- Semantics fix: re-enabling a Subscription now resets its bounce counter on
+  every re-enable path (self-service web, email `re-enable` command, Owner
+  Bounces action), so a re-enabled member starts fresh instead of re-disabling
+  on the next single bounce (CONTEXT.md Disabled Subscription updated).
+- Wired the dormant `owner_auto_disable_notice` setting: the auto-disable flow
+  moved into `Pipeline.RecordBounce` (increment → threshold → disable → notify
+  Owners), replacing the inline, untested LMTP handler logic.
+- Audit: Owner re-enable/reset record `member.re-enable` / `member.reset-bounces`
+  events; self-service re-enable and automated bounces stay unrecorded
+  (ADR 0018 exclusions).
+- Test suite green (`go test ./...`); verified end-to-end in the browser
+  (owner bounces tab, re-enable + reset actions reflected in members, owner
+  notice on auto-disable, 401/403 gates, empty state, mobile viewport).
+
+### After Phase 10 (deferred catalog continues)
 - Optionally validate the LMTP loop against local `postfix` (installed here, not yet running).

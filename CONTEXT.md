@@ -70,7 +70,7 @@ _Avoid_: Audit log, change log, history
 A delivery failure notification received for a Subscriber's address. Tracked per Subscription via VERP (Variable Envelope Return Path), which encodes the recipient in the envelope sender so bounces can be attributed to a specific Subscription.
 
 **Disabled Subscription**:
-A Subscription with Status Disabled, automatically deactivated due to excessive consecutive bounces (configurable threshold, default 5). The Subscriber can re-enable it with the Email Command `re-enable`, which returns it directly to Active. Not deleted.
+A Subscription with Status Disabled, automatically deactivated once its accumulated bounce count reaches the configurable threshold (default 5). The bounce counter resets when the Subscription is re-enabled (self-service, email `re-enable`, or an Owner's Bounces action), so a re-enabled Subscription starts fresh rather than re-disabling on the next single bounce. Not deleted.
 _Avoid_: Suspended subscription, blocked subscription
 
 **Email Command**:
