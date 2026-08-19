@@ -20,6 +20,7 @@ const (
 	ActionSubscriptionApprove = "subscription.approve"
 	ActionSubscriptionReject  = "subscription.reject"
 	ActionMemberAdd           = "member.add"
+	ActionMemberImport        = "member.import"
 	ActionMemberRemove        = "member.remove"
 	ActionMemberReenable      = "member.re-enable"
 	ActionMemberResetBounces  = "member.reset-bounces"

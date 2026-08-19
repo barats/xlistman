@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/barats/xlistman/internal/model"
@@ -380,6 +381,109 @@ func (s *Store) ListSubscriptionsBySubscriber(ctx context.Context, subscriberID 
 		return nil, fmt.Errorf("list subscriptions by subscriber: %w", err)
 	}
 	return subs, nil
+}
+
+// ListMembers returns the list's Members (subscription state + roles) plus
+// any role holders who are not subscribed, each with their Subscriber email.
+// Roles are accumulated in a stable order (owner, moderator, designated
+// sender); the result is sorted by email so export output is deterministic.
+func (s *Store) ListMembers(ctx context.Context, listID int64) ([]model.MemberView, error) {
+	subs, err := s.ListSubscriptions(ctx, listID)
+	if err != nil {
+		return nil, err
+	}
+	owners, err := s.ListOwners(ctx, listID)
+	if err != nil {
+		return nil, err
+	}
+	mods, err := s.ListModerators(ctx, listID)
+	if err != nil {
+		return nil, err
+	}
+	senders, err := s.ListDesignatedSenders(ctx, listID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Role holders who are not subscribed still appear, matching the console.
+	roleBySub := map[int64][]string{}
+	addRole := func(id int64, role string) {
+		roleBySub[id] = append(roleBySub[id], role)
+	}
+	for _, o := range owners {
+		addRole(o.SubscriberID, "owner")
+	}
+	for _, m := range mods {
+		addRole(m.SubscriberID, "moderator")
+	}
+	for _, d := range senders {
+		addRole(d.SubscriberID, "designated_sender")
+	}
+
+	// Load every referenced Subscriber in one query (no per-row lookup).
+	subscriberIDs := make([]int64, 0, len(subs)+len(roleBySub))
+	subByID := map[int64]model.Subscription{}
+	for _, sub := range subs {
+		subByID[sub.SubscriberID] = sub
+		subscriberIDs = append(subscriberIDs, sub.SubscriberID)
+	}
+	for id := range roleBySub {
+		if _, ok := subByID[id]; !ok {
+			subscriberIDs = append(subscriberIDs, id)
+		}
+	}
+	emailByID := map[int64]string{}
+	if len(subscriberIDs) > 0 {
+		var subscribers []model.Subscriber
+		if err := s.db.WithContext(ctx).Where("id IN ?", subscriberIDs).Find(&subscribers).Error; err != nil {
+			return nil, fmt.Errorf("list members: %w", err)
+		}
+		for _, sub := range subscribers {
+			emailByID[sub.ID] = sub.Email
+		}
+	}
+
+	rolesFor := func(id int64) []string {
+		if roles := roleBySub[id]; roles != nil {
+			return roles
+		}
+		return []string{}
+	}
+
+	result := make([]model.MemberView, 0, len(subs)+len(roleBySub))
+	seen := map[int64]bool{}
+	for _, sub := range subs {
+		email, ok := emailByID[sub.SubscriberID]
+		if !ok {
+			continue
+		}
+		subID := sub.ID
+		status := string(sub.Status)
+		mode := string(sub.DeliveryMode)
+		seen[sub.SubscriberID] = true
+		result = append(result, model.MemberView{
+			SubscriberID:   sub.SubscriberID,
+			Email:          email,
+			SubscriptionID: &subID,
+			Status:         status,
+			DeliveryMode:   mode,
+			BounceCount:    sub.BounceCount,
+			Roles:          rolesFor(sub.SubscriberID),
+		})
+	}
+	for id := range roleBySub {
+		if seen[id] {
+			continue
+		}
+		email, ok := emailByID[id]
+		if !ok {
+			continue
+		}
+		result = append(result, model.MemberView{SubscriberID: id, Email: email, Roles: rolesFor(id)})
+	}
+
+	sort.Slice(result, func(i, j int) bool { return result[i].Email < result[j].Email })
+	return result, nil
 }
 
 func (s *Store) UpdateSubscriptionDelivery(ctx context.Context, subID int64, mode model.DeliveryMode) error {

@@ -7,12 +7,14 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	xmail "github.com/barats/xlistman/internal/mail"
+	"github.com/barats/xlistman/internal/members"
 	"github.com/barats/xlistman/internal/model"
 )
 
@@ -129,6 +131,10 @@ func (s *Server) handleConsoleList(w http.ResponseWriter, r *http.Request) {
 		h = s.handleConsoleSettings
 	case len(parts) >= 3 && parts[2] == "members" && len(parts) == 3:
 		h = s.handleConsoleMembers
+	case len(parts) == 4 && parts[2] == "members" && parts[3] == "export":
+		h = s.handleConsoleMembersExport
+	case len(parts) == 4 && parts[2] == "members" && parts[3] == "import":
+		h = s.handleConsoleMembersImport
 	case len(parts) == 4 && parts[2] == "members":
 		h = func(w http.ResponseWriter, r *http.Request, l *model.List) {
 			s.handleConsoleMemberRemove(w, r, l, parts[3])
@@ -572,6 +578,69 @@ func (s *Server) handleConsoleMembers(w http.ResponseWriter, r *http.Request, l 
 		result = append(result, memberInfo{SubscriberID: subscriber.ID, Email: subscriber.Email, Roles: rolesFor(id)})
 	}
 	writeJSON(w, 200, result)
+}
+
+// handleConsoleMembersExport streams the list's members as a CSV file
+// (Phase 14). Owners only. It shares ListMembers with the CLI export, so the
+// two surfaces cannot drift.
+func (s *Server) handleConsoleMembersExport(w http.ResponseWriter, r *http.Request, l *model.List) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	views, err := s.Store.ListMembers(r.Context(), l.ID)
+	if err != nil {
+		s.Logger.Error("export members", "list", l.Address(), "error", err)
+		writeJSON(w, 500, map[string]string{"error": "failed to export members"})
+		return
+	}
+	rows := make([]members.MemberRow, 0, len(views))
+	for _, v := range views {
+		rows = append(rows, members.MemberRow{Email: v.Email, Status: v.Status, DeliveryMode: v.DeliveryMode, Roles: v.Roles})
+	}
+	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s-members.csv"`, l.ListName))
+	w.Write(members.ExportCSV(rows))
+}
+
+// handleConsoleMembersImport imports members from an uploaded CSV file
+// (Phase 14). Owners only. The bulk add runs through Pipeline.ImportMembers,
+// which records a single member.import Audit Event with the counts.
+func (s *Server) handleConsoleMembersImport(w http.ResponseWriter, r *http.Request, l *model.List) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseMultipartForm(4 << 20); err != nil {
+		writeJSON(w, 400, map[string]string{"error": "invalid multipart form"})
+		return
+	}
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		writeJSON(w, 400, map[string]string{"error": "a CSV file is required (form field 'file')"})
+		return
+	}
+	defer file.Close()
+	src, err := members.ParseImport(file)
+	if err != nil {
+		writeJSON(w, 400, map[string]string{"error": err.Error()})
+		return
+	}
+	actor, _ := subscriberFrom(r)
+	res, err := s.Pipeline.ImportMembers(r.Context(), l.ListName, l.Domain, src, subscriberActor(actor))
+	if err != nil {
+		s.Logger.Error("import members", "list", l.Address(), "error", err)
+		writeJSON(w, 500, map[string]string{"error": "failed to import members"})
+		return
+	}
+	writeJSON(w, 200, map[string]any{
+		"status":   "import complete",
+		"added":    res.Added,
+		"skipped":  res.Skipped(),
+		"already":  res.Already,
+		"disabled": res.Disabled,
+		"invalid":  res.Invalid,
+	})
 }
 
 // handleConsoleMemberRemove removes a member (DELETE /members/{subscriberID}).

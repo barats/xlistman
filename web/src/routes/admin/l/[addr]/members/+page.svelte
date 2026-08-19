@@ -5,8 +5,10 @@
 		ApiError,
 		addMember,
 		approveSubscription,
+		exportMembers,
 		getConsoleMembers,
 		grantRole,
+		importMembers,
 		rejectSubscription,
 		removeMember,
 		revokeRole
@@ -84,6 +86,51 @@
 		}
 	}
 
+	// --- import / export (Phase 14) ---
+	let importFile = $state<File | null>(null);
+	let importBusy = $state(false);
+	let importMsg = $state('');
+	let importError = $state('');
+	let exportBusy = $state(false);
+	let exportError = $state('');
+
+	async function doExport() {
+		exportBusy = true;
+		exportError = '';
+		try {
+			const blob = await exportMembers(domain, listName);
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = `${listName}-members.csv`;
+			document.body.appendChild(a);
+			a.click();
+			a.remove();
+			URL.revokeObjectURL(url);
+		} catch (e) {
+			exportError = e instanceof Error ? e.message : 'Could not export members.';
+		} finally {
+			exportBusy = false;
+		}
+	}
+
+	async function doImport() {
+		if (!importFile) return;
+		importBusy = true;
+		importError = '';
+		importMsg = '';
+		try {
+			const res = await importMembers(domain, listName, importFile);
+			importMsg = `Imported ${res.added} member${res.added === 1 ? '' : 's'} (skipped ${res.skipped}).`;
+			importFile = null;
+			await load();
+		} catch (e) {
+			importError = e instanceof Error ? e.message : 'Could not import members.';
+		} finally {
+			importBusy = false;
+		}
+	}
+
 	const held = $derived((members ?? []).filter((m) => m.status === 'held'));
 	const rest = $derived((members ?? []).filter((m) => m.status !== 'held'));
 
@@ -149,6 +196,39 @@
 				<Button type="submit" disabled={addBusy}>Add member</Button>
 			</div>
 		</form>
+	</Card>
+
+	<Card class="mt-6 p-6">
+		<h2 class="text-lg font-semibold">Import / export members</h2>
+		<p class="mt-1 text-sm text-muted-foreground">
+			Import a CSV of member emails to add them immediately (no confirmation email), or export
+			the current members as a CSV.
+		</p>
+		{#if importMsg}
+			<p class="mt-3 text-sm text-primary">{importMsg}</p>
+		{/if}
+		{#if importError}
+			<p class="mt-3 text-sm text-destructive">{importError}</p>
+		{/if}
+		{#if exportError}
+			<p class="mt-3 text-sm text-destructive">{exportError}</p>
+		{/if}
+		<div class="mt-3 flex flex-wrap items-end gap-2">
+			<label class="space-y-1.5">
+				<span class="text-sm font-medium">CSV file</span>
+				<Input
+					type="file"
+					accept=".csv,text/csv"
+					class="w-64"
+					onchange={(e) => {
+						const el = e.currentTarget as HTMLInputElement;
+						importFile = el.files?.[0] ?? null;
+					}}
+				/>
+			</label>
+			<Button disabled={importBusy || !importFile} onclick={doImport}>Import</Button>
+			<Button variant="outline" disabled={exportBusy} onclick={doExport}>Export</Button>
+		</div>
 	</Card>
 
 	{#if held.length > 0}

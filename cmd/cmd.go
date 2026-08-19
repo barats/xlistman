@@ -20,6 +20,7 @@ import (
 
 	"github.com/barats/xlistman/internal/config"
 	"github.com/barats/xlistman/internal/mail"
+	"github.com/barats/xlistman/internal/members"
 	"github.com/barats/xlistman/internal/model"
 	"github.com/barats/xlistman/internal/queue"
 	"github.com/barats/xlistman/internal/server"
@@ -121,7 +122,8 @@ Commands:
   subscriber re-enable <list> <email>  Re-enable a bounced-out subscriber (resets bounces)
   subscriber reset-bounces <list> <email>  Reset a member's bounce count
   subscriber list <list>         List subscribers
-  subscriber import <list> <file>  Import from CSV
+  subscriber import <list> <file>  Import members from a CSV file
+  subscriber export <list>         Export members to CSV on stdout
   moderation list <list>           List held messages awaiting approval
   moderation approve <id>          Approve and deliver a held message
   moderation reject <id>           Reject a held message (notifies sender)
@@ -1236,36 +1238,51 @@ func cmdSubscriber(args []string) int {
 			fmt.Fprintln(os.Stderr, "get list:", err)
 			return 1
 		}
-		data, err := os.ReadFile(args[2])
+		f, err := os.Open(args[2])
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "read file:", err)
+			fmt.Fprintln(os.Stderr, "open file:", err)
 			return 1
 		}
-		lines := strings.Split(string(data), "\n")
-		count := 0
-		for _, line := range lines {
-			line = strings.TrimSpace(line)
-			if line == "" || strings.HasPrefix(line, "#") {
-				continue
-			}
-			email := line
-			if idx := strings.Index(line, ","); idx >= 0 {
-				email = strings.TrimSpace(line[:idx])
-			}
-			sub, err := s.GetOrCreateSubscriber(ctx, email)
-			if err != nil {
-				continue
-			}
-			subscr, err := s.CreateSubscription(ctx, l.ID, sub.ID)
-			if err != nil {
-				continue // already subscribed
-			}
-			// Manual import bypasses double opt-in, like subscriber add.
-			s.SetSubscriptionStatus(ctx, subscr.ID, model.SubscriptionStatusActive)
-			count++
+		defer f.Close()
+		src, err := members.ParseImport(f)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "import:", err)
+			return 1
 		}
-		recordAudit(ctx, s, l, model.ActionMemberAdd, l.Address(), fmt.Sprintf("imported %d subscribers", count))
-		fmt.Printf("Imported %d subscribers to %s\n", count, args[1])
+		p := &mail.Pipeline{Store: s, WebBaseURL: cfg.Web.BaseURL}
+		res, err := p.ImportMembers(ctx, l.ListName, l.Domain, src, cliActor())
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "import:", err)
+			return 1
+		}
+		fmt.Printf("Imported %d subscribers to %s (skipped %d: %d already subscribed, %d disabled, %d invalid)\n",
+			res.Added, args[1], res.Skipped(), res.Already, res.Disabled, res.Invalid)
+		return 0
+
+	case "export":
+		if len(args) < 2 {
+			fmt.Fprintln(os.Stderr, "usage: xlistman subscriber export <list-addr>")
+			return 1
+		}
+		listName, domain, _ := parseListAddr(args[1])
+		l, err := s.GetList(ctx, listName, domain)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "get list:", err)
+			return 1
+		}
+		views, err := s.ListMembers(ctx, l.ID)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "list members:", err)
+			return 1
+		}
+		rows := make([]members.MemberRow, 0, len(views))
+		for _, v := range views {
+			rows = append(rows, members.MemberRow{Email: v.Email, Status: v.Status, DeliveryMode: v.DeliveryMode, Roles: v.Roles})
+		}
+		if _, err := os.Stdout.Write(members.ExportCSV(rows)); err != nil {
+			fmt.Fprintln(os.Stderr, "write output:", err)
+			return 1
+		}
 		return 0
 	}
 	return 1

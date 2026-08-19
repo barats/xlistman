@@ -288,6 +288,43 @@ export async function addMember(
 	await throwOnError(res);
 }
 
+// --- Member import/export (Phase 14) ---
+
+export interface MemberImportResult {
+	status: string;
+	added: number;
+	skipped: number;
+	already: number;
+	disabled: number;
+	invalid: number;
+}
+
+// exportMembers downloads the list's members as a CSV file.
+export async function exportMembers(domain: string, listName: string): Promise<Blob> {
+	const res = await fetch(
+		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/members/export`
+	);
+	await throwOnError(res);
+	return res.blob();
+}
+
+// importMembers uploads a CSV file of member emails and adds them as Active
+// members (authoritative add).
+export async function importMembers(
+	domain: string,
+	listName: string,
+	file: File
+): Promise<MemberImportResult> {
+	const form = new FormData();
+	form.append('file', file);
+	const res = await fetch(
+		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/members/import`,
+		{ method: 'POST', body: form }
+	);
+	await throwOnError(res);
+	return res.json();
+}
+
 export async function removeMember(
 	domain: string,
 	listName: string,

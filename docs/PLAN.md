@@ -222,3 +222,35 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
   index issued one domain lookup per list (and trimming a read off `/api/me`'s
   per-subscription list lookups).
 - Test suite green (`go test ./...`).
+
+### Phase 14 — CSV member import/export — complete and tested
+- Member migration tooling so a real community can move onto xListman. Posting
+  stays email-only (ADR 0024: the web UI is read/admin-only for list content; no
+  web composer), so this phase is "getting people in," not content.
+- **Export:** Owner-only **Export** button on the Members tab plus CLI
+  `subscriber export <list>`. Columns `email,status,delivery_mode,roles`
+  (roles semicolon-joined), header row, stable order (sorted by email), RFC 4180
+  quoting. The shared `members.ExportCSV` + store `ListMembers` (subscriptions
+  plus role holders who are not subscribed) serve both surfaces so they cannot
+  drift; role holders appear with empty status/delivery columns.
+- **Import:** Owner-only **Import** button (file upload) plus CLI
+  `subscriber import <list> <file>`. Semantics: **authoritative add** —
+  `GetOrCreateSubscriber` → Active, no confirmation, bypassing the list's
+  Subscription Policy (even `Closed`), trust carried by the Owner/administrator's
+  action (same as the Members-tab add and CONTEXT.md's Subscriber definition).
+  Accepts a header row or a bare-emails file; malformed rows (blank or invalid
+  email) are skipped and counted, never aborting the file; Disabled members are
+  skipped and counted (re-enable stays explicit); non-`email` columns are
+  ignored, so an exported file re-imports cleanly; no welcome emails on bulk
+  import even when `welcome_email` is on.
+- **Limits:** hard cap of 10,000 rows per import with whole-file rejection and a
+  clear error if exceeded; per-row best-effort processing; BOM/CRLF tolerated.
+- **Audit:** a single `member.import` Audit Event per list with `added N,
+  skipped M` in the detail, actor = Owner snapshot or CLI operator; export is
+  unrecorded (ADR 0018 records state-changing actions, not reads).
+- Test suite green (`go test ./...`); verified end-to-end in the browser via
+  DOM/text-snapshot checks (no screenshots): owner import of a CSV → members
+  appear and are Active; export → correct file with attachment headers; audit
+  tab shows the `member.import` events; 401 (anonymous) and 403 (moderator)
+  gates; moderator sees no Members tab; mobile viewport renders the
+  import/export card without overflow.

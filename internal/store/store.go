@@ -47,6 +47,10 @@ type Store interface {
 	GetSubscriptionByID(ctx context.Context, id int64) (*model.Subscription, error)
 	ListSubscriptions(ctx context.Context, listID int64) ([]model.Subscription, error)
 	ListSubscriptionsBySubscriber(ctx context.Context, subscriberID int64) ([]model.Subscription, error)
+	// ListMembers returns the list's Members (with their Subscription state)
+	// plus any role holders who are not subscribed, assembled with each
+	// Subscriber's email and roles. Powers the member export (Phase 14).
+	ListMembers(ctx context.Context, listID int64) ([]model.MemberView, error)
 	UpdateSubscriptionDelivery(ctx context.Context, subID int64, mode model.DeliveryMode) error
 	SetSubscriptionStatus(ctx context.Context, subID int64, status model.SubscriptionStatus) error
 	// ReenableSubscription activates a Disabled Subscription and resets its
