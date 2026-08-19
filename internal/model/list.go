@@ -45,6 +45,15 @@ type ListSettings struct {
 	SenderHeldNotice       bool `json:"sender_held_notice"`
 	OwnerAutoDisableNotice bool `json:"owner_auto_disable_notice"`
 
+	// Customizable notice email content. Empty values fall back to the
+	// built-in text at send time.
+	WelcomeSubject    string `json:"welcome_subject"`
+	WelcomeBody       string `json:"welcome_body"`
+	GoodbyeSubject    string `json:"goodbye_subject"`
+	GoodbyeBody       string `json:"goodbye_body"`
+	SenderHeldSubject string `json:"sender_held_subject"`
+	SenderHeldBody    string `json:"sender_held_body"`
+
 	// Bounce handling: consecutive bounces before auto-disable.
 	BounceThreshold int `json:"bounce_threshold"`
 
@@ -101,13 +110,17 @@ func (s ListSettings) ChangedFrom(old ListSettings) []string {
 
 // List is a mailing list, identified by (listname, domain).
 type List struct {
-	ID          int64        `gorm:"primaryKey;autoIncrement"`
-	ListName    string       `gorm:"not null;index:idx_list_domain,unique"`
-	DomainID    int64        `gorm:"not null;index:idx_list_domain,unique"`
-	Description string       `gorm:"not null;default:''"`
-	ListType    ListType     `gorm:"not null;default:'discussion'"`
-	Settings    ListSettings `gorm:"serializer:json"`
-	CreatedAt   time.Time
+	ID          int64  `gorm:"primaryKey;autoIncrement"`
+	ListName    string `gorm:"not null;index:idx_list_domain,unique"`
+	DomainID    int64  `gorm:"not null;index:idx_list_domain,unique"`
+	Description string `gorm:"not null;default:''"`
+	// Instructions is a multi-line, plain-text block shown on the public list
+	// page and the console Overview; owners use it to post guidance for
+	// prospective and current subscribers.
+	Instructions string       `gorm:"not null;default:''"`
+	ListType     ListType     `gorm:"not null;default:'discussion'"`
+	Settings     ListSettings `gorm:"serializer:json"`
+	CreatedAt    time.Time
 	// LastDigestSentAt is the digest watermark: archive posts after this
 	// timestamp are candidates for the next digest. Nil means no digest has
 	// been sent yet.

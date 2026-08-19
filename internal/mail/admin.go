@@ -3,6 +3,7 @@ package mail
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/barats/xlistman/internal/model"
 )
@@ -197,19 +198,49 @@ func (p *Pipeline) subscriptionContext(ctx context.Context, listID, subscriberID
 }
 
 func (p *Pipeline) enqueueWelcome(ctx context.Context, l *model.List, sub *model.Subscriber) error {
-	bodyText := fmt.Sprintf("You are now subscribed to %s.\n\n"+
-		"To change your delivery preferences or unsubscribe, visit %s/me.\n", l.Address(), p.WebBaseURL)
+	subject := l.Settings.WelcomeSubject
+	body := l.Settings.WelcomeBody
+	if subject == "" {
+		subject = "Welcome to " + l.Address()
+	}
+	if body == "" {
+		body = fmt.Sprintf("You are now subscribed to %s.\n\n"+
+			"To change your delivery preferences or unsubscribe, visit %s/me.\n", l.Address(), p.WebBaseURL)
+	}
+	subject = renderNoticeTemplate(subject, l.Address(), sub.Email, p.WebBaseURL, "")
+	body = renderNoticeTemplate(body, l.Address(), sub.Email, p.WebBaseURL, "")
 	return p.Store.Enqueue(ctx, l.ID, l.Address(), sub.Email,
-		buildNotice(l.Address(), sub.Email, l.Address()+"-owner@"+l.Domain, "Welcome to "+l.Address(), bodyText),
+		buildNotice(l.Address(), sub.Email, l.Address()+"-owner@"+l.Domain, subject, body),
 		l.Address(), "")
 }
 
 func (p *Pipeline) enqueueGoodbye(ctx context.Context, l *model.List, sub *model.Subscriber) error {
-	bodyText := fmt.Sprintf("You have been unsubscribed from %s.\n\n"+
-		"If this was a mistake, you can resubscribe at %s.\n", l.Address(), p.WebBaseURL)
+	subject := l.Settings.GoodbyeSubject
+	body := l.Settings.GoodbyeBody
+	if subject == "" {
+		subject = "You have been unsubscribed from " + l.Address()
+	}
+	if body == "" {
+		body = fmt.Sprintf("You have been unsubscribed from %s.\n\n"+
+			"If this was a mistake, you can resubscribe at %s.\n", l.Address(), p.WebBaseURL)
+	}
+	subject = renderNoticeTemplate(subject, l.Address(), sub.Email, p.WebBaseURL, "")
+	body = renderNoticeTemplate(body, l.Address(), sub.Email, p.WebBaseURL, "")
 	return p.Store.Enqueue(ctx, l.ID, l.Address(), sub.Email,
-		buildNotice(l.Address(), sub.Email, l.Address()+"-owner@"+l.Domain, "You have been unsubscribed from "+l.Address(), bodyText),
+		buildNotice(l.Address(), sub.Email, l.Address()+"-owner@"+l.Domain, subject, body),
 		l.Address(), "")
+}
+
+// renderNoticeTemplate substitutes the owner-customized notice placeholders:
+// {list} (list address), {email} (recipient), {url} (web UI base), and
+// {subject} (only meaningful for the sender-held notice).
+func renderNoticeTemplate(template, listAddr, email, baseURL, subject string) string {
+	return strings.NewReplacer(
+		"{list}", listAddr,
+		"{email}", email,
+		"{url}", baseURL,
+		"{subject}", subject,
+	).Replace(template)
 }
 
 func (p *Pipeline) enqueueSubscriptionRejected(ctx context.Context, l *model.List, sub *model.Subscriber) error {

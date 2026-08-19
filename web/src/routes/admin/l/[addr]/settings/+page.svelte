@@ -75,6 +75,15 @@
 					<Input id="description" bind:value={data.description} placeholder="What is this list for?" />
 				</div>
 				<div class="space-y-1.5">
+					<Label for="instructions">Instructions</Label>
+					<textarea
+						id="instructions"
+						class="flex min-h-28 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+						placeholder="Multi-line guidance shown on the public list page, e.g. how to post or what the list is for."
+						bind:value={data.instructions}
+					></textarea>
+				</div>
+				<div class="space-y-1.5">
 					<Label for="subject-prefix">Subject prefix</Label>
 					<Input
 						id="subject-prefix"
@@ -219,33 +228,6 @@
 				</div>
 				<label class="flex items-center justify-between gap-4 py-3">
 					<div>
-						<p class="text-sm font-medium">Welcome email</p>
-						<p class="text-sm text-muted-foreground">
-							Send new members a welcome message when their subscription activates.
-						</p>
-					</div>
-					<input type="checkbox" class="size-4" bind:checked={data.settings.welcome_email} />
-				</label>
-				<label class="flex items-center justify-between gap-4 py-3">
-					<div>
-						<p class="text-sm font-medium">Goodbye email</p>
-						<p class="text-sm text-muted-foreground">
-							Send a message when a member is removed.
-						</p>
-					</div>
-					<input type="checkbox" class="size-4" bind:checked={data.settings.goodbye_email} />
-				</label>
-				<label class="flex items-center justify-between gap-4 py-3">
-					<div>
-						<p class="text-sm font-medium">Sender held notice</p>
-						<p class="text-sm text-muted-foreground">
-							Tell a poster their message is awaiting approval.
-						</p>
-					</div>
-					<input type="checkbox" class="size-4" bind:checked={data.settings.sender_held_notice} />
-				</label>
-				<label class="flex items-center justify-between gap-4 py-3">
-					<div>
 						<p class="text-sm font-medium">Owner auto-disable notice</p>
 						<p class="text-sm text-muted-foreground">
 							Notify owners when a member is auto-disabled by bounces.
@@ -257,6 +239,88 @@
 						bind:checked={data.settings.owner_auto_disable_notice}
 					/>
 				</label>
+			</div>
+		</Card>
+
+		<Card class="p-6">
+			<h2 class="text-lg font-semibold">Email notices</h2>
+			<p class="mt-1 text-sm text-muted-foreground">
+				Customize each notice's subject and body. Leave a field empty to use the default text.
+				Placeholders: <code class="rounded bg-muted px-1">{'{list}'}</code> (list address),{' '}
+				<code class="rounded bg-muted px-1">{'{email}'}</code> (recipient),{' '}
+				<code class="rounded bg-muted px-1">{'{url}'}</code> (web UI), and for the held notice{' '}
+				<code class="rounded bg-muted px-1">{'{subject}'}</code> (the post subject).
+			</p>
+			<div class="mt-2 divide-y">
+				<div class="py-3">
+					<label class="flex items-center justify-between gap-4">
+						<div>
+							<p class="text-sm font-medium">Welcome email</p>
+							<p class="text-sm text-muted-foreground">Sent when a subscription activates.</p>
+						</div>
+						<input type="checkbox" class="size-4" bind:checked={data.settings.welcome_email} />
+					</label>
+					<div class="mt-3 grid gap-3 sm:grid-cols-2">
+						<div class="space-y-1.5">
+							<Label for="notice-subject-welcome">Subject</Label>
+							<Input id="notice-subject-welcome" bind:value={data.settings.welcome_subject} />
+						</div>
+					</div>
+					<div class="mt-3 space-y-1.5">
+						<Label for="notice-body-welcome">Body</Label>
+						<textarea
+							id="notice-body-welcome"
+							class="flex min-h-24 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+							bind:value={data.settings.welcome_body}
+						></textarea>
+					</div>
+				</div>
+				<div class="py-3">
+					<label class="flex items-center justify-between gap-4">
+						<div>
+							<p class="text-sm font-medium">Goodbye email</p>
+							<p class="text-sm text-muted-foreground">Sent when a member is removed.</p>
+						</div>
+						<input type="checkbox" class="size-4" bind:checked={data.settings.goodbye_email} />
+					</label>
+					<div class="mt-3 grid gap-3 sm:grid-cols-2">
+						<div class="space-y-1.5">
+							<Label for="notice-subject-goodbye">Subject</Label>
+							<Input id="notice-subject-goodbye" bind:value={data.settings.goodbye_subject} />
+						</div>
+					</div>
+					<div class="mt-3 space-y-1.5">
+						<Label for="notice-body-goodbye">Body</Label>
+						<textarea
+							id="notice-body-goodbye"
+							class="flex min-h-24 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+							bind:value={data.settings.goodbye_body}
+						></textarea>
+					</div>
+				</div>
+				<div class="py-3">
+					<label class="flex items-center justify-between gap-4">
+						<div>
+							<p class="text-sm font-medium">Sender held notice</p>
+							<p class="text-sm text-muted-foreground">Sent when a post awaits approval.</p>
+						</div>
+						<input type="checkbox" class="size-4" bind:checked={data.settings.sender_held_notice} />
+					</label>
+					<div class="mt-3 grid gap-3 sm:grid-cols-2">
+						<div class="space-y-1.5">
+							<Label for="notice-subject-sender-held">Subject</Label>
+							<Input id="notice-subject-sender-held" bind:value={data.settings.sender_held_subject} />
+						</div>
+					</div>
+					<div class="mt-3 space-y-1.5">
+						<Label for="notice-body-sender-held">Body</Label>
+						<textarea
+							id="notice-body-sender-held"
+							class="flex min-h-24 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+							bind:value={data.settings.sender_held_body}
+						></textarea>
+					</div>
+				</div>
 			</div>
 		</Card>
 

@@ -17,6 +17,7 @@ export interface ListInfo {
 	list_name: string;
 	domain: string;
 	description: string;
+	instructions: string;
 	list_type: string;
 	subscription_policy: string;
 	moderation_enabled: boolean;
@@ -100,6 +101,7 @@ export interface ConsoleListInfo {
 	domain: string;
 	list_type: string;
 	description: string;
+	instructions: string;
 	roles: string[];
 }
 
@@ -119,12 +121,19 @@ export interface ListSettings {
 	goodbye_email: boolean;
 	sender_held_notice: boolean;
 	owner_auto_disable_notice: boolean;
+	welcome_subject: string;
+	welcome_body: string;
+	goodbye_subject: string;
+	goodbye_body: string;
+	sender_held_subject: string;
+	sender_held_body: string;
 	bounce_threshold: number;
 	held_expiry_days: number;
 }
 
 export interface ConsoleSettings {
 	description: string;
+	instructions: string;
 	list_type: string;
 	settings: ListSettings;
 }

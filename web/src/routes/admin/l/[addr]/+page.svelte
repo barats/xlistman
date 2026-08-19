@@ -61,5 +61,8 @@
 		<p class="mt-1 text-sm text-muted-foreground">
 			{info.description || 'No description yet. Owners can edit it in Settings.'}
 		</p>
+		{#if info.instructions}
+			<p class="mt-3 whitespace-pre-wrap text-sm leading-relaxed">{info.instructions}</p>
+		{/if}
 	</Card>
 {/if}

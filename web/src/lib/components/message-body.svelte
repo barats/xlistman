@@ -50,27 +50,31 @@
 </script>
 
 {#if hasBody && msg.text && msg.html}
-	<div class="mb-2 flex items-center gap-1">
-		<button
-			type="button"
-			class="rounded-md px-2 py-0.5 text-xs font-medium transition-colors"
-			class:bg-primary={mode === 'plain'}
-			class:text-primary-foreground={mode === 'plain'}
-			class:text-muted-foreground={mode !== 'plain'}
-			onclick={() => (mode = 'plain')}
-		>
-			Plain text
-		</button>
-		<button
-			type="button"
-			class="rounded-md px-2 py-0.5 text-xs font-medium transition-colors"
-			class:bg-primary={mode === 'html'}
-			class:text-primary-foreground={mode === 'html'}
-			class:text-muted-foreground={mode !== 'html'}
-			onclick={() => (mode = 'html')}
-		>
-			HTML
-		</button>
+	<div class="mb-2 flex justify-end">
+		<div class="inline-flex rounded-md bg-muted p-0.5" role="group" aria-label="View mode">
+			<button
+				type="button"
+				class="rounded px-2.5 py-1 text-xs font-medium transition-colors"
+				class:bg-background={mode === 'plain'}
+				class:text-foreground={mode === 'plain'}
+				class:text-muted-foreground={mode !== 'plain'}
+				class:shadow-sm={mode === 'plain'}
+				onclick={() => (mode = 'plain')}
+			>
+				Plain text
+			</button>
+			<button
+				type="button"
+				class="rounded px-2.5 py-1 text-xs font-medium transition-colors"
+				class:bg-background={mode === 'html'}
+				class:text-foreground={mode === 'html'}
+				class:text-muted-foreground={mode !== 'html'}
+				class:shadow-sm={mode === 'html'}
+				onclick={() => (mode = 'html')}
+			>
+				HTML
+			</button>
+		</div>
 	</div>
 {/if}
 

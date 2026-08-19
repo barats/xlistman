@@ -293,10 +293,19 @@ func buildModerationNotice(from, to, replyTo, subject, introText string, origina
 // notifySenderHeld emails the post's sender that their message is awaiting
 // moderator approval.
 func (p *Pipeline) notifySenderHeld(ctx context.Context, l *model.List, senderAddr, subject string) error {
-	bodyText := fmt.Sprintf("Your message to %s has been received and is awaiting moderator approval.\n"+
-		"If it is not approved, you will not receive a further notification.\n", l.Address())
+	subj := l.Settings.SenderHeldSubject
+	body := l.Settings.SenderHeldBody
+	if subj == "" {
+		subj = "Your message to " + l.Address() + " is being reviewed"
+	}
+	if body == "" {
+		body = fmt.Sprintf("Your message to %s has been received and is awaiting moderator approval.\n"+
+			"If it is not approved, you will not receive a further notification.\n", l.Address())
+	}
+	subj = renderNoticeTemplate(subj, l.Address(), senderAddr, p.WebBaseURL, subject)
+	body = renderNoticeTemplate(body, l.Address(), senderAddr, p.WebBaseURL, subject)
 	return p.Store.Enqueue(ctx, l.ID, l.Address(), senderAddr,
-		buildNotice(l.Address(), senderAddr, l.Address()+"-owner@"+l.Domain, "Your message to "+l.Address()+" is being reviewed", bodyText),
+		buildNotice(l.Address(), senderAddr, l.Address()+"-owner@"+l.Domain, subj, body),
 		l.Address(), "")
 }
 

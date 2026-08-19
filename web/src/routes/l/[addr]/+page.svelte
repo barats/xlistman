@@ -76,6 +76,15 @@
 		</div>
 	</dl>
 
+	{#if info.instructions}
+		<div class="mt-6 rounded-md border bg-muted/30 p-4">
+			<h2 class="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+				About this list
+			</h2>
+			<p class="mt-2 whitespace-pre-wrap text-sm leading-relaxed">{info.instructions}</p>
+		</div>
+	{/if}
+
 	<div class="mt-6">
 		<a href={`/l/${addr}/archives`} class={buttonVariants({ variant: 'outline' })}>
 			Browse archives

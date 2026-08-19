@@ -215,12 +215,15 @@ func parseListAddr(addr string) (listName, domain string, err error) {
 
 // applyListSetting applies one key=value pair from `list config` to the
 // list's settings, returning ok=false for an unknown key. Keys match the
-// ListSettings JSON names; description is a list-level field.
-func applyListSetting(s *model.ListSettings, desc *string, descSet *bool, key, val string) (bool, error) {
+// ListSettings JSON names; description and instructions are list-level fields.
+func applyListSetting(s *model.ListSettings, desc *string, descSet *bool, instr *string, instrSet *bool, key, val string) (bool, error) {
 	switch key {
 	case "description":
 		*desc = val
 		*descSet = true
+	case "instructions":
+		*instr = val
+		*instrSet = true
 	case "moderation_enabled":
 		b, err := strconv.ParseBool(val)
 		if err != nil {
@@ -304,6 +307,18 @@ func applyListSetting(s *model.ListSettings, desc *string, descSet *bool, key, v
 			return true, fmt.Errorf("expected true or false")
 		}
 		s.OwnerAutoDisableNotice = b
+	case "welcome_subject":
+		s.WelcomeSubject = val
+	case "welcome_body":
+		s.WelcomeBody = val
+	case "goodbye_subject":
+		s.GoodbyeSubject = val
+	case "goodbye_body":
+		s.GoodbyeBody = val
+	case "sender_held_subject":
+		s.SenderHeldSubject = val
+	case "sender_held_body":
+		s.SenderHeldBody = val
 	case "bounce_threshold":
 		n, err := strconv.Atoi(val)
 		if err != nil || n < 0 {
@@ -787,6 +802,7 @@ func cmdList(args []string) int {
 		fmt.Printf("List: %s\n", l.Address())
 		fmt.Printf("type: %s\n", l.ListType)
 		fmt.Printf("description: %s\n", l.Description)
+		fmt.Printf("instructions: %s\n", l.Instructions)
 		fmt.Printf("moderation_enabled: %v\n", st.ModerationEnabled)
 		fmt.Printf("subject_prefix: %s\n", st.SubjectPrefix)
 		fmt.Printf("footer_enabled: %v\n", st.FooterEnabled)
@@ -802,6 +818,12 @@ func cmdList(args []string) int {
 		fmt.Printf("goodbye_email: %v\n", st.GoodbyeEmail)
 		fmt.Printf("sender_held_notice: %v\n", st.SenderHeldNotice)
 		fmt.Printf("owner_auto_disable_notice: %v\n", st.OwnerAutoDisableNotice)
+		fmt.Printf("welcome_subject: %s\n", st.WelcomeSubject)
+		fmt.Printf("welcome_body: %s\n", st.WelcomeBody)
+		fmt.Printf("goodbye_subject: %s\n", st.GoodbyeSubject)
+		fmt.Printf("goodbye_body: %s\n", st.GoodbyeBody)
+		fmt.Printf("sender_held_subject: %s\n", st.SenderHeldSubject)
+		fmt.Printf("sender_held_body: %s\n", st.SenderHeldBody)
 		fmt.Printf("bounce_threshold: %d\n", st.BounceThreshold)
 		fmt.Printf("held_expiry_days: %d\n", st.HeldExpiryDays)
 		return 0
@@ -822,6 +844,9 @@ func cmdList(args []string) int {
 		desc := l.Description
 		oldDesc := l.Description
 		descSet := false
+		instr := l.Instructions
+		oldInstr := l.Instructions
+		instrSet := false
 		for _, kv := range args[2:] {
 			eq := strings.Index(kv, "=")
 			if eq <= 0 {
@@ -830,7 +855,7 @@ func cmdList(args []string) int {
 			}
 			key := strings.ToLower(strings.TrimSpace(kv[:eq]))
 			val := strings.TrimSpace(kv[eq+1:])
-			ok, err := applyListSetting(&settings, &desc, &descSet, key, val)
+			ok, err := applyListSetting(&settings, &desc, &descSet, &instr, &instrSet, key, val)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "setting", key+":", err)
 				return 1
@@ -854,9 +879,18 @@ func cmdList(args []string) int {
 				return 1
 			}
 		}
+		if instrSet {
+			if err := s.UpdateListInstructions(ctx, l.ID, instr); err != nil {
+				fmt.Fprintln(os.Stderr, "update instructions:", err)
+				return 1
+			}
+		}
 		changed := settings.ChangedFrom(oldSettings)
 		if descSet && desc != oldDesc {
 			changed = append(changed, "description")
+		}
+		if instrSet && instr != oldInstr {
+			changed = append(changed, "instructions")
 		}
 		recordAudit(ctx, s, l, model.ActionSettingsUpdate, l.Address(), strings.Join(changed, ", "))
 		fmt.Printf("Updated settings for %s\n", l.Address())

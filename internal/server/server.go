@@ -305,6 +305,7 @@ func (s *Server) handleListInfo(w http.ResponseWriter, r *http.Request, l *model
 		"list_name":           l.ListName,
 		"domain":              l.Domain,
 		"description":         l.Description,
+		"instructions":        l.Instructions,
 		"list_type":           string(l.ListType),
 		"subscription_policy": string(l.Settings.SubscriptionPolicy),
 		"moderation_enabled":  l.Settings.ModerationEnabled,

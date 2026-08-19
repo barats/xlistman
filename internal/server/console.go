@@ -194,12 +194,13 @@ func (s *Server) handleConsoleListInfo(w http.ResponseWriter, r *http.Request, l
 		roles = append(roles, "moderator")
 	}
 	writeJSON(w, 200, map[string]any{
-		"address":     l.Address(),
-		"list_name":   l.ListName,
-		"domain":      l.Domain,
-		"list_type":   string(l.ListType),
-		"description": l.Description,
-		"roles":       roles,
+		"address":      l.Address(),
+		"list_name":    l.ListName,
+		"domain":       l.Domain,
+		"list_type":    string(l.ListType),
+		"description":  l.Description,
+		"instructions": l.Instructions,
+		"roles":        roles,
 	})
 }
 
@@ -466,8 +467,9 @@ func (s *Server) handleConsoleSettings(w http.ResponseWriter, r *http.Request, l
 	ctx := r.Context()
 	if r.Method == http.MethodPut {
 		var body struct {
-			Description string             `json:"description"`
-			Settings    model.ListSettings `json:"settings"`
+			Description  string             `json:"description"`
+			Instructions string             `json:"instructions"`
+			Settings     model.ListSettings `json:"settings"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			writeJSON(w, 400, map[string]string{"error": "invalid request body"})
@@ -491,9 +493,16 @@ func (s *Server) handleConsoleSettings(w http.ResponseWriter, r *http.Request, l
 			writeJSON(w, 500, map[string]string{"error": "failed to update settings"})
 			return
 		}
+		if err := s.Store.UpdateListInstructions(ctx, l.ID, body.Instructions); err != nil {
+			writeJSON(w, 500, map[string]string{"error": "failed to update settings"})
+			return
+		}
 		changed := l.Settings.ChangedFrom(body.Settings)
 		if body.Description != l.Description {
 			changed = append(changed, "description")
+		}
+		if body.Instructions != l.Instructions {
+			changed = append(changed, "instructions")
 		}
 		actor, _ := subscriberFrom(r)
 		s.audit(ctx, l, model.ActionSettingsUpdate, subscriberActor(actor), l.Address(), strings.Join(changed, ", "))
@@ -505,9 +514,10 @@ func (s *Server) handleConsoleSettings(w http.ResponseWriter, r *http.Request, l
 		return
 	}
 	writeJSON(w, 200, map[string]any{
-		"description": l.Description,
-		"list_type":   string(l.ListType),
-		"settings":    l.Settings,
+		"description":  l.Description,
+		"instructions": l.Instructions,
+		"list_type":    string(l.ListType),
+		"settings":     l.Settings,
 	})
 }
 

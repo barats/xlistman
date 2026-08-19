@@ -344,6 +344,11 @@ func (s *Store) UpdateListDescription(ctx context.Context, listID int64, descrip
 		Update("description", description).Error
 }
 
+func (s *Store) UpdateListInstructions(ctx context.Context, listID int64, instructions string) error {
+	return s.db.WithContext(ctx).Model(&model.List{}).Where("id = ?", listID).
+		Update("instructions", instructions).Error
+}
+
 // --- Subscriber operations ---
 
 func (s *Store) GetOrCreateSubscriber(ctx context.Context, email string) (*model.Subscriber, error) {

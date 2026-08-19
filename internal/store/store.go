@@ -28,6 +28,7 @@ type Store interface {
 	DeleteList(ctx context.Context, listName, domainName string) error
 	UpdateListSettings(ctx context.Context, listID int64, settings model.ListSettings) error
 	UpdateListDescription(ctx context.Context, listID int64, description string) error
+	UpdateListInstructions(ctx context.Context, listID int64, instructions string) error
 	UpdateListType(ctx context.Context, listID int64, listType model.ListType) error
 
 	// Administrator operations

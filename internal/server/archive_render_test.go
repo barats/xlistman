@@ -148,3 +148,33 @@ func TestSettingsRejectNegativeAttachmentSize(t *testing.T) {
 		t.Errorf("negative max_attachment_size status = %d, want 400", resp.StatusCode)
 	}
 }
+
+func TestListInstructionsRoundTrip(t *testing.T) {
+	_, st, baseURL := newTestServer(t)
+	l := setupList(t, st)
+	admin, _ := st.GetOrCreateSubscriber(context.Background(), "admin@example.com")
+	st.AddOwner(context.Background(), l.ID, admin.ID)
+	cookies := login(t, st, baseURL, "admin@example.com")
+
+	// An owner saves multi-line instructions.
+	resp, _ := do(t, baseURL, "PUT", "/api/console/lists/example.com/dev/settings",
+		`{"description":"Dev","instructions":"Line one\nLine two","settings":{}}`, cookies)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("save instructions status = %d, want 200", resp.StatusCode)
+	}
+
+	// The public list info exposes them (no auth needed to read).
+	resp, body := do(t, baseURL, "GET", "/api/lists/example.com/dev", "", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("public info status = %d, want 200", resp.StatusCode)
+	}
+	if !strings.Contains(body, `"instructions":"Line one\nLine two"`) {
+		t.Errorf("public info missing instructions: %s", body)
+	}
+
+	// The console settings echo them back to the owner.
+	resp, body = do(t, baseURL, "GET", "/api/console/lists/example.com/dev/settings", "", cookies)
+	if resp.StatusCode != http.StatusOK || !strings.Contains(body, `"instructions":"Line one\nLine two"`) {
+		t.Errorf("console settings missing instructions: %s", body)
+	}
+}
