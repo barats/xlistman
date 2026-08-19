@@ -55,7 +55,7 @@
 {:else}
 	<div class="flex flex-wrap items-center justify-between gap-3">
 		<div class="min-w-0">
-			<h1 class="truncate text-3xl font-bold tracking-tight">{info.address}</h1>
+			<h1 class="truncate font-mono text-3xl font-bold tracking-tight">{info.address}</h1>
 			<p class="mt-1 text-muted-foreground">{info.description || 'No description'}</p>
 		</div>
 		<Badge variant="secondary" class="shrink-0">{info.list_type}</Badge>

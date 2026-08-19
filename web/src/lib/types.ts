@@ -114,6 +114,18 @@ export interface ConsoleMember {
 	roles: string[];
 }
 
+// MemberPage is the paged envelope returned by the console members endpoint:
+// one page of the non-held roster plus the total matching count for
+// pagination, and the full held-subscription queue surfaced separately so it
+// is never buried by roster paging.
+export interface MemberPage {
+	members: ConsoleMember[];
+	held: ConsoleMember[];
+	total: number;
+	limit: number;
+	offset: number;
+}
+
 export interface BounceMember {
 	subscriber_id: number;
 	email: string;
@@ -179,4 +191,13 @@ export interface AuditEvent {
 	actor_detail?: string;
 	target: string;
 	detail: string;
+}
+
+// AuditEventPage is the paged envelope returned by the audit endpoints: the
+// newest page of events plus the total count for pagination.
+export interface AuditEventPage {
+	events: AuditEvent[];
+	total: number;
+	limit: number;
+	offset: number;
 }

@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { getBounces, reenableBounceMember, resetBounceCount } from '$lib/api';
 	import type { BounceMember } from '$lib/types';
+	import { statusVariant } from '$lib/status';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Skeleton } from '$lib/components/ui/skeleton';
@@ -42,10 +43,6 @@
 			busyId = null;
 		}
 	}
-
-	function statusVariant(status: string): 'default' | 'secondary' | 'destructive' | 'outline' {
-		return status === 'disabled' ? 'destructive' : status === 'active' ? 'default' : 'outline';
-	}
 </script>
 
 <h2 class="text-lg font-semibold">Bounces</h2>
@@ -56,7 +53,7 @@
 </p>
 
 {#if actionOk}
-	<p class="mt-3 rounded-md border bg-muted/50 px-3 py-2 text-sm">{actionOk}</p>
+	<p class="mt-3 rounded-md border border-success/40 bg-success/10 px-3 py-2 text-sm">{actionOk}</p>
 {/if}
 {#if error}
 	<p class="mt-3 text-sm text-destructive">{error}</p>
@@ -74,7 +71,7 @@
 			<li class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
 				<div class="min-w-0">
 					<div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-						<span class="truncate text-sm font-medium">{m.email}</span>
+						<span class="truncate font-mono text-sm font-medium">{m.email}</span>
 						<Badge variant={statusVariant(m.status)} class="capitalize">{m.status}</Badge>
 					</div>
 					<p class="mt-0.5 text-xs text-muted-foreground">

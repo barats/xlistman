@@ -240,7 +240,7 @@ func TestAuditTrailRecorded(t *testing.T) {
 	}
 
 	listID := l.ID
-	events, err := s.ListAuditEvents(ctx, &listID, "", 0)
+	events, err := s.ListAuditEvents(ctx, &listID, "", 0, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,7 +263,7 @@ func TestAuditTrailRecorded(t *testing.T) {
 	d, _ := s.GetDomain(ctx, "example.com")
 	other, _ := s.CreateList(ctx, "other", d.ID, "example.com", "", model.ListTypeDiscussion)
 	otherID := other.ID
-	otherEvents, _ := s.ListAuditEvents(ctx, &otherID, "", 0)
+	otherEvents, _ := s.ListAuditEvents(ctx, &otherID, "", 0, 0)
 	if len(otherEvents) != 0 {
 		t.Errorf("other list audit = %d events, want 0", len(otherEvents))
 	}

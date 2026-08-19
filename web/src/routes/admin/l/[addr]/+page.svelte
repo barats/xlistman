@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { getConsoleListInfo, getConsoleMembers, getHeldMessages } from '$lib/api';
-	import type { ConsoleListInfo, ConsoleMember, HeldMessage } from '$lib/types';
+	import type { ConsoleListInfo, HeldMessage, MemberPage } from '$lib/types';
 	import { Card } from '$lib/components/ui/card';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 
@@ -12,7 +12,7 @@
 	const domain = addr.slice(at + 1);
 
 	let info = $state<ConsoleListInfo | null>(null);
-	let members = $state<ConsoleMember[] | null>(null);
+	let memberPage = $state<MemberPage | null>(null);
 	let held = $state<HeldMessage[] | null>(null);
 	let error = $state('');
 
@@ -22,15 +22,15 @@
 			held = await getHeldMessages(domain, listName);
 			// Member statistics are owner-only; moderators see a placeholder.
 			if (info.roles.includes('owner')) {
-				members = await getConsoleMembers(domain, listName);
+				memberPage = await getConsoleMembers(domain, listName, { limit: 1 });
 			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Could not load the overview.';
 		}
 	});
 
-	const memberCount = $derived(members ? members.filter((m) => m.status).length : null);
-	const pendingCount = $derived(members ? members.filter((m) => m.status === 'held').length : null);
+	const memberCount = $derived(memberPage ? memberPage.total + memberPage.held.length : null);
+	const pendingCount = $derived(memberPage ? memberPage.held.length : null);
 </script>
 
 {#if error}

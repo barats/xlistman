@@ -1,15 +1,10 @@
 <script lang="ts">
 	import type { AuditEvent } from '$lib/types';
 	import { auditActionLabels } from '$lib/audit';
+	import { fmtDate } from '$lib/dates';
 
 	// showList renders the list address on each event (instance-wide view).
 	let { events, showList = false }: { events: AuditEvent[]; showList?: boolean } = $props();
-
-	function fmtTime(iso: string): string {
-		const d = new Date(iso);
-		if (Number.isNaN(d.getTime())) return iso;
-		return d.toLocaleString();
-	}
 
 	function actorLabel(e: AuditEvent): string {
 		if (e.actor_kind === 'cli') {
@@ -35,7 +30,7 @@
 					{/if}
 				</div>
 				<div class="mt-1 text-sm text-muted-foreground">
-					{actorLabel(e)} &middot; {fmtTime(e.at)}
+					{actorLabel(e)} &middot; {fmtDate(e.at)}
 				</div>
 				{#if e.target}
 					<div class="mt-0.5 text-xs text-muted-foreground">On: {e.target}</div>

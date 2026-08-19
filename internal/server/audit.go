@@ -58,11 +58,27 @@ func (s *Server) handleAdminAudit(w http.ResponseWriter, r *http.Request) {
 	s.writeAuditEvents(w, r, nil, r.URL.Query().Get("action"))
 }
 
-// writeAuditEvents writes Audit Events newest-first as JSON.
+// writeAuditEvents writes Audit Events newest-first as JSON, paged. The web
+// console shows the most recent 500 events; deeper history is the CLI's job
+// (xlistman audit ...), so no pager beyond limit/offset is offered here.
 func (s *Server) writeAuditEvents(w http.ResponseWriter, r *http.Request, listID *int64, action string) {
-	events, err := s.Store.ListAuditEvents(r.Context(), listID, action, 0)
+	limit := queryIntDefault(r, "limit", 500)
+	if limit <= 0 || limit > 500 {
+		limit = 500
+	}
+	offset := queryIntDefault(r, "offset", 0)
+	if offset < 0 {
+		offset = 0
+	}
+	events, err := s.Store.ListAuditEvents(r.Context(), listID, action, limit, offset)
 	if err != nil {
 		s.Logger.Error("list audit events", "error", err)
+		writeJSON(w, 500, map[string]string{"error": "failed to load audit events"})
+		return
+	}
+	total, err := s.Store.CountAuditEvents(r.Context(), listID, action)
+	if err != nil {
+		s.Logger.Error("count audit events", "error", err)
 		writeJSON(w, 500, map[string]string{"error": "failed to load audit events"})
 		return
 	}
@@ -91,5 +107,10 @@ func (s *Server) writeAuditEvents(w http.ResponseWriter, r *http.Request, listID
 			Detail:      e.Detail,
 		})
 	}
-	writeJSON(w, 200, result)
+	writeJSON(w, 200, map[string]any{
+		"events": result,
+		"total":  total,
+		"limit":  limit,
+		"offset": offset,
+	})
 }

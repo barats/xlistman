@@ -1,0 +1,1 @@
+function e(e){switch(e){case`active`:return`secondary`;case`held`:return`warning`;case`disabled`:return`destructive`;default:return`outline`}}export{e as t};

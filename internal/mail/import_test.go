@@ -98,7 +98,7 @@ func TestImportMembersRecordsOneAuditEvent(t *testing.T) {
 		t.Fatalf("ImportMembers: %v", err)
 	}
 
-	events, err := s.ListAuditEvents(ctx, &l.ID, model.ActionMemberImport, 0)
+	events, err := s.ListAuditEvents(ctx, &l.ID, model.ActionMemberImport, 0, 0)
 	if err != nil {
 		t.Fatalf("ListAuditEvents: %v", err)
 	}

@@ -1422,7 +1422,7 @@ func cmdAudit(args []string) int {
 			return 1
 		}
 		listID := l.ID
-		events, err := s.ListAuditEvents(ctx, &listID, action, 0)
+		events, err := s.ListAuditEvents(ctx, &listID, action, 0, 0)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "list audit events:", err)
 			return 1
@@ -1431,7 +1431,7 @@ func cmdAudit(args []string) int {
 		return 0
 
 	case "server":
-		events, err := s.ListAuditEvents(ctx, nil, action, 0)
+		events, err := s.ListAuditEvents(ctx, nil, action, 0, 0)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "list audit events:", err)
 			return 1

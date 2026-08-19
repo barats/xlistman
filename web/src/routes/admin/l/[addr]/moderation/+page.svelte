@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { getHeldMessages, moderate } from '$lib/api';
 	import type { HeldMessage } from '$lib/types';
+	import { fmtRelative } from '$lib/dates';
 	import { Button } from '$lib/components/ui/button';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 
@@ -40,10 +41,6 @@
 			busyHeldId = null;
 		}
 	}
-
-	function fmtDate(iso: string): string {
-		return new Date(iso).toLocaleString();
-	}
 </script>
 
 {#if heldError}
@@ -64,7 +61,7 @@
 				<a href={`/admin/l/${addr}/held/${m.id}`} class="block min-w-0">
 					<p class="truncate font-medium">{m.subject || '(no subject)'}</p>
 					<p class="mt-0.5 truncate text-sm text-muted-foreground">
-						{m.sender} · {fmtDate(m.received_at)}
+						{m.sender} &middot; {fmtRelative(m.received_at)}
 					</p>
 				</a>
 				<div class="flex shrink-0 gap-2">

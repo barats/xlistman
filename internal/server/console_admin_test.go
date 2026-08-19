@@ -69,7 +69,8 @@ func TestConsoleMembers(t *testing.T) {
 	ownerCookies := login(t, st, baseURL, owner.Email)
 	base := "/api/console/lists/example.com/dev/members"
 
-	// Owner lists members: alice is an active member with no roles.
+	// Owner lists members: alice is an active member with no roles. The
+	// endpoint returns a paged envelope {members, total, limit, offset}.
 	resp, body := do(t, baseURL, "GET", base, "", ownerCookies)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("get members status = %d, want 200; body=%s", resp.StatusCode, body)
@@ -77,12 +78,24 @@ func TestConsoleMembers(t *testing.T) {
 	if !strings.Contains(body, "alice@example.com") {
 		t.Errorf("member list missing alice: %s", body)
 	}
-	// Roles must be a JSON array (never null) so the frontend can iterate.
-	var got []map[string]any
-	if err := json.Unmarshal([]byte(body), &got); err != nil {
+	var env struct {
+		Members []map[string]any `json:"members"`
+		Held    []map[string]any `json:"held"`
+		Total   int64            `json:"total"`
+		Limit   int              `json:"limit"`
+		Offset  int              `json:"offset"`
+	}
+	if err := json.Unmarshal([]byte(body), &env); err != nil {
 		t.Fatalf("unmarshal members: %v", err)
 	}
-	for _, m := range got {
+	if env.Total < 1 || env.Limit < 1 || env.Offset != 0 {
+		t.Errorf("members envelope = total %d limit %d offset %d", env.Total, env.Limit, env.Offset)
+	}
+	if env.Held == nil {
+		t.Errorf("members envelope missing held queue")
+	}
+	// Roles must be a JSON array (never null) so the frontend can iterate.
+	for _, m := range env.Members {
 		roles, ok := m["roles"]
 		if !ok {
 			t.Errorf("member %v missing roles field", m["email"])
@@ -91,6 +104,18 @@ func TestConsoleMembers(t *testing.T) {
 		if arr, ok := roles.([]any); !ok || arr == nil {
 			t.Errorf("member %v roles = %#v, want a JSON array", m["email"], roles)
 		}
+	}
+
+	// Search narrows the page to matching addresses.
+	resp, body = do(t, baseURL, "GET", base+"?q=alice", "", ownerCookies)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("search members status = %d, want 200; body=%s", resp.StatusCode, body)
+	}
+	if !strings.Contains(body, "alice@example.com") {
+		t.Errorf("member search missing alice: %s", body)
+	}
+	if strings.Contains(body, "owner@example.com") {
+		t.Errorf("member search leaked non-matching owner: %s", body)
 	}
 
 	// Add a new member authoritatively (no double opt-in).

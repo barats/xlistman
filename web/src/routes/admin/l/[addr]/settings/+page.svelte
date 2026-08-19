@@ -7,6 +7,7 @@
 	import { Card } from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import { Select } from '$lib/components/ui/select';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 
 	const addr = page.params.addr ?? '';
@@ -48,9 +49,6 @@
 			busy = false;
 		}
 	}
-
-	const selectClass =
-		'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
 </script>
 
 {#if phase === 'denied'}
@@ -126,11 +124,11 @@
 					</div>
 					<div class="space-y-1.5">
 						<Label for="reply-to-mode">Reply-To</Label>
-						<select id="reply-to-mode" class={selectClass} bind:value={data.settings.reply_to_mode}>
+						<Select id="reply-to-mode" bind:value={data.settings.reply_to_mode}>
 							<option value="list">The list</option>
 							<option value="sender">The sender</option>
 							<option value="specified">A specified address</option>
-						</select>
+						</Select>
 					</div>
 				</div>
 				{#if data.settings.reply_to_mode === 'specified'}
@@ -148,26 +146,24 @@
 				<div class="grid gap-4 py-3 sm:grid-cols-2">
 					<div class="space-y-1.5">
 						<Label for="subscription-policy">Subscription policy</Label>
-						<select
+						<Select
 							id="subscription-policy"
-							class={selectClass}
 							bind:value={data.settings.subscription_policy}
 						>
-							<option value="open">Open — new subscribers join immediately</option>
-							<option value="moderated">Moderated — owner approves each join</option>
-							<option value="closed">Closed — owners add members manually</option>
-						</select>
+							<option value="open">Open · new subscribers join immediately</option>
+							<option value="moderated">Moderated · owner approves each join</option>
+							<option value="closed">Closed · owners add members manually</option>
+						</Select>
 					</div>
 					<div class="space-y-1.5">
 						<Label for="digest-frequency">Digest frequency</Label>
-						<select
+						<Select
 							id="digest-frequency"
-							class={selectClass}
 							bind:value={data.settings.digest_frequency}
 						>
 							<option value="daily">Daily</option>
 							<option value="weekly">Weekly</option>
-						</select>
+						</Select>
 					</div>
 				</div>
 				<div class="grid gap-4 py-3 sm:grid-cols-2">
@@ -246,7 +242,7 @@
 			<p class="text-sm text-destructive">{error}</p>
 		{/if}
 		{#if saved}
-			<p class="text-sm text-primary">{saved}</p>
+			<p class="rounded-md border border-success/40 bg-success/10 px-3 py-2 text-sm">{saved}</p>
 		{/if}
 		<Button type="submit" disabled={busy}>Save settings</Button>
 	</form>

@@ -144,8 +144,11 @@ type Store interface {
 	// Audit operations
 	CreateAuditEvent(ctx context.Context, e model.AuditEvent) error
 	// ListAuditEvents returns events newest-first. listID nil returns all
-	// events (instance-wide view); action "" means no action filter.
-	ListAuditEvents(ctx context.Context, listID *int64, action string, limit int) ([]model.AuditEvent, error)
+	// events (instance-wide view); action "" means no action filter. limit <= 0
+	// returns everything; positive limits are clamped to 500. offset pages.
+	ListAuditEvents(ctx context.Context, listID *int64, action string, limit, offset int) ([]model.AuditEvent, error)
+	// CountAuditEvents counts events matching the same scope as ListAuditEvents.
+	CountAuditEvents(ctx context.Context, listID *int64, action string) (int64, error)
 
 	// Database maintenance
 	Close() error

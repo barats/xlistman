@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { ApiError, getHeldMessage, moderate } from '$lib/api';
 	import type { HeldMessageDetail } from '$lib/types';
+	import { fmtDate } from '$lib/dates';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
 	import { Skeleton } from '$lib/components/ui/skeleton';
@@ -53,10 +54,6 @@
 		const sep2 = b.indexOf('\n\n');
 		if (sep2 >= 0) return b.slice(sep2 + 2);
 		return b;
-	}
-
-	function fmtDate(iso: string): string {
-		return new Date(iso).toLocaleString();
 	}
 </script>
 

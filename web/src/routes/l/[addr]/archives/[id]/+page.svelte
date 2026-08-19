@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { ApiError, getArchiveEntry } from '$lib/api';
 	import type { ArchiveMessage } from '$lib/types';
+	import { fmtDate } from '$lib/dates';
 	import { buttonVariants } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
 	import { Skeleton } from '$lib/components/ui/skeleton';
@@ -32,10 +33,6 @@
 			}
 		}
 	});
-
-	function fmtDate(iso: string): string {
-		return new Date(iso).toLocaleString();
-	}
 
 	function bodyText(): string {
 		const b = msg?.body ?? '';

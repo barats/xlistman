@@ -973,8 +973,11 @@ func (s *Store) CreateAuditEvent(ctx context.Context, e model.AuditEvent) error 
 }
 
 // ListAuditEvents returns events newest-first, optionally scoped to a single
-// list (listID != nil) and/or a single action (action != "").
-func (s *Store) ListAuditEvents(ctx context.Context, listID *int64, action string, limit int) ([]model.AuditEvent, error) {
+// list (listID != nil) and/or a single action (action != ""). Paged with
+// limit/offset: limit <= 0 returns everything (the CLI's deep-history view);
+// larger limits are clamped to 500 (the web console shows the most recent
+// 500, with older history reachable via `xlistman audit ...`).
+func (s *Store) ListAuditEvents(ctx context.Context, listID *int64, action string, limit, offset int) ([]model.AuditEvent, error) {
 	q := s.db.WithContext(ctx)
 	if listID != nil {
 		q = q.Where("list_id = ?", *listID)
@@ -982,14 +985,38 @@ func (s *Store) ListAuditEvents(ctx context.Context, listID *int64, action strin
 	if action != "" {
 		q = q.Where("action = ?", action)
 	}
-	if limit <= 0 || limit > 500 {
-		limit = 200
+	if limit > 500 {
+		limit = 500
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	q = q.Order("at DESC, id DESC")
+	if limit > 0 {
+		q = q.Limit(limit)
 	}
 	var events []model.AuditEvent
-	if err := q.Order("at DESC, id DESC").Limit(limit).Find(&events).Error; err != nil {
+	if err := q.Offset(offset).Find(&events).Error; err != nil {
 		return nil, fmt.Errorf("list audit events: %w", err)
 	}
 	return events, nil
+}
+
+// CountAuditEvents counts events matching the same scope as ListAuditEvents,
+// so the console can page against a stable total.
+func (s *Store) CountAuditEvents(ctx context.Context, listID *int64, action string) (int64, error) {
+	q := s.db.WithContext(ctx).Model(&model.AuditEvent{})
+	if listID != nil {
+		q = q.Where("list_id = ?", *listID)
+	}
+	if action != "" {
+		q = q.Where("action = ?", action)
+	}
+	var n int64
+	if err := q.Count(&n).Error; err != nil {
+		return 0, fmt.Errorf("count audit events: %w", err)
+	}
+	return n, nil
 }
 
 // --- helpers ---

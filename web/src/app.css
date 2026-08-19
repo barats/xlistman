@@ -19,6 +19,10 @@
 	--accent-foreground: oklch(0.205 0 0);
 	--destructive: oklch(0.577 0.245 27.325);
 	--destructive-foreground: oklch(0.985 0 0);
+	--success: oklch(0.596 0.145 163.225);
+	--success-foreground: oklch(0.985 0 0);
+	--warning: oklch(0.898 0.12 84.5);
+	--warning-foreground: oklch(0.42 0.1 60);
 	--border: oklch(0.922 0 0);
 	--input: oklch(0.922 0 0);
 	--ring: oklch(0.708 0 0);
@@ -42,6 +46,10 @@
 	--color-accent-foreground: var(--accent-foreground);
 	--color-destructive: var(--destructive);
 	--color-destructive-foreground: var(--destructive-foreground);
+	--color-success: var(--success);
+	--color-success-foreground: var(--success-foreground);
+	--color-warning: var(--warning);
+	--color-warning-foreground: var(--warning-foreground);
 	--color-border: var(--border);
 	--color-input: var(--input);
 	--color-ring: var(--ring);
@@ -57,5 +65,18 @@
 	}
 	body {
 		@apply bg-background text-foreground;
+	}
+	/* Links (header, card links, tabs) get a crisp keyboard focus ring; the
+	   component-level focus classes already cover buttons and inputs. */
+	a:focus-visible {
+		@apply outline-none ring-1 ring-ring;
+	}
+	/* Native checkboxes render with the app accent instead of the browser's
+	   default blue, and get a visible keyboard focus ring. */
+	input[type='checkbox'] {
+		accent-color: var(--primary);
+	}
+	input[type='checkbox']:focus-visible {
+		@apply outline-none ring-1 ring-ring;
 	}
 }

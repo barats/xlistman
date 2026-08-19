@@ -1,0 +1,1 @@
+import{Y as e}from"./D358v7dE.js";import"./DwmpY9rf.js";import{O as t,P as n}from"./rKbCttPG.js";var r=e(void 0);async function i(){try{let e=await t();return r.set(e),e}catch{return r.set(null),null}}async function a(){try{await n()}finally{r.set(null)}}export{i as n,a as r,r as t};

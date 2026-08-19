@@ -69,18 +69,25 @@
 {:else}
 	<div class="mt-6 grid gap-3">
 		{#each lists ?? [] as l (l.address)}
-			<a href={`/admin/l/${l.address}`} class="block transition-opacity hover:opacity-80">
-				<Card class="p-4">
+			<a href={`/admin/l/${l.address}`} class="group block rounded-lg">
+				<Card class="p-4 transition-colors hover:bg-accent/40">
 					<div class="flex items-center justify-between gap-4">
 						<div class="min-w-0">
-							<p class="truncate font-semibold">{l.address}</p>
+							<p class="truncate font-mono font-semibold">{l.address}</p>
 							<div class="mt-1 flex items-center gap-2">
 								{#each l.roles as role (role)}
 									<Badge variant="secondary" class="capitalize">{role}</Badge>
 								{/each}
 							</div>
 						</div>
-						<Badge variant={l.held_count > 0 ? 'default' : 'outline'}>{heldLabel(l.held_count)}</Badge>
+						<div class="flex shrink-0 items-center gap-3">
+							<Badge variant={l.held_count > 0 ? 'default' : 'outline'}>{heldLabel(l.held_count)}</Badge>
+							<span
+								class="text-muted-foreground transition-colors group-hover:text-foreground"
+								aria-hidden="true"
+								>&rarr;</span
+							>
+						</div>
 					</div>
 				</Card>
 			</a>

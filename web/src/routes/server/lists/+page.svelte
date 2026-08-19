@@ -13,6 +13,7 @@
 	import { Card } from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import { Select } from '$lib/components/ui/select';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 
 	let lists = $state<AdminList[] | null>(null);
@@ -104,9 +105,6 @@
 		const at = address.indexOf('@');
 		return [address.slice(at + 1), address.slice(0, at)];
 	}
-
-	const selectClass =
-		'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
 </script>
 
 {#if !lists || !domains}
@@ -127,18 +125,18 @@
 			</div>
 			<div class="space-y-1.5">
 				<Label for="list-domain">Domain</Label>
-				<select id="list-domain" class={selectClass} bind:value={cDomain}>
+				<Select id="list-domain" bind:value={cDomain}>
 					{#each domains ?? [] as d (d.id)}
 						<option value={d.name}>{d.name}</option>
 					{/each}
-				</select>
+				</Select>
 			</div>
 			<div class="space-y-1.5">
 				<Label for="list-type">Type</Label>
-				<select id="list-type" class={selectClass} bind:value={cType}>
-					<option value="discussion">Discussion — members can post</option>
-					<option value="newsletter">Newsletter — owners/designated senders post</option>
-				</select>
+				<Select id="list-type" bind:value={cType}>
+					<option value="discussion">Discussion · members can post</option>
+					<option value="newsletter">Newsletter · owners/designated senders post</option>
+				</Select>
 			</div>
 			<div class="space-y-1.5">
 				<Label for="list-desc">Description</Label>
@@ -207,7 +205,7 @@
 
 					{#if changingType === l.address}
 						<div class="mt-3 rounded-md border border-amber-600/40 bg-amber-600/10 p-4">
-							<p class="text-sm font-medium text-amber-300">Change {l.address} to {l.list_type === 'discussion' ? 'Newsletter' : 'Discussion'}?</p>
+							<p class="text-sm font-medium text-amber-700">Change {l.address} to {l.list_type === 'discussion' ? 'Newsletter' : 'Discussion'}?</p>
 							{#if l.list_type === 'discussion'}
 								<p class="mt-1 text-sm text-muted-foreground">
 									Subscribers will no longer be able to post. Only owners and designated

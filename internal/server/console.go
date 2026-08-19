@@ -501,40 +501,58 @@ func (s *Server) handleConsoleMembers(w http.ResponseWriter, r *http.Request, l 
 		return
 	}
 
-	subs, err := s.Store.ListSubscriptions(ctx, l.ID)
+	// ListMembers loads subscriptions, roles, and subscriber emails in a small
+	// number of batched queries (no per-row lookup), sorted by email so paging
+	// is stable. The page and search are applied here; the full set is small
+	// enough to hold in memory for a console even at the largest lists.
+	members, err := s.Store.ListMembers(ctx, l.ID)
 	if err != nil {
 		writeJSON(w, 500, map[string]string{"error": "failed to load members"})
 		return
 	}
-	owners, _ := s.Store.ListOwners(ctx, l.ID)
-	mods, _ := s.Store.ListModerators(ctx, l.ID)
-	senders, _ := s.Store.ListDesignatedSenders(ctx, l.ID)
 
-	roleBySub := map[int64][]string{}
-	addRole := func(id int64, role string) {
-		if roleBySub[id] == nil {
-			roleBySub[id] = []string{}
+	// Held subscriptions are a small moderation queue, surfaced separately so
+	// they are never buried by roster pagination; only the roster is searched
+	// and paged.
+	var held []model.MemberView
+	roster := members[:0]
+	for _, m := range members {
+		if m.SubscriptionID != nil && m.Status == string(model.SubscriptionStatusHeld) {
+			held = append(held, m)
+		} else {
+			roster = append(roster, m)
 		}
-		roleBySub[id] = append(roleBySub[id], role)
-	}
-	for _, o := range owners {
-		addRole(o.SubscriberID, "owner")
-	}
-	for _, m := range mods {
-		addRole(m.SubscriberID, "moderator")
-	}
-	for _, d := range senders {
-		addRole(d.SubscriberID, "designated_sender")
 	}
 
-	// Roles is never null so clients can rely on it being an array.
-	rolesFor := func(id int64) []string {
-		roles := roleBySub[id]
-		if roles == nil {
-			return []string{}
+	q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
+	filtered := roster
+	if q != "" {
+		filtered = filtered[:0]
+		for _, m := range roster {
+			if strings.Contains(strings.ToLower(m.Email), q) {
+				filtered = append(filtered, m)
+			}
 		}
-		return roles
 	}
+
+	limit := queryIntDefault(r, "limit", 100)
+	if limit <= 0 || limit > 200 {
+		limit = 100
+	}
+	offset := queryIntDefault(r, "offset", 0)
+	if offset < 0 {
+		offset = 0
+	}
+	total := len(filtered)
+	lo := offset
+	if lo > total {
+		lo = total
+	}
+	hi := lo + limit
+	if hi > total {
+		hi = total
+	}
+	page := filtered[lo:hi]
 
 	type memberInfo struct {
 		SubscriberID   int64    `json:"subscriber_id"`
@@ -545,39 +563,37 @@ func (s *Server) handleConsoleMembers(w http.ResponseWriter, r *http.Request, l 
 		BounceCount    int      `json:"bounce_count"`
 		Roles          []string `json:"roles"`
 	}
-	result := make([]memberInfo, 0, len(subs))
-	seen := map[int64]bool{}
-	for _, sub := range subs {
-		subscriber, err := s.Store.GetSubscriberByID(ctx, sub.SubscriberID)
-		if err != nil {
-			continue
+	toInfo := func(m model.MemberView) memberInfo {
+		info := memberInfo{
+			SubscriberID: m.SubscriberID,
+			Email:        m.Email,
+			BounceCount:  m.BounceCount,
+			Roles:        m.Roles,
 		}
-		subID := sub.ID
-		status := string(sub.Status)
-		mode := string(sub.DeliveryMode)
-		seen[sub.SubscriberID] = true
-		result = append(result, memberInfo{
-			SubscriberID:   subscriber.ID,
-			Email:          subscriber.Email,
-			SubscriptionID: &subID,
-			Status:         &status,
-			DeliveryMode:   &mode,
-			BounceCount:    sub.BounceCount,
-			Roles:          rolesFor(sub.SubscriberID),
-		})
+		if m.SubscriptionID != nil {
+			info.SubscriptionID = m.SubscriptionID
+			status := m.Status
+			info.Status = &status
+			mode := m.DeliveryMode
+			info.DeliveryMode = &mode
+		}
+		return info
 	}
-	// Role holders who are not subscribed still appear so roles can be managed.
-	for id := range roleBySub {
-		if seen[id] {
-			continue
-		}
-		subscriber, err := s.Store.GetSubscriberByID(ctx, id)
-		if err != nil {
-			continue
-		}
-		result = append(result, memberInfo{SubscriberID: subscriber.ID, Email: subscriber.Email, Roles: rolesFor(id)})
+	result := make([]memberInfo, 0, len(page))
+	for _, m := range page {
+		result = append(result, toInfo(m))
 	}
-	writeJSON(w, 200, result)
+	heldInfo := make([]memberInfo, 0, len(held))
+	for _, m := range held {
+		heldInfo = append(heldInfo, toInfo(m))
+	}
+	writeJSON(w, 200, map[string]any{
+		"members": result,
+		"held":    heldInfo,
+		"total":   total,
+		"limit":   limit,
+		"offset":  lo,
+	})
 }
 
 // handleConsoleMembersExport streams the list's members as a CSV file

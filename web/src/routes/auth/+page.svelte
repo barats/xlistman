@@ -56,7 +56,7 @@
 	<Card class="mx-auto max-w-md p-6">
 		<h1 class="text-2xl font-bold tracking-tight">Sign in</h1>
 		<p class="mt-1 text-sm text-muted-foreground">
-			Passwordless — we'll email you a one-time login link.
+			Passwordless · we'll email you a one-time login link.
 		</p>
 
 		{#if errorParam === 'invalid'}

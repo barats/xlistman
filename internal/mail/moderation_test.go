@@ -240,7 +240,7 @@ func TestModerateEmailRecordsAudit(t *testing.T) {
 	}
 
 	listID := l.ID
-	events, err := s.ListAuditEvents(ctx, &listID, "", 0)
+	events, err := s.ListAuditEvents(ctx, &listID, "", 0, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

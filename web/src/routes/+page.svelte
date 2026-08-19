@@ -36,16 +36,23 @@
 		<Card class="p-6 text-sm text-muted-foreground">No lists are hosted here yet.</Card>
 	{:else}
 		{#each lists as l (l.address)}
-			<a href={`/l/${l.address}`} class="block transition-opacity hover:opacity-80">
-				<Card class="p-4">
+			<a href={`/l/${l.address}`} class="group block rounded-lg">
+				<Card class="p-4 transition-colors hover:bg-accent/40">
 					<div class="flex items-center justify-between gap-4">
 						<div class="min-w-0">
-							<p class="truncate font-semibold">{l.address}</p>
+							<p class="truncate font-mono font-semibold">{l.address}</p>
 							<p class="mt-0.5 truncate text-sm text-muted-foreground">
 								{l.description || 'No description'}
 							</p>
 						</div>
-						<Badge variant="secondary" class="shrink-0">{l.list_type}</Badge>
+						<div class="flex shrink-0 items-center gap-3">
+							<Badge variant="secondary" class="shrink-0">{l.list_type}</Badge>
+							<span
+								class="text-muted-foreground transition-colors group-hover:text-foreground"
+								aria-hidden="true"
+								>&rarr;</span
+							>
+						</div>
 					</div>
 				</Card>
 			</a>

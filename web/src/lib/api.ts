@@ -6,6 +6,7 @@ import type {
 	ArchiveEntry,
 	ArchiveMessage,
 	AuditEvent,
+	AuditEventPage,
 	BounceMember,
 	ConsoleList,
 	ConsoleListInfo,
@@ -17,6 +18,7 @@ import type {
 	HeldPost,
 	ListInfo,
 	ListSummary,
+	MemberPage,
 	Subscription,
 	WebStatus
 } from '$lib/types';
@@ -265,12 +267,20 @@ export async function updateConsoleSettings(
 	await throwOnError(res);
 }
 
+// getConsoleMembers returns one page of the list's members, newest-first by
+// email. q narrows by email substring; limit/offset page the result.
 export async function getConsoleMembers(
 	domain: string,
-	listName: string
-): Promise<ConsoleMember[]> {
+	listName: string,
+	opts: { q?: string; limit?: number; offset?: number } = {}
+): Promise<MemberPage> {
+	const params = new URLSearchParams();
+	if (opts.q) params.set('q', opts.q);
+	if (opts.limit) params.set('limit', String(opts.limit));
+	if (opts.offset) params.set('offset', String(opts.offset));
+	const qs = params.toString();
 	const res = await fetch(
-		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/members`
+		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/members${qs ? `?${qs}` : ''}`
 	);
 	await throwOnError(res);
 	return res.json();
@@ -510,22 +520,36 @@ export async function removeAdminAdministrator(subscriberId: number): Promise<vo
 
 // --- Audit trail (ADR 0018) ---
 
+// getAuditEvents returns one page of a list's Audit Events (newest 500 by
+// default), optionally filtered by action.
 export async function getAuditEvents(
 	domain: string,
 	listName: string,
-	action?: string
-): Promise<AuditEvent[]> {
-	const qs = action ? `?action=${encodeURIComponent(action)}` : '';
+	opts: { action?: string; limit?: number; offset?: number } = {}
+): Promise<AuditEventPage> {
+	const params = new URLSearchParams();
+	if (opts.action) params.set('action', opts.action);
+	if (opts.limit) params.set('limit', String(opts.limit));
+	if (opts.offset) params.set('offset', String(opts.offset));
+	const qs = params.toString();
 	const res = await fetch(
-		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/audit${qs}`
+		`/api/console/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/audit${qs ? `?${qs}` : ''}`
 	);
 	await throwOnError(res);
 	return res.json();
 }
 
-export async function getAdminAuditEvents(action?: string): Promise<AuditEvent[]> {
-	const qs = action ? `?action=${encodeURIComponent(action)}` : '';
-	const res = await fetch(`/api/console/admin/audit${qs}`);
+// getAdminAuditEvents returns one page of the instance-wide Audit Events
+// (newest 500 by default), optionally filtered by action.
+export async function getAdminAuditEvents(
+	opts: { action?: string; limit?: number; offset?: number } = {}
+): Promise<AuditEventPage> {
+	const params = new URLSearchParams();
+	if (opts.action) params.set('action', opts.action);
+	if (opts.limit) params.set('limit', String(opts.limit));
+	if (opts.offset) params.set('offset', String(opts.offset));
+	const qs = params.toString();
+	const res = await fetch(`/api/console/admin/audit${qs ? `?${qs}` : ''}`);
 	await throwOnError(res);
 	return res.json();
 }

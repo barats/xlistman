@@ -36,20 +36,20 @@
 	</div>
 {:else}
 	<div class="grid gap-3 sm:grid-cols-3">
-		<a href="/server/domains" class="block transition-opacity hover:opacity-80">
-			<Card class="p-4">
+		<a href="/server/domains" class="group block rounded-lg">
+			<Card class="p-4 transition-colors hover:bg-accent/40">
 				<p class="text-sm text-muted-foreground">Domains</p>
 				<p class="mt-1 text-2xl font-semibold">{domains.length}</p>
 			</Card>
 		</a>
-		<a href="/server/lists" class="block transition-opacity hover:opacity-80">
-			<Card class="p-4">
+		<a href="/server/lists" class="group block rounded-lg">
+			<Card class="p-4 transition-colors hover:bg-accent/40">
 				<p class="text-sm text-muted-foreground">Lists</p>
 				<p class="mt-1 text-2xl font-semibold">{lists.length}</p>
 			</Card>
 		</a>
-		<a href="/server/administrators" class="block transition-opacity hover:opacity-80">
-			<Card class="p-4">
+		<a href="/server/administrators" class="group block rounded-lg">
+			<Card class="p-4 transition-colors hover:bg-accent/40">
 				<p class="text-sm text-muted-foreground">Administrators</p>
 				<p class="mt-1 text-2xl font-semibold">{admins.length}</p>
 			</Card>

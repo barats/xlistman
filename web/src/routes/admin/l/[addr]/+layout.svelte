@@ -67,7 +67,7 @@
 			<a href="/admin" class="text-sm text-muted-foreground hover:text-foreground">
 				&larr; My lists
 			</a>
-			<h1 class="mt-1 text-2xl font-bold tracking-tight">{addr}</h1>
+			<h1 class="mt-1 font-mono text-2xl font-bold tracking-tight">{addr}</h1>
 			{#if info}
 				<div class="mt-1 flex items-center gap-2">
 					<Badge variant="secondary" class="capitalize">{info.list_type}</Badge>
@@ -105,6 +105,7 @@
 			{#each tabs as tab (tab.href)}
 				<a
 					href={tab.href}
+					aria-current={isActive(tab.href) ? 'page' : undefined}
 					class={isActive(tab.href)
 						? 'whitespace-nowrap border-b-2 border-primary px-3 py-2 text-sm font-medium text-foreground'
 						: 'whitespace-nowrap border-b-2 border-transparent px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground'}

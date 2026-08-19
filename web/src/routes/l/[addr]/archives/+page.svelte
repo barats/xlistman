@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { ApiError, getArchives } from '$lib/api';
 	import type { ArchiveEntry } from '$lib/types';
+	import { fmtRelative } from '$lib/dates';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
@@ -37,10 +38,6 @@
 	}
 
 	onMount(load);
-
-	function fmtDate(iso: string): string {
-		return new Date(iso).toLocaleString();
-	}
 </script>
 
 <div class="flex flex-wrap items-center justify-between gap-3">
@@ -108,7 +105,7 @@
 				>
 					<p class="truncate font-medium">{e.subject || '(no subject)'}</p>
 					<p class="mt-0.5 truncate text-sm text-muted-foreground">
-						{e.from} · {fmtDate(e.received_at)}
+						{e.from} · {fmtRelative(e.received_at)}
 					</p>
 				</a>
 			{/each}

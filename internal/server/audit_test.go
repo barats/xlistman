@@ -9,18 +9,22 @@ import (
 )
 
 // auditEvents fetches the audit trail for a list (or instance-wide when base
-// is the admin audit route) and returns the parsed events.
+// is the admin audit route) and returns the parsed events. The endpoint
+// returns a paged envelope {events, total, limit, offset}.
 func auditEvents(t *testing.T, baseURL, path string, cookies []*http.Cookie) []map[string]any {
 	t.Helper()
 	resp, body := do(t, baseURL, "GET", path, "", cookies)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("audit %s status = %d, want 200; body=%s", path, resp.StatusCode, body)
 	}
-	var events []map[string]any
-	if err := json.Unmarshal([]byte(body), &events); err != nil {
+	var env struct {
+		Events []map[string]any `json:"events"`
+		Total  int64            `json:"total"`
+	}
+	if err := json.Unmarshal([]byte(body), &env); err != nil {
 		t.Fatalf("unmarshal audit: %v; body=%s", err, body)
 	}
-	return events
+	return env.Events
 }
 
 func TestConsoleAuditGateAndSettingsRecording(t *testing.T) {

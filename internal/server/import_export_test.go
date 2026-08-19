@@ -136,7 +136,7 @@ func TestConsoleMembersImport(t *testing.T) {
 	}
 
 	// One member.import Audit Event with the owner as actor.
-	events, err := st.ListAuditEvents(context.Background(), &disc.ID, model.ActionMemberImport, 0)
+	events, err := st.ListAuditEvents(context.Background(), &disc.ID, model.ActionMemberImport, 0, 0)
 	if err != nil {
 		t.Fatalf("ListAuditEvents: %v", err)
 	}

@@ -4,6 +4,8 @@
 	import { getMyHeldPosts, reEnable, setDelivery, unsubscribeMe } from '$lib/api';
 	import type { HeldPost, Subscription } from '$lib/types';
 	import { cn } from '$lib/utils';
+	import { fmtRelative } from '$lib/dates';
+	import { statusVariant } from '$lib/status';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
@@ -29,12 +31,6 @@
 		}
 	});
 
-	function fmtTime(iso: string): string {
-		const d = new Date(iso);
-		if (Number.isNaN(d.getTime())) return iso;
-		return d.toLocaleString();
-	}
-
 	async function run(sub: Subscription, label: string, fn: () => Promise<void>) {
 		busyId = sub.id;
 		actionError = '';
@@ -47,19 +43,6 @@
 			actionError = e instanceof Error ? e.message : 'Action failed.';
 		} finally {
 			busyId = null;
-		}
-	}
-
-	function statusVariant(status: string): 'default' | 'secondary' | 'destructive' | 'outline' {
-		switch (status) {
-			case 'active':
-				return 'default';
-			case 'held':
-				return 'secondary';
-			case 'disabled':
-				return 'destructive';
-			default:
-				return 'outline'; // pending
 		}
 	}
 </script>
@@ -86,7 +69,7 @@
 	<p class="mt-1 text-muted-foreground">Signed in as {$me.email}</p>
 
 	{#if actionOk}
-		<p class="mt-4 rounded-md border bg-muted/50 px-3 py-2 text-sm">{actionOk}</p>
+		<p class="mt-4 rounded-md border border-success/40 bg-success/10 px-3 py-2 text-sm">{actionOk}</p>
 	{/if}
 	{#if actionError}
 		<p class="mt-4 text-sm text-destructive">{actionError}</p>
@@ -99,7 +82,7 @@
 			{#each $me.subscriptions as sub (sub.id)}
 				<Card class="p-4">
 					<div class="flex flex-wrap items-center justify-between gap-2">
-						<a href={`/l/${sub.address}`} class="font-semibold hover:underline">
+						<a href={`/l/${sub.address}`} class="font-mono font-semibold hover:underline">
 							{sub.address}
 						</a>
 						<Badge variant={statusVariant(sub.status)} class="capitalize">
@@ -192,7 +175,7 @@
 								</span>
 							</div>
 							<p class="mt-1 text-sm text-muted-foreground">
-								Sent {fmtTime(p.received_at)} &middot; expires {fmtTime(p.expires_at)}
+								Sent {fmtRelative(p.received_at)} &middot; expires {fmtRelative(p.expires_at)}
 							</p>
 						</li>
 					{/each}
