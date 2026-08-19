@@ -97,19 +97,19 @@ Commands:
   domain remove <name>           Remove a virtual domain
   domain list                    List all domains
   list create <addr> --type <t>  Create a list (type: discussion or newsletter)
-       [--owner <email>] [--moderate]  Assign first owner / enable moderation
+       [--owner <email>] [--desc <text>] [--moderate]  Assign first owner / set description / enable moderation
   list delete <addr>             Delete a list (and all its data)
   list type <addr> <t>           Change a list's type (discussion|newsletter)
   list list [--domain <d>]       List lists
-  list info <addr>               Show list details
+  list info <addr>               Show list details and all settings
   list allowlist <addr>          List designated senders (newsletter)
   list add-sender <addr> <email>  Designate a sender for a newsletter list
-  list remove-sender <addr> <id>  Remove a designated sender
+  list remove-sender <addr> <subscriber-id>  Remove a designated sender
   list config <addr> <k>=<v>...  Edit list settings (keys match list info)
   owner add <list> <email>       Add an owner
   owner remove <list> <email>    Remove an owner
   owner list <list>              List owners
-  admin add <email>              Designate a subscriber as Administrator (ADR 0017)
+  admin add <email>              Designate a subscriber as Administrator
   admin remove <email>           Revoke Administrator
   admin list                     List Administrators
   moderator add <list> <email>   Add a moderator
@@ -128,7 +128,7 @@ Commands:
   moderation approve <id>          Approve and deliver a held message
   moderation reject <id>           Reject a held message (notifies sender)
   moderation discard <id>          Discard a held message silently
-  audit list <addr> [action]      Show audit events for a list (ADR 0018)
+  audit list <addr> [action]      Show audit events for a list
   audit server [action]           Show all audit events instance-wide
   queue list                     List pending outbound messages
   queue discard <id>             Discard a stuck message
@@ -136,8 +136,9 @@ Commands:
   disable login                  Disable web login (block new sign-ins and log everyone out)
   enable management              Enable web management (role console + server admin)
   disable management             Disable web management (block both consoles)
-  web status                     Show web access control state (ADR 0020)
+  web status                     Show web access control state
   config check                   Validate config file
+  config init                    Generate a default xlistman.yaml
   version                        Print version
 `)
 }
@@ -614,7 +615,7 @@ func cmdAdmin(args []string) int {
 
 func cmdList(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: xlistman list <create|delete|list|info> [args]")
+		fmt.Fprintln(os.Stderr, "usage: xlistman list <create|delete|type|list|info|config|allowlist|add-sender|remove-sender> [args]")
 		return 1
 	}
 	cfg, err := loadConfig()
@@ -767,14 +768,28 @@ func cmdList(args []string) int {
 			fmt.Fprintln(os.Stderr, "get list:", err)
 			return 1
 		}
+		// Settings are printed with their ListSettings JSON names, matching
+		// the keys accepted by `list config` (type/description are list-level
+		// fields shown for context).
+		st := l.Settings
 		fmt.Printf("List: %s\n", l.Address())
-		fmt.Printf("Type: %s\n", l.ListType)
-		fmt.Printf("Description: %s\n", l.Description)
-		fmt.Printf("Moderation: %v\n", l.Settings.ModerationEnabled)
-		fmt.Printf("Subscription Policy: %s\n", l.Settings.SubscriptionPolicy)
-		fmt.Printf("Digest: %s\n", l.Settings.DigestFrequency)
-		fmt.Printf("Subject Prefix: %s\n", l.Settings.SubjectPrefix)
-		fmt.Printf("Footer: %v\n", l.Settings.FooterEnabled)
+		fmt.Printf("type: %s\n", l.ListType)
+		fmt.Printf("description: %s\n", l.Description)
+		fmt.Printf("moderation_enabled: %v\n", st.ModerationEnabled)
+		fmt.Printf("subject_prefix: %s\n", st.SubjectPrefix)
+		fmt.Printf("footer_enabled: %v\n", st.FooterEnabled)
+		fmt.Printf("max_message_size: %d\n", st.MaxMessageSize)
+		fmt.Printf("archive_max_age_days: %d\n", st.ArchiveMaxAgeDays)
+		fmt.Printf("digest_frequency: %s\n", st.DigestFrequency)
+		fmt.Printf("subscription_policy: %s\n", st.SubscriptionPolicy)
+		fmt.Printf("reply_to_mode: %s\n", st.ReplyToMode)
+		fmt.Printf("reply_to_address: %s\n", st.ReplyToAddress)
+		fmt.Printf("welcome_email: %v\n", st.WelcomeEmail)
+		fmt.Printf("goodbye_email: %v\n", st.GoodbyeEmail)
+		fmt.Printf("sender_held_notice: %v\n", st.SenderHeldNotice)
+		fmt.Printf("owner_auto_disable_notice: %v\n", st.OwnerAutoDisableNotice)
+		fmt.Printf("bounce_threshold: %d\n", st.BounceThreshold)
+		fmt.Printf("held_expiry_days: %d\n", st.HeldExpiryDays)
 		return 0
 
 	case "config":
@@ -1083,7 +1098,7 @@ func cmdModerator(args []string) int {
 
 func cmdSubscriber(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: xlistman subscriber <add|remove|list|import> [args]")
+		fmt.Fprintln(os.Stderr, "usage: xlistman subscriber <add|remove|approve|reject|re-enable|reset-bounces|list|import|export> [args]")
 		return 1
 	}
 	cfg, err := loadConfig()
