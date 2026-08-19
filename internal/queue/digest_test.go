@@ -101,7 +101,7 @@ func TestDigestWorker(t *testing.T) {
 
 	archive := func(subject string) {
 		raw := []byte("From: alice@x.com\r\nTo: dev@example.com\r\nSubject: " + subject + "\r\nMessage-ID: <" + subject + "@x.com>\r\n\r\nBody of " + subject + "\r\n")
-		if err := s.ArchiveMessage(ctx, l.ID, "<"+subject+"@x.com>", subject, "alice@x.com", raw, "t1"); err != nil {
+		if err := s.ArchiveMessage(ctx, l.ID, "<"+subject+"@x.com>", subject, "alice@x.com", raw, "t1", "Body of "+subject); err != nil {
 			t.Fatalf("ArchiveMessage: %v", err)
 		}
 	}

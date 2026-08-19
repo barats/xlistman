@@ -112,6 +112,28 @@
 					</div>
 					<input type="checkbox" class="size-4" bind:checked={data.settings.footer_enabled} />
 				</label>
+				<label class="flex items-center justify-between gap-4 py-3">
+					<div>
+						<p class="text-sm font-medium">Attachments</p>
+						<p class="text-sm text-muted-foreground">
+							Allow posts to carry attachments (files and inline images). When off, any
+							post with an attachment is rejected.
+						</p>
+					</div>
+					<input type="checkbox" class="size-4" bind:checked={data.settings.allow_attachments} />
+				</label>
+				<div class="grid gap-4 py-3 sm:grid-cols-2">
+					<div class="space-y-1.5">
+						<Label for="max-attachment-size">Max attachment size (bytes, 0 = unlimited)</Label>
+						<Input
+							id="max-attachment-size"
+							type="number"
+							min="0"
+							disabled={!data.settings.allow_attachments}
+							bind:value={data.settings.max_attachment_size}
+						/>
+					</div>
+				</div>
 				<div class="grid gap-4 py-3 sm:grid-cols-2">
 					<div class="space-y-1.5">
 						<Label for="max-message-size">Max message size (bytes)</Label>

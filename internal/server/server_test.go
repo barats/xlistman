@@ -456,8 +456,10 @@ func TestArchivesMembersOnly(t *testing.T) {
 	addMember(t, st, l, "alice@example.com")
 
 	ctx := context.Background()
-	st.ArchiveMessage(ctx, l.ID, "m1", "Hello world", "alice@example.com", []byte("first post about go"), "t1")
-	st.ArchiveMessage(ctx, l.ID, "m2", "Re: Hello world", "bob@example.com", []byte("second post about rust"), "t1")
+	st.ArchiveMessage(ctx, l.ID, "m1", "Hello world", "alice@example.com",
+		[]byte("From: alice@example.com\r\nSubject: Hello world\r\n\r\nfirst post about go"), "t1", "first post about go")
+	st.ArchiveMessage(ctx, l.ID, "m2", "Re: Hello world", "bob@example.com",
+		[]byte("From: bob@example.com\r\nSubject: Re: Hello world\r\n\r\nsecond post about rust"), "t1", "second post about rust")
 
 	// Anonymous is rejected.
 	resp, _ := do(t, baseURL, "GET", "/api/lists/example.com/dev/archives", "", nil)

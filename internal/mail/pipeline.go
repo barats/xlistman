@@ -1,11 +1,15 @@
 package mail
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"mime/multipart"
+	"net/textproto"
 	"strings"
 	"time"
 
+	"github.com/barats/xlistman/internal/mailparse"
 	"github.com/barats/xlistman/internal/model"
 	"github.com/barats/xlistman/internal/store"
 )
@@ -25,6 +29,12 @@ func (p *Pipeline) ProcessPost(ctx context.Context, listName, domain, senderAddr
 	l, err := p.Store.GetList(ctx, listName, domain)
 	if err != nil {
 		return fmt.Errorf("get list: %w", err)
+	}
+
+	// Apply the list's size and attachment policy (ADR 0025): a violating
+	// post is rejected outright, whatever the sender's standing.
+	if reason := mailparse.ValidatePostPolicy(l, rawMsg); reason != "" {
+		return p.rejectMessage(ctx, l, senderAddr, reason)
 	}
 
 	// Determine sender authorization.
@@ -57,7 +67,7 @@ func (p *Pipeline) ProcessPost(ctx context.Context, listName, domain, senderAddr
 	case PostActionHold:
 		return p.holdMessage(ctx, l, senderAddr, rawMsg)
 	case PostActionReject:
-		return p.rejectMessage(ctx, l, senderAddr, rawMsg)
+		return p.rejectMessage(ctx, l, senderAddr, "")
 	}
 	return nil
 }
@@ -125,11 +135,12 @@ func (p *Pipeline) enqueueConfirmation(ctx context.Context, l *model.List, sub *
 // deliverToList modifies the message, archives it, and enqueues delivery
 // to all active (non-disabled, non-nomail) subscribers with regular delivery.
 func (p *Pipeline) deliverToList(ctx context.Context, l *model.List, senderAddr string, rawMsg []byte) error {
-	// Archive the original message.
+	// Archive the original message, with its extracted searchable text.
 	subject := extractSubject(rawMsg)
 	msgID := extractHeader(rawMsg, "Message-ID")
 	threadID := extractThreadID(rawMsg)
-	if err := p.Store.ArchiveMessage(ctx, l.ID, msgID, subject, senderAddr, rawMsg, threadID); err != nil {
+	bodyText := mailparse.ExtractText(rawMsg)
+	if err := p.Store.ArchiveMessage(ctx, l.ID, msgID, subject, senderAddr, rawMsg, threadID, bodyText); err != nil {
 		return fmt.Errorf("archive message: %w", err)
 	}
 
@@ -206,9 +217,10 @@ func (p *Pipeline) holdMessage(ctx context.Context, l *model.List, senderAddr st
 	return nil
 }
 
-// notifyModerators emails the full held message to every owner and moderator
-// of the list (deduplicated), with a Reply-To that routes their reply to the
-// moderation action handler.
+// notifyModerators emails every owner and moderator of the list
+// (deduplicated) that a message awaits approval, with a Reply-To that routes
+// their reply to the moderation action handler. The original message is
+// attached as an .eml so the moderator's client renders it fully (ADR 0026).
 func (p *Pipeline) notifyModerators(ctx context.Context, l *model.List, held *model.HeldMessage) error {
 	moderateAddr := fmt.Sprintf("%s-moderate+%s@%s", l.ListName, held.Token, l.Domain)
 
@@ -239,16 +251,43 @@ func (p *Pipeline) notifyModerators(ctx context.Context, l *model.List, held *mo
 		"To approve, reply to this message with: approve\n"+
 		"To reject, reply with: reject\n"+
 		"To discard, reply with: discard\n\n"+
-		"---- original message ----\n%s\n", held.Sender, l.Address(), held.Subject, held.Body)
+		"The original message is attached.", held.Sender, l.Address(), held.Subject)
 
 	for _, to := range emails {
 		if err := p.Store.Enqueue(ctx, l.ID, l.Address(), to,
-			buildNotice(l.Address(), to, moderateAddr, "Held message for approval: "+held.Subject, bodyText),
+			buildModerationNotice(l.Address(), to, moderateAddr, "Held message for approval: "+held.Subject, bodyText, held.Body),
 			l.Address(), ""); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// buildModerationNotice assembles the multipart moderation email: a
+// text/plain instruction part plus the original message as a message/rfc822
+// attachment.
+func buildModerationNotice(from, to, replyTo, subject, introText string, original []byte) []byte {
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	if intro, err := mw.CreatePart(textproto.MIMEHeader{
+		"Content-Type": []string{"text/plain; charset=utf-8"},
+	}); err == nil {
+		intro.Write([]byte(introText))
+	}
+	if att, err := mw.CreatePart(textproto.MIMEHeader{
+		"Content-Type":              []string{"message/rfc822"},
+		"Content-Disposition":       []string{`attachment; filename="message.eml"`},
+		"Content-Transfer-Encoding": []string{"8bit"},
+	}); err == nil {
+		att.Write(original)
+	}
+	mw.Close()
+
+	date := time.Now().UTC().Format(time.RFC1123Z)
+	head := fmt.Sprintf("From: %s\r\nTo: %s\r\nReply-To: %s\r\nSubject: %s\r\nDate: %s\r\n"+
+		"MIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=%q\r\n",
+		from, to, replyTo, subject, date, mw.Boundary())
+	return append([]byte(head), buf.Bytes()...)
 }
 
 // notifySenderHeld emails the post's sender that their message is awaiting
@@ -290,7 +329,7 @@ func (p *Pipeline) RejectHeld(ctx context.Context, heldID int64, actor model.Aud
 	if err != nil {
 		return err
 	}
-	if err := p.rejectMessage(ctx, l, held.Sender, held.Body); err != nil {
+	if err := p.rejectMessage(ctx, l, held.Sender, ""); err != nil {
 		return err
 	}
 	if err := p.Store.DeleteHeldMessage(ctx, held.ID); err != nil {
@@ -395,14 +434,19 @@ func (p *Pipeline) heldContext(ctx context.Context, heldID int64) (*model.HeldMe
 	return held, l, nil
 }
 
-// rejectMessage sends a rejection notification to the sender.
-func (p *Pipeline) rejectMessage(ctx context.Context, l *model.List, senderAddr string, rawMsg []byte) error {
-	// Enqueue a rejection notification.
-	rejectionBody := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: Your post to %s was rejected\r\n\r\n"+
-		"Your message to %s was not accepted.\n\n"+
-		"If this is a discussion list, only subscribers may post.\n"+
-		"If this is a newsletter list, only designated senders may post.\n",
-		l.ListName+"-owner@"+l.Domain, senderAddr, l.Address(), l.Address())
+// rejectMessage sends a rejection notification to the sender. reason, when
+// non-empty, is the specific policy reason (e.g. an attachment violation,
+// ADR 0025); when empty the notice falls back to the posting-policy hints.
+func (p *Pipeline) rejectMessage(ctx context.Context, l *model.List, senderAddr, reason string) error {
+	body := fmt.Sprintf("Your message to %s was not accepted.\n\n", l.Address())
+	if reason != "" {
+		body += reason + "\n\n"
+	} else {
+		body += "If this is a discussion list, only subscribers may post.\n" +
+			"If this is a newsletter list, only designated senders may post.\n"
+	}
+	rejectionBody := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: Your post to %s was rejected\r\n\r\n%s",
+		l.ListName+"-owner@"+l.Domain, senderAddr, l.Address(), body)
 
 	return p.Store.Enqueue(ctx, 0, l.ListName+"-owner@"+l.Domain, senderAddr, []byte(rejectionBody), "", "")
 }

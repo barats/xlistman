@@ -254,3 +254,48 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
   tab shows the `member.import` events; 401 (anonymous) and 403 (moderator)
   gates; moderator sees no Members tab; mobile viewport renders the
   import/export card without overflow.
+
+### Phase 15 — Attachments and MIME-aware archive rendering — done
+- New domain term: **Attachment** (CONTEXT.md, ADR 0025): a MIME part with a
+  `filename` (attachment or inline disposition) or an attachment disposition;
+  the primary text body is never one; inline images with filenames count.
+- **Attachment policy (per list, ADR 0025):** two new settings,
+  `allow_attachments` (default true) and `max_attachment_size` (per single
+  attachment, default 0 = unlimited), plus the previously dormant
+  `max_message_size` finally enforced as the total-message cap. Permissive
+  defaults so existing lists never start rejecting posts on upgrade.
+- **Enforcement:** all three violations — disallowed attachment, attachment
+  over the per-attachment cap, message over the total cap — reject the whole
+  post at the top of `Pipeline.ProcessPost` (shared funnel: both ListTypes,
+  LMTP + pipe) with a reason-specific notice to the sender. Checked once at
+  reception; held posts are not re-checked at approve.
+- **MIME-aware rendering (ADR 0026):** server-side Go MIME parser produces a
+  structured view of each post — readable `text/plain` body, optional
+  `text/html` body, nested `message/rfc822` messages, and a flat attachment
+  list. The archive detail API returns this structure.
+- **Rendering rules:** plain text by default, "View HTML" toggle when both
+  parts exist, HTML-only renders by default; all HTML sanitized (bluemonday);
+  nested emails render inline as quoted sub-messages (depth cap 3, then
+  collapsed to a link); attachments listed under the body with members-only
+  downloads (no extra archive knob — the attachment policy already decides
+  what lands in the archive).
+- **Search indexes extracted text:** FTS now indexes clean extracted text
+  (headers stripped, parts decoded, HTML reduced to text, attachments
+  skipped) instead of raw MIME bytes; existing archive rows backfilled once at
+  migration so old posts become searchable by content.
+- **Delivery footer fix:** `ModifyMessage` appends the unsubscribe footer as a
+  proper MIME part instead of concatenating onto raw bytes, so multipart posts
+  (every attachment-carrying message) are no longer MIME-corrupted on delivery.
+- **Moderation surfaces reuse the model:** the moderator notification email
+  attaches the original message as an `.eml` file instead of inlining raw MIME
+  bytes; the web held-message detail page renders with the same parsed view.
+- Settings UI + CLI (`list config`) surface the two new fields; settings
+  validation covers `max_attachment_size`.
+- Test suite green (`go test ./...`); verified end-to-end in the browser
+  (archive render: plain/html toggle, nested email inline, attachment
+  download; held-detail render; settings save; 401/403 gates; search on
+  clean text, MIME noise excluded; mobile viewport). Browser verification
+  caught and fixed a real parser bug: a `text/plain` part declared as an
+  attachment (an attached `.txt` file) was being dropped instead of listed —
+  attachment classification now checks disposition, not just media type
+  (covered by a regression test).

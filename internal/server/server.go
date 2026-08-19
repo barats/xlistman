@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"mime"
 	"net"
 	"net/http"
 	netmail "net/mail"
@@ -20,6 +21,7 @@ import (
 
 	"github.com/barats/xlistman/internal/config"
 	xmail "github.com/barats/xlistman/internal/mail"
+	"github.com/barats/xlistman/internal/mailparse"
 	"github.com/barats/xlistman/internal/model"
 	"github.com/barats/xlistman/internal/store"
 )
@@ -282,6 +284,8 @@ func (s *Server) handleListDetail(w http.ResponseWriter, r *http.Request) {
 		s.handleSubscribe(w, r, l)
 	case len(parts) >= 3 && parts[2] == "archives" && len(parts) == 3:
 		s.handleArchives(w, r, l)
+	case len(parts) >= 6 && parts[2] == "archives" && parts[4] == "attachments":
+		s.handleArchiveAttachment(w, r, l, parts[3], parts[5])
 	case len(parts) >= 4 && parts[2] == "archives":
 		s.handleArchiveEntry(w, r, l, parts[3])
 	default:
@@ -739,6 +743,12 @@ func (s *Server) handleArchiveEntry(w http.ResponseWriter, r *http.Request, l *m
 		writeJSON(w, 404, map[string]string{"error": "message not found"})
 		return
 	}
+	// The MIME-aware structured view (ADR 0026): text/html bodies, nested
+	// messages, and attachments, all parsed from the raw stored bytes.
+	parsed, err := mailparse.ParseMessageMIME(e.Body)
+	if err != nil {
+		parsed = &mailparse.ParsedMessage{}
+	}
 	writeJSON(w, 200, map[string]any{
 		"id":          e.ID,
 		"subject":     e.Subject,
@@ -746,8 +756,66 @@ func (s *Server) handleArchiveEntry(w http.ResponseWriter, r *http.Request, l *m
 		"message_id":  e.MessageID,
 		"thread_id":   e.ThreadID,
 		"received_at": e.ReceivedAt,
-		"body":        string(e.Body),
+		"body":        parsed,
 	})
+}
+
+// handleArchiveAttachment streams one attachment of an archived message,
+// members-only like the archive itself (ADR 0026). Attachments are addressed
+// by ordinal, assigned depth-first across the message tree at parse time.
+func (s *Server) handleArchiveAttachment(w http.ResponseWriter, r *http.Request, l *model.List, idStr, ordinalStr string) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !s.requireMember(w, r, l) {
+		return
+	}
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	ordinal, err := strconv.Atoi(ordinalStr)
+	if err != nil || ordinal < 0 {
+		http.NotFound(w, r)
+		return
+	}
+	e, err := s.Store.GetArchiveEntry(r.Context(), id)
+	if err != nil || e.ListID != l.ID {
+		writeJSON(w, 404, map[string]string{"error": "message not found"})
+		return
+	}
+	parsed, err := mailparse.ParseMessageMIME(e.Body)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	att := parsed.AttachmentByOrdinal(ordinal)
+	if att == nil {
+		http.NotFound(w, r)
+		return
+	}
+	serveAttachment(w, r, att)
+}
+
+// serveAttachment writes one parsed attachment to the response with a safe
+// filename and content type.
+func serveAttachment(w http.ResponseWriter, r *http.Request, att *mailparse.Attachment) {
+	ct := att.ContentType
+	if ct == "" {
+		ct = "application/octet-stream"
+	}
+	disposition := "attachment"
+	if att.Inline {
+		disposition = "inline"
+	}
+	cd := mime.FormatMediaType(disposition, map[string]string{"filename": att.Name})
+	w.Header().Set("Content-Type", ct)
+	w.Header().Set("Content-Disposition", cd)
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Length", strconv.Itoa(len(att.Bytes)))
+	w.Write(att.Bytes)
 }
 
 // requireAuth wraps a handler so it only runs for an authenticated subscriber.

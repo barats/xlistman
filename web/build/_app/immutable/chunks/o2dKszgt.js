@@ -1,1 +1,0 @@
-import{Y as e}from"./D358v7dE.js";import"./DwmpY9rf.js";import{j as t}from"./rKbCttPG.js";var n=e(void 0);async function r(){try{let e=await t();return n.set(e),e}catch{n.set({login_enabled:!0,management_enabled:!0});return}}export{n,r as t};

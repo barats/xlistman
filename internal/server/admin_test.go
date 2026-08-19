@@ -206,7 +206,7 @@ func TestAdminDeleteList(t *testing.T) {
 
 	// Seed related data so we can verify the cascade through the API.
 	addMember(t, st, disc, "alice@example.com")
-	st.ArchiveMessage(ctx, disc.ID, "<m1@x>", "gone soon", "alice@example.com", []byte("body"), "t1")
+	st.ArchiveMessage(ctx, disc.ID, "<m1@x>", "gone soon", "alice@example.com", []byte("body"), "t1", "body")
 
 	resp, body := do(t, baseURL, "DELETE", "/api/console/admin/lists/example.com/dev", "", adminCookies)
 	if resp.StatusCode != http.StatusOK {

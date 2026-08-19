@@ -106,7 +106,7 @@ type Store interface {
 	QueueDepth(ctx context.Context) (int, error)
 
 	// Archive operations
-	ArchiveMessage(ctx context.Context, listID int64, msgID, subject, from string, body []byte, threadID string) error
+	ArchiveMessage(ctx context.Context, listID int64, msgID, subject, from string, body []byte, threadID, bodyText string) error
 	ListArchive(ctx context.Context, listID int64, limit, offset int) ([]model.ArchiveEntry, error)
 	ListArchiveSince(ctx context.Context, listID int64, since time.Time) ([]model.ArchiveEntry, error)
 	SearchArchive(ctx context.Context, listID int64, query string, limit int) ([]model.ArchiveEntry, error)

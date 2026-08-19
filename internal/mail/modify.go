@@ -2,8 +2,14 @@ package mail
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
+	"io"
+	"mime"
+	"mime/multipart"
+	"mime/quotedprintable"
 	"net/mail"
+	"net/textproto"
 	"strings"
 
 	"github.com/barats/xlistman/internal/model"
@@ -29,10 +35,10 @@ func ModifyMessage(raw []byte, opts ModifyMessageOptions) ([]byte, error) {
 		return nil, fmt.Errorf("parse message: %w", err)
 	}
 
-	// Read the body.
-	bodyBuf := new(bytes.Buffer)
-	bodyBuf.ReadFrom(msg.Body)
-	body := bodyBuf.Bytes()
+	body, err := io.ReadAll(msg.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read body: %w", err)
+	}
 
 	// Modify headers.
 	headers := msg.Header
@@ -59,7 +65,7 @@ func ModifyMessage(raw []byte, opts ModifyMessageOptions) ([]byte, error) {
 	// Footer.
 	if opts.List.Settings.FooterEnabled {
 		footer := fmt.Sprintf("\n\n-- \nTo unsubscribe, visit %s\nYou are subscribed to %s\n", opts.UnsubscribeURL, listAddr)
-		body = appendFooter(body, footer)
+		body = appendMIMEFooter(headers, body, footer)
 	}
 
 	// Re-serialize.
@@ -74,11 +80,92 @@ func setHeader(h mail.Header, key, value string) {
 	h[key] = []string{value}
 }
 
-// appendFooter appends a text footer to the message body.
-// For multipart messages, this is a simplification that appends to the raw body.
-// A future improvement would add a proper MIME part.
-func appendFooter(body []byte, footer string) []byte {
+// appendMIMEFooter appends the footer to the message body without corrupting
+// its MIME structure (ADR 0026): single-part text bodies are decoded,
+// extended, and re-encoded; multipart messages gain a trailing text/plain
+// part (or are wrapped in multipart/mixed when their top-level type cannot
+// carry one).
+func appendMIMEFooter(headers mail.Header, body []byte, footer string) []byte {
+	contentType := headers.Get("Content-Type")
+	mediaType, params := parseContentType(contentType)
+
+	if !strings.HasPrefix(mediaType, "multipart/") {
+		return appendSinglePartFooter(headers, body, footer)
+	}
+	return addFooterPart(headers, contentType, mediaType, params, body, footer)
+}
+
+// appendSinglePartFooter extends a non-multipart body, re-encoding it when
+// the original was transfer-encoded so the footer isn't mangled.
+func appendSinglePartFooter(headers mail.Header, body []byte, footer string) []byte {
+	enc := strings.ToLower(strings.TrimSpace(headers.Get("Content-Transfer-Encoding")))
+	switch enc {
+	case "base64":
+		if dec, err := base64.StdEncoding.DecodeString(string(body)); err == nil {
+			updated := append(dec, []byte(footer)...)
+			return []byte(base64.StdEncoding.EncodeToString(updated))
+		}
+	case "quoted-printable":
+		if dec, err := io.ReadAll(quotedprintable.NewReader(bytes.NewReader(body))); err == nil {
+			updated := append(dec, []byte(footer)...)
+			var sb strings.Builder
+			qp := quotedprintable.NewWriter(&sb)
+			qp.Write(updated)
+			qp.Close()
+			return []byte(sb.String())
+		}
+	}
 	return append(body, []byte(footer)...)
+}
+
+// addFooterPart rebuilds a multipart message with a trailing text/plain
+// footer part. For multipart/mixed (and digest) the existing parts are copied
+// verbatim and the footer appended; for any other multipart type the original
+// is wrapped as a single part inside a new multipart/mixed.
+func addFooterPart(headers mail.Header, contentType, mediaType string, params map[string]string, body []byte, footer string) []byte {
+	var out bytes.Buffer
+	mw := multipart.NewWriter(&out)
+
+	if mediaType == "multipart/mixed" || mediaType == "multipart/digest" {
+		if boundary := params["boundary"]; boundary != "" {
+			mr := multipart.NewReader(bytes.NewReader(body), boundary)
+			for {
+				part, err := mr.NextPart()
+				if err != nil {
+					break
+				}
+				pw, err := mw.CreatePart(part.Header)
+				if err != nil {
+					continue
+				}
+				io.Copy(pw, part)
+			}
+		}
+	} else {
+		ph := textproto.MIMEHeader{"Content-Type": []string{contentType}}
+		pw, _ := mw.CreatePart(ph)
+		pw.Write(body)
+	}
+
+	fp, _ := mw.CreatePart(textproto.MIMEHeader{
+		"Content-Type": []string{"text/plain; charset=utf-8"},
+	})
+	fp.Write([]byte(footer))
+	mw.Close()
+
+	setHeader(headers, "Content-Type", "multipart/mixed; boundary="+mw.Boundary())
+	return out.Bytes()
+}
+
+func parseContentType(ct string) (string, map[string]string) {
+	if ct == "" {
+		return "", nil
+	}
+	mt, params, err := mime.ParseMediaType(ct)
+	if err != nil {
+		return "", nil
+	}
+	return mt, params
 }
 
 // writeHeaders writes mail headers to the output buffer in order.

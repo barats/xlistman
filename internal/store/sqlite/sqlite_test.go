@@ -370,7 +370,7 @@ func TestArchiveOperations(t *testing.T) {
 	ctx := context.Background()
 
 	// Archive a message
-	err := s.ArchiveMessage(ctx, 1, "<msg1@x.com>", "Hello world", "alice@x.com", []byte("body text"), "thread1")
+	err := s.ArchiveMessage(ctx, 1, "<msg1@x.com>", "Hello world", "alice@x.com", []byte("body text"), "thread1", "body text")
 	if err != nil {
 		t.Fatalf("ArchiveMessage: %v", err)
 	}
@@ -656,7 +656,7 @@ func TestDeleteListCascade(t *testing.T) {
 	bob, _ := s.GetOrCreateSubscriber(ctx, "bob@example.com")
 
 	// Related data for the doomed list.
-	if err := s.ArchiveMessage(ctx, l.ID, "<m1@x>", "hello", "alice@example.com", []byte("body"), "t1"); err != nil {
+	if err := s.ArchiveMessage(ctx, l.ID, "<m1@x>", "hello", "alice@example.com", []byte("body"), "t1", "body"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.CreateHeldMessage(ctx, l.ID, "bob@example.com", "held", []byte("h"), time.Now().Add(time.Hour)); err != nil {
@@ -679,7 +679,7 @@ func TestDeleteListCascade(t *testing.T) {
 	}
 
 	// Unrelated data for the surviving list and its subscriber.
-	if err := s.ArchiveMessage(ctx, keep.ID, "<m2@x>", "team hello", "alice@example.com", []byte("keep body"), "t2"); err != nil {
+	if err := s.ArchiveMessage(ctx, keep.ID, "<m2@x>", "team hello", "alice@example.com", []byte("keep body"), "t2", "keep body"); err != nil {
 		t.Fatal(err)
 	}
 	keepSub, _ := s.CreateSubscription(ctx, keep.ID, alice.ID)

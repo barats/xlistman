@@ -20,6 +20,12 @@ type ListSettings struct {
 	// Maximum message size in bytes. 0 means no limit (but see global default).
 	MaxMessageSize int64 `json:"max_message_size"`
 
+	// Whether the list accepts attachments (ADR 0025).
+	AllowAttachments bool `json:"allow_attachments"`
+
+	// Maximum size of a single attachment in bytes. 0 means no limit.
+	MaxAttachmentSize int64 `json:"max_attachment_size"`
+
 	// Archive retention in days. 0 means unlimited.
 	ArchiveMaxAgeDays int `json:"archive_max_age_days"`
 
@@ -51,8 +57,10 @@ func DefaultListSettings(listType ListType) ListSettings {
 	s := ListSettings{
 		SubjectPrefix:          "", // set by caller based on list name
 		FooterEnabled:          true,
-		MaxMessageSize:         1_000_000, // 1 MB
-		ArchiveMaxAgeDays:      0,         // unlimited
+		MaxMessageSize:         0, // no enforced total cap by default (ADR 0025)
+		AllowAttachments:       true,
+		MaxAttachmentSize:      0, // no per-attachment limit
+		ArchiveMaxAgeDays:      0, // unlimited
 		DigestFrequency:        DigestDaily,
 		SubscriptionPolicy:     SubscriptionPolicyOpen,
 		ReplyToMode:            ReplyToList,

@@ -241,6 +241,18 @@ func applyListSetting(s *model.ListSettings, desc *string, descSet *bool, key, v
 			return true, fmt.Errorf("expected a non-negative integer")
 		}
 		s.MaxMessageSize = n
+	case "allow_attachments":
+		b, err := strconv.ParseBool(val)
+		if err != nil {
+			return true, fmt.Errorf("expected true or false")
+		}
+		s.AllowAttachments = b
+	case "max_attachment_size":
+		n, err := strconv.ParseInt(val, 10, 64)
+		if err != nil || n < 0 {
+			return true, fmt.Errorf("expected a non-negative integer")
+		}
+		s.MaxAttachmentSize = n
 	case "archive_max_age_days":
 		n, err := strconv.Atoi(val)
 		if err != nil || n < 0 {
@@ -779,6 +791,8 @@ func cmdList(args []string) int {
 		fmt.Printf("subject_prefix: %s\n", st.SubjectPrefix)
 		fmt.Printf("footer_enabled: %v\n", st.FooterEnabled)
 		fmt.Printf("max_message_size: %d\n", st.MaxMessageSize)
+		fmt.Printf("allow_attachments: %v\n", st.AllowAttachments)
+		fmt.Printf("max_attachment_size: %d\n", st.MaxAttachmentSize)
 		fmt.Printf("archive_max_age_days: %d\n", st.ArchiveMaxAgeDays)
 		fmt.Printf("digest_frequency: %s\n", st.DigestFrequency)
 		fmt.Printf("subscription_policy: %s\n", st.SubscriptionPolicy)

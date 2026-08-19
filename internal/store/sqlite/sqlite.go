@@ -9,6 +9,7 @@ import (
 	"sort"
 	"time"
 
+	xmail "github.com/barats/xlistman/internal/mailparse"
 	"github.com/barats/xlistman/internal/model"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -89,6 +90,48 @@ func (s *Store) migrate() error {
 		return fmt.Errorf("create archive_fts: %w", err)
 	}
 
+	if err := s.backfillMigrations(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// backfillMigrations applies one-time data migrations for rows created before
+// the relevant ADR:
+//   - ADR 0025: the previously dormant 1 MB max_message_size default is reset
+//     to 0 (unlimited) so enforcing the cap never makes an existing list start
+//     rejecting posts on upgrade; new lists default to 0 as well.
+//   - ADR 0026: archive rows predating clean-text search get their body_text
+//     extracted (and the FTS row re-indexed) so old posts become searchable
+//     by content.
+func (s *Store) backfillMigrations() error {
+	var lists []model.List
+	if err := s.db.Find(&lists).Error; err != nil {
+		return fmt.Errorf("backfill lists: %w", err)
+	}
+	for i := range lists {
+		if lists[i].Settings.MaxMessageSize == 1_000_000 {
+			lists[i].Settings.MaxMessageSize = 0
+			if err := s.db.Save(&lists[i]).Error; err != nil {
+				return fmt.Errorf("backfill list settings %d: %w", lists[i].ID, err)
+			}
+		}
+	}
+
+	var empty []model.ArchiveEntry
+	if err := s.db.Where("body_text = ''").Find(&empty).Error; err != nil {
+		return fmt.Errorf("backfill archive: %w", err)
+	}
+	for _, e := range empty {
+		text := xmail.ExtractText(e.Body)
+		if err := s.db.Model(&e).Update("body_text", text).Error; err != nil {
+			return fmt.Errorf("backfill archive text %d: %w", e.ID, err)
+		}
+		if err := s.db.Exec(`UPDATE archive_fts SET body_text = ? WHERE rowid = ?`, text, e.ID).Error; err != nil {
+			return fmt.Errorf("backfill archive fts %d: %w", e.ID, err)
+		}
+	}
 	return nil
 }
 
@@ -776,13 +819,16 @@ func (s *Store) QueueDepth(ctx context.Context) (int, error) {
 
 // --- Archive operations ---
 
-func (s *Store) ArchiveMessage(ctx context.Context, listID int64, msgID, subject, from string, body []byte, threadID string) error {
+func (s *Store) ArchiveMessage(ctx context.Context, listID int64, msgID, subject, from string, body []byte, threadID, bodyText string) error {
+	// bodyText is the clean, searchable text of the post (ADR 0026), computed
+	// by the pipeline at archive time; display parses the raw body on read.
 	e := model.ArchiveEntry{
 		ListID:     listID,
 		MessageID:  msgID,
 		Subject:    subject,
 		From:       from,
 		Body:       body,
+		BodyText:   bodyText,
 		ThreadID:   threadID,
 		ReceivedAt: time.Now(),
 	}
@@ -792,7 +838,7 @@ func (s *Store) ArchiveMessage(ctx context.Context, listID int64, msgID, subject
 	// Insert into FTS table for full-text search.
 	return s.db.WithContext(ctx).Exec(
 		`INSERT INTO archive_fts (rowid, subject, body_text) VALUES (?, ?, ?)`,
-		e.ID, subject, string(body),
+		e.ID, subject, bodyText,
 	).Error
 }
 

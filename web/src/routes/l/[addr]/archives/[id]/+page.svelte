@@ -7,6 +7,7 @@
 	import { buttonVariants } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
 	import { Skeleton } from '$lib/components/ui/skeleton';
+	import MessageBody from '$lib/components/message-body.svelte';
 
 	const addr = page.params.addr ?? '';
 	const id = Number(page.params.id ?? '');
@@ -34,14 +35,7 @@
 		}
 	});
 
-	function bodyText(): string {
-		const b = msg?.body ?? '';
-		const sep = b.indexOf('\r\n\r\n');
-		if (sep >= 0) return b.slice(sep + 4);
-		const sep2 = b.indexOf('\n\n');
-		if (sep2 >= 0) return b.slice(sep2 + 2);
-		return b;
-	}
+	const attachmentPrefix = `/api/lists/${encodeURIComponent(domain)}/${encodeURIComponent(listName)}/archives/${id}/attachments`;
 </script>
 
 {#if phase === 'loading'}
@@ -83,5 +77,7 @@
 			<span class="font-medium text-foreground">{msg?.from}</span> · {msg ? fmtDate(msg.received_at) : ''}
 		</p>
 	</div>
-	<pre class="mt-4 whitespace-pre-wrap break-words font-sans text-sm leading-relaxed">{bodyText()}</pre>
+	{#if msg}
+		<MessageBody msg={msg.body} downloadPrefix={attachmentPrefix} />
+	{/if}
 {/if}

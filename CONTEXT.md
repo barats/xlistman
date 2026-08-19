@@ -97,6 +97,10 @@ _Avoid_: Admin console, control panel
 The stored history of posts to a List, browsable by Members via the web UI as threaded conversations with full-text search. Always members-only; no public access. Retained indefinitely by default, with an optional configurable max age per list.
 _Avoid_: Message store, history
 
+**Attachment**:
+A file carried inside an email message as a MIME part that has a `filename` (whether declared as `Content-Disposition: attachment` or `inline`), or that is declared `Content-Disposition: attachment`. The message's primary text body part is never an Attachment; any other such part is. Whether a List accepts Attachments, and how large each may be, is a List policy (ADR 0025).
+_Avoid_: File, attached file, inline image (an inline image with a filename is an Attachment)
+
 **Digest**:
 A batched compilation of posts to a List, sent to Subscribers whose delivery preference is set to digest. MIME multipart/digest format. Frequency is per-list (daily or weekly). Sent at a fixed time when the period elapses, only if there are new messages.
 _Avoid_: Summary, roundup

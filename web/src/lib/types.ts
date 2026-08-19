@@ -58,8 +58,31 @@ export interface ArchiveEntry {
 	received_at: string;
 }
 
+// MessageAttachment is one non-text file part of a message (ADR 0025).
+// ordinal addresses it across the whole message tree, depth-first.
+export interface MessageAttachment {
+	ordinal: number;
+	name: string;
+	content_type: string;
+	content_id?: string;
+	inline: boolean;
+	size: number;
+}
+
+// ParsedMessage is the MIME-aware structured view of an email (ADR 0026):
+// text/html bodies, nested (forwarded) messages, and attachments.
+export interface ParsedMessage {
+	from?: string;
+	subject?: string;
+	date?: string;
+	text?: string;
+	html?: string;
+	nested?: ParsedMessage[];
+	attachments?: MessageAttachment[];
+}
+
 export interface ArchiveMessage extends ArchiveEntry {
-	body: string;
+	body: ParsedMessage;
 }
 
 export interface ConsoleList {
@@ -85,6 +108,8 @@ export interface ListSettings {
 	subject_prefix: string;
 	footer_enabled: boolean;
 	max_message_size: number;
+	allow_attachments: boolean;
+	max_attachment_size: number;
 	archive_max_age_days: number;
 	digest_frequency: string;
 	subscription_policy: string;
@@ -144,7 +169,7 @@ export interface HeldMessage {
 }
 
 export interface HeldMessageDetail extends HeldMessage {
-	body: string;
+	body: ParsedMessage;
 }
 
 export interface DesignatedSender {

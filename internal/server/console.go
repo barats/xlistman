@@ -14,6 +14,7 @@ import (
 	"time"
 
 	xmail "github.com/barats/xlistman/internal/mail"
+	"github.com/barats/xlistman/internal/mailparse"
 	"github.com/barats/xlistman/internal/members"
 	"github.com/barats/xlistman/internal/model"
 )
@@ -116,6 +117,10 @@ func (s *Server) handleConsoleList(w http.ResponseWriter, r *http.Request) {
 	case len(parts) == 4 && parts[2] == "held":
 		h = func(w http.ResponseWriter, r *http.Request, l *model.List) {
 			s.handleConsoleHeldDetail(w, r, l, parts[3])
+		}
+	case len(parts) == 6 && parts[2] == "held" && parts[4] == "attachments":
+		h = func(w http.ResponseWriter, r *http.Request, l *model.List) {
+			s.handleConsoleHeldAttachment(w, r, l, parts[3], parts[5])
 		}
 	case len(parts) == 5 && parts[2] == "held":
 		h = func(w http.ResponseWriter, r *http.Request, l *model.List) {
@@ -263,14 +268,49 @@ func (s *Server) handleConsoleHeldDetail(w http.ResponseWriter, r *http.Request,
 	if !ok {
 		return
 	}
+	// Reuse the MIME-aware view so a moderator judges the post by how it
+	// reads, not by its MIME source (ADR 0026).
+	parsed, err := mailparse.ParseMessageMIME(m.Body)
+	if err != nil {
+		parsed = &mailparse.ParsedMessage{}
+	}
 	writeJSON(w, 200, map[string]any{
 		"id":          m.ID,
 		"subject":     m.Subject,
 		"sender":      m.Sender,
-		"body":        string(m.Body),
+		"body":        parsed,
 		"received_at": m.ReceivedAt,
 		"expires_at":  m.ExpiresAt,
 	})
+}
+
+// handleConsoleHeldAttachment streams one attachment of a held message to an
+// Owner or Moderator, using the same ordinal addressing as the archive.
+func (s *Server) handleConsoleHeldAttachment(w http.ResponseWriter, r *http.Request, l *model.List, idStr, ordinalStr string) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	m, ok := s.heldMessageForList(w, r, l, idStr)
+	if !ok {
+		return
+	}
+	ordinal, err := strconv.Atoi(ordinalStr)
+	if err != nil || ordinal < 0 {
+		http.NotFound(w, r)
+		return
+	}
+	parsed, err := mailparse.ParseMessageMIME(m.Body)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	att := parsed.AttachmentByOrdinal(ordinal)
+	if att == nil {
+		http.NotFound(w, r)
+		return
+	}
+	serveAttachment(w, r, att)
 }
 
 // handleConsoleHeldAction runs a Moderation Action on a held message, sharing
@@ -438,7 +478,8 @@ func (s *Server) handleConsoleSettings(w http.ResponseWriter, r *http.Request, l
 			return
 		}
 		if body.Settings.BounceThreshold < 0 || body.Settings.HeldExpiryDays < 0 ||
-			body.Settings.MaxMessageSize < 0 || body.Settings.ArchiveMaxAgeDays < 0 {
+			body.Settings.MaxMessageSize < 0 || body.Settings.MaxAttachmentSize < 0 ||
+			body.Settings.ArchiveMaxAgeDays < 0 {
 			writeJSON(w, 400, map[string]string{"error": "numeric settings cannot be negative"})
 			return
 		}
