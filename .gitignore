@@ -1,8 +1,16 @@
 # Build output
 /xlistman
+/e2eseed
+
+# Editor/IDE
+/.vscode/
+web/.vscode/
 
 # Local development (generated, untracked)
 /xlistman.yaml
 /xlistman.db
 /xlistman.db-shm
 /xlistman.db-wal
+
+# Frontend e2e suite (generated report; scenarios live in web/tests/t*.md)
+/web/tests/report.md

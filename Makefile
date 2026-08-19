@@ -1,4 +1,4 @@
-.PHONY: build build-go web test test-short docker clean config serve tidy
+.PHONY: build build-go web test test-short docker clean config serve tidy e2e e2e-stop e2e-summary
 
 # Frontend build (SvelteKit SPA -> static files)
 web:
@@ -38,6 +38,19 @@ config:
 # Run the daemon (requires config)
 serve:
 	./xlistman serve
+
+# Frontend e2e suite: bootstrap the environment (build, fresh DB, seed, serve)
+# and print the agent prompt. The agent then executes web/tests/*.md against
+# Chrome via the chrome-devtools MCP server; report with `make e2e-summary`.
+# Run `make web` first if you changed web/src since the last build.
+e2e:
+	./scripts/e2e.sh setup
+
+e2e-stop:
+	./scripts/e2e.sh stop
+
+e2e-summary:
+	./scripts/e2e.sh summary
 
 # Tidy Go modules
 tidy:

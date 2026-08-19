@@ -1,0 +1,29 @@
+# xListman end-to-end test configuration for the frontend suite.
+# Run via `make e2e` (see scripts/e2e.sh). Uses an isolated database,
+# sink-mode outbound mail, and a separate port so it never touches the dev
+# instance (which uses xlistman.yaml on :8080).
+http:
+    listen: :8090
+lmtp:
+    listen: :8025
+socket:
+    path: /tmp/xlistman-e2e.sock
+database:
+    path: /tmp/xlistman-e2e.db
+smtp:
+    host: localhost
+    port: 25
+    username: ""
+    password: ""
+    mode: sink
+    sink_dir: /tmp/xlistman-e2e-mail
+web:
+    base_url: http://localhost:8090
+rate_limits:
+    # Generous limits so repeated suite runs never trip the anti-flood caps.
+    subscribe_per_hour: 10000
+    magic_link_per_hour: 10000
+    magic_link_per_ip_per_hour: 10000
+    posts_per_hour: 10000
+queue:
+    max_retries: 8
