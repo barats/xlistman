@@ -26,6 +26,10 @@ RUN CGO_ENABLED=0 go build -ldflags "-X github.com/barats/xlistman/cmd.Version=$
 # Runtime stage: minimal image
 FROM scratch
 
+# CA certificates so outbound STARTTLS (net/smtp.SendMail) can verify real
+# relays; scratch has no system root pool.
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+
 # Copy the binary and default config.
 COPY --from=builder /build/xlistman /xlistman
 COPY config.default.yaml /etc/xlistman/config.yaml

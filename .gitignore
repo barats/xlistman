@@ -1,6 +1,7 @@
 # Build output
 /xlistman
 /e2eseed
+/dist/
 
 # Editor/IDE
 /.vscode/
