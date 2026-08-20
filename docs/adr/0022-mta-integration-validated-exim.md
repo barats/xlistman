@@ -62,7 +62,7 @@ re-validates the null-sender fix: exim delivers the DSN with `MAIL FROM:<>`.
 
 **Outbound.** xListman submits via SMTP to `localhost:2525`; post envelope
 senders are VERP addresses in the list domain; final local delivery to
-`barat@localhost` is an `appendfile` mbox under the fixture (self-contained,
+`owner@localhost` is an `appendfile` mbox under the fixture (self-contained,
 no mail-spool permissions).
 
 **Considered Options.**
@@ -101,7 +101,7 @@ now works under both MTAs.
   command that exits with a permanent-failure code (`/usr/bin/false`).
 - exim's taint checking (4.94+) forbids tainted data (`$local_part`, derived
   from the untrusted envelope) in transport file paths. Local delivery uses a
-  constant mbox path; only `barat@localhost` receives real local mail.
+  constant mbox path; only `owner@localhost` receives real local mail.
 - exim's manualroute parses a bare IPv4 literal in `route_list` but not an IPv6
   literal (`::1` — the `:` is consumed as the `host:port` separator) or a
   bracketed literal, which is why the second loopback address (`127.0.0.2`)

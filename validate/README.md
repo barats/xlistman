@@ -9,7 +9,7 @@ Both validations use the same domain/address conventions:
 
 - Domain: `lists.test` (reserved, non-routable), routed to xListman's LMTP
   server on `127.0.0.1:8024` (Postfix) or `127.0.0.2:8024` (exim).
-- List: `dev@lists.test` (discussion), owner `barat@localhost`, with a second
+- List: `dev@lists.test` (discussion), owner `owner@localhost`, with a second
   subscriber `poster@localhost` and a `deadbeat@localhost` subscription used
   to force the VERP bounce reverse leg.
 - Settings: `bounce_threshold=2`, `owner_auto_disable_notice=true`.

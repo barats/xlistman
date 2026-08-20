@@ -561,9 +561,9 @@ func itoa(n int64) string {
 // fallback for client-side routes, while /api/ and /health still hit the API.
 func TestSPAServing(t *testing.T) {
 	web := fstest.MapFS{
-		"web/build/index.html":  {Data: []byte("<html>spa shell</html>")},
-		"web/build/robots.txt":  {Data: []byte("User-agent: *")},
-		"web/build/_app/a.js":   {Data: []byte("console.log('asset')")},
+		"web/build/index.html": {Data: []byte("<html>spa shell</html>")},
+		"web/build/robots.txt": {Data: []byte("User-agent: *")},
+		"web/build/_app/a.js":  {Data: []byte("console.log('asset')")},
 	}
 
 	st, err := sqlite.OpenInMemory()

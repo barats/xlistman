@@ -14,31 +14,31 @@ const (
 // Canonical Audit Event action names (ADR 0018). Namespaced so the two
 // overloaded "approve" actions stay unambiguous.
 const (
-	ActionModerationApprove   = "moderation.approve"
-	ActionModerationReject    = "moderation.reject"
-	ActionModerationDiscard   = "moderation.discard"
-	ActionSubscriptionApprove = "subscription.approve"
-	ActionSubscriptionReject  = "subscription.reject"
-	ActionMemberAdd           = "member.add"
-	ActionMemberImport        = "member.import"
-	ActionMemberRemove        = "member.remove"
-	ActionMemberReenable      = "member.re-enable"
-	ActionMemberResetBounces  = "member.reset-bounces"
-	ActionRoleGrant           = "role.grant"
-	ActionRoleRevoke          = "role.revoke"
-	ActionSenderAdd           = "sender.add"
-	ActionSenderRemove        = "sender.remove"
-	ActionSettingsUpdate      = "settings.update"
-	ActionListCreate          = "list.create"
-	ActionListDelete          = "list.delete"
-	ActionListType            = "list.type"
-	ActionDomainCreate        = "domain.create"
-	ActionDomainDelete        = "domain.delete"
-	ActionAdminDesignate      = "admin.designate"
-	ActionAdminRevoke         = "admin.revoke"
-	ActionWebLoginEnable      = "web.login-enable"
-	ActionWebLoginDisable     = "web.login-disable"
-	ActionWebManagementEnable = "web.management-enable"
+	ActionModerationApprove    = "moderation.approve"
+	ActionModerationReject     = "moderation.reject"
+	ActionModerationDiscard    = "moderation.discard"
+	ActionSubscriptionApprove  = "subscription.approve"
+	ActionSubscriptionReject   = "subscription.reject"
+	ActionMemberAdd            = "member.add"
+	ActionMemberImport         = "member.import"
+	ActionMemberRemove         = "member.remove"
+	ActionMemberReenable       = "member.re-enable"
+	ActionMemberResetBounces   = "member.reset-bounces"
+	ActionRoleGrant            = "role.grant"
+	ActionRoleRevoke           = "role.revoke"
+	ActionSenderAdd            = "sender.add"
+	ActionSenderRemove         = "sender.remove"
+	ActionSettingsUpdate       = "settings.update"
+	ActionListCreate           = "list.create"
+	ActionListDelete           = "list.delete"
+	ActionListType             = "list.type"
+	ActionDomainCreate         = "domain.create"
+	ActionDomainDelete         = "domain.delete"
+	ActionAdminDesignate       = "admin.designate"
+	ActionAdminRevoke          = "admin.revoke"
+	ActionWebLoginEnable       = "web.login-enable"
+	ActionWebLoginDisable      = "web.login-disable"
+	ActionWebManagementEnable  = "web.management-enable"
 	ActionWebManagementDisable = "web.management-disable"
 )
 
@@ -61,8 +61,8 @@ type AuditActor struct {
 type AuditEvent struct {
 	ID          int64     `gorm:"primaryKey;autoIncrement"`
 	At          time.Time `gorm:"not null;index"`
-	ListID      *int64    `gorm:"index"`                    // nil for instance-level events
-	ListAddr    string    `gorm:"not null;default:''"`      // snapshot of the list address
+	ListID      *int64    `gorm:"index"`               // nil for instance-level events
+	ListAddr    string    `gorm:"not null;default:''"` // snapshot of the list address
 	Action      string    `gorm:"not null;index"`
 	ActorKind   string    `gorm:"not null"`
 	ActorID     *int64    // subscriber id when ActorKind is subscriber

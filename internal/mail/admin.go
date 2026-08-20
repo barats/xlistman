@@ -13,8 +13,8 @@ import (
 
 // List role names used by GrantRole/RevokeRole.
 const (
-	RoleOwner      = "owner"
-	RoleModerator  = "moderator"
+	RoleOwner     = "owner"
+	RoleModerator = "moderator"
 )
 
 // AddMember subscribes an address directly, bypassing double opt-in: the
