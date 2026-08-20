@@ -59,32 +59,17 @@ binary with an embedded frontend and SQLite storage.
 ## Screenshots
 
 Captured from a live instance seeded with demo data — reproduce them with
-`scripts/screenshot-seed.sh`.
+`scripts/screenshot-seed.sh`. Click a thumbnail to open it full size.
 
-<p align="center">
-  <img src="docs/screenshots/lists.png" alt="Public list index" width="720" /><br/>
-  <em>The public list index — browse and subscribe to lists</em>
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/me.png" alt="Member self-service" width="720" /><br/>
-  <em>Member self-service — subscriptions, delivery preferences, and pending posts</em>
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/archives.png" alt="Members-only archives" width="720" /><br/>
-  <em>Members-only archives with full-text search</em>
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/moderation.png" alt="Moderation queue" width="720" /><br/>
-  <em>Moderation — held messages with approve, reject, and discard</em>
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/server.png" alt="Server administration" width="720" /><br/>
-  <em>Server administration — domains, lists, and administrators</em>
-</p>
+<table>
+  <tr>
+    <td align="center"><a href="docs/screenshots/lists.png"><img src="docs/screenshots/lists.png" alt="Public list index" width="190" /></a><br/><em>Public list index</em></td>
+    <td align="center"><a href="docs/screenshots/me.png"><img src="docs/screenshots/me.png" alt="Member self-service" width="190" /></a><br/><em>Member self-service</em></td>
+    <td align="center"><a href="docs/screenshots/archives.png"><img src="docs/screenshots/archives.png" alt="Members-only archives" width="190" /></a><br/><em>Members-only archives</em></td>
+    <td align="center"><a href="docs/screenshots/moderation.png"><img src="docs/screenshots/moderation.png" alt="Moderation queue" width="190" /></a><br/><em>Moderation queue</em></td>
+    <td align="center"><a href="docs/screenshots/server.png"><img src="docs/screenshots/server.png" alt="Server administration" width="190" /></a><br/><em>Server administration</em></td>
+  </tr>
+</table>
 
 ## Quickstart
 
