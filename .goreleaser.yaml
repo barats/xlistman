@@ -2,6 +2,13 @@ version: 2
 
 project_name: xlistman
 
+# The web UI is embedded into the binary via go:embed, so build the SvelteKit
+# frontend before the Go builds (requires Node.js + pnpm on the release
+# runner — see .github/workflows/release.yml).
+before:
+  hooks:
+    - cd web && pnpm install --frozen-lockfile && pnpm build
+
 builds:
   - env:
       - CGO_ENABLED=0
@@ -15,7 +22,7 @@ builds:
       - arm64
 
 archives:
-  - format: tar.gz
+  - formats: [tar.gz]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:

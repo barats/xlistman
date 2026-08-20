@@ -93,8 +93,9 @@ value can be overridden with `XLISTMAN_*` environment variables (e.g. point
 Prerequisites: Go 1.25+, and Node.js + pnpm for the embedded web UI.
 
 ```sh
-make build        # builds the SvelteKit frontend, then the Go binary
-./xlistman config init    # generate ./xlistman.yaml, then edit it
+cd web && pnpm install && pnpm build   # build the SvelteKit frontend
+cd .. && go build -o xlistman .        # then the Go binary (UI embedded)
+./xlistman config init                 # generate ./xlistman.yaml, then edit it
 ./xlistman serve
 ```
 
@@ -105,8 +106,9 @@ go install github.com/barats/xlistman@latest
 ```
 
 > The frontend build is generated and not committed, so a plain `go build`
-> produces a binary without the web UI. Use `make build` (or Docker), which
-> builds the frontend first, or run `make web` to rebuild the SPA.
+> produces a binary without the web UI. Build the frontend first (see above),
+> use the Docker image, or install a release binary — goreleaser builds the
+> frontend as part of the release.
 
 ### First steps
 

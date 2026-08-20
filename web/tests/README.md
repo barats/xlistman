@@ -8,7 +8,7 @@ runnable by text-only models.
 
 ## How to run
 
-1. `make e2e` — builds the binary, wipes/creates a fresh DB
+1. `./scripts/e2e.sh setup` — builds the binary, wipes/creates a fresh DB
    (`/tmp/xlistman-e2e.db`), starts the daemon on `http://localhost:8090`
    (`scripts/e2e.yaml`; sink mail in `/tmp/xlistman-e2e-mail`), seeds fixtures,
    and prints an agent prompt.
@@ -16,11 +16,11 @@ runnable by text-only models.
    against `http://localhost:8090` and write the report to
    `web/tests/report.md`."* The agent drives Chrome via the chrome-devtools MCP
    tools.
-3. `make e2e-summary` — parses `web/tests/report.md` into PASS/FAIL totals and
+3. `./scripts/e2e.sh summary` — parses `web/tests/report.md` into PASS/FAIL totals and
    exits non-zero if anything failed.
 
-Run `make web` first if you changed `web/src` since the last build (the SPA is
-embedded into the binary from `web/build`).
+Run `cd web && pnpm install && pnpm build` first if you changed `web/src` since
+the last build (the SPA is embedded into the binary from `web/build`).
 
 The browser, daemon, and seeded data persist between tests; `scripts/e2e.sh
 stop` tears the daemon down, `setup` starts a fresh one.

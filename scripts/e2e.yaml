@@ -1,5 +1,5 @@
 # xListman end-to-end test configuration for the frontend suite.
-# Run via `make e2e` (see scripts/e2e.sh). Uses an isolated database,
+# Run via `./scripts/e2e.sh setup` (see scripts/e2e.sh). Uses an isolated database,
 # sink-mode outbound mail, and a separate port so it never touches the dev
 # instance (which uses xlistman.yaml on :8080).
 http:
