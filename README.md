@@ -99,16 +99,12 @@ cd .. && go build -o xlistman .        # then the Go binary (UI embedded)
 ./xlistman serve
 ```
 
-Or install the binary directly:
-
-```sh
-go install github.com/barats/xlistman@latest
-```
-
-> The frontend build is generated and not committed, so a plain `go build`
-> produces a binary without the web UI. Build the frontend first (see above),
-> use the Docker image, or install a release binary — goreleaser builds the
-> frontend as part of the release.
+> The web UI is generated and not committed, so `go install
+> github.com/barats/xlistman@latest` (and a plain `go build`) produces a binary
+> **without the web UI** — CLI and mail handling only. For the full product,
+> use the Docker image (above) or download a release binary from the
+> [GitHub Releases](https://github.com/barats/xlistman/releases) page, which
+> ships the frontend embedded (goreleaser builds it as part of the release).
 
 ### First steps
 
