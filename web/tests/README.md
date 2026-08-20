@@ -10,7 +10,7 @@ runnable by text-only models.
 
 1. `make e2e` — builds the binary, wipes/creates a fresh DB
    (`/tmp/xlistman-e2e.db`), starts the daemon on `http://localhost:8090`
-   (config `e2e.yaml`, sink mail in `/tmp/xlistman-e2e-mail`), seeds fixtures,
+   (`scripts/e2e.yaml`; sink mail in `/tmp/xlistman-e2e-mail`), seeds fixtures,
    and prints an agent prompt.
 2. Tell the agent to run the suite: *"Execute `web/tests/t*.md` in order
    against `http://localhost:8090` and write the report to

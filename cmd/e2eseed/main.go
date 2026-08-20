@@ -3,7 +3,7 @@
 // Held subscriptions awaiting owner approval. Everything else is seeded
 // through the xListman CLI and `xlistman deliver` (see scripts/e2e-seed.sh).
 //
-// Usage (run against a fresh database, with XLISTMAN_CONFIG=e2e.yaml):
+// Usage (run against a fresh database, with XLISTMAN_CONFIG=scripts/e2e.yaml):
 //
 //	go run ./cmd/e2eseed                          # canonical fixtures: disabled@ on dev, heldsub@ on mod
 //	go run ./cmd/e2eseed disabled <list> <email>  # Disabled member of <list>

@@ -7,7 +7,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-export XLISTMAN_CONFIG="${XLISTMAN_CONFIG:-e2e.yaml}"
+export XLISTMAN_CONFIG="${XLISTMAN_CONFIG:-scripts/e2e.yaml}"
 BIN="$(pwd)/xlistman"
 
 run() {

@@ -15,7 +15,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$(pwd)"
 
-export XLISTMAN_CONFIG="$ROOT/e2e.yaml"
+export XLISTMAN_CONFIG="$ROOT/scripts/e2e.yaml"
 BIN="$ROOT/xlistman"
 DB=/tmp/xlistman-e2e.db
 SINK=/tmp/xlistman-e2e-mail
@@ -73,7 +73,7 @@ setup() {
 	echo
 	echo "== e2e environment ready =="
 	echo "Base URL:  $BASE_URL"
-	echo "Config:    e2e.yaml (DB $DB, sink $SINK)"
+	echo "Config:    $XLISTMAN_CONFIG (DB $DB, sink $SINK)"
 	echo "Scenarios: $(ls web/tests/t*.md 2>/dev/null | wc -l | tr -d ' ') test files in web/tests/"
 	echo
 	echo "Next: tell the agent to run the suite, e.g.:"

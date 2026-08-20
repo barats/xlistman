@@ -12,7 +12,7 @@ from="${2:?from email required}"
 subject="${3:?subject required}"
 body="${4:-}"
 
-export XLISTMAN_CONFIG="${XLISTMAN_CONFIG:-e2e.yaml}"
+export XLISTMAN_CONFIG="${XLISTMAN_CONFIG:-scripts/e2e.yaml}"
 date="$(date -u +'%a, %d %b %Y %H:%M:%S +0000')"
 msgid="$(date +%s%N)"
 
