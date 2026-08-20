@@ -14,7 +14,7 @@ WORKDIR /build
 
 # Copy go module files and download dependencies.
 COPY go.mod go.sum ./
-RUN GOPROXY=https://goproxy.cn,direct go mod download
+RUN go mod download
 
 # Copy source code, then the compiled frontend build.
 COPY . .
@@ -28,6 +28,10 @@ FROM scratch
 
 # Copy the binary and default config.
 COPY --from=builder /build/xlistman /xlistman
+COPY config.default.yaml /etc/xlistman/config.yaml
+
+# Point the daemon at the baked-in config; env overrides below win.
+ENV XLISTMAN_CONFIG=/etc/xlistman/config.yaml
 
 # Expose ports (HTTP and LMTP).
 EXPOSE 8080 8024

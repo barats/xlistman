@@ -1,0 +1,27 @@
+# Build context hygiene: keep the Docker build small and deterministic.
+.git
+.gitignore
+**/.DS_Store
+
+# Go build artifacts
+/xlistman
+/e2eseed
+
+# Local dev state
+/xlistman.yaml
+/xlistman.db
+/xlistman.db-shm
+/xlistman.db-wal
+
+# Frontend deps + intermediate build output (the Dockerfile rebuilds web/build
+# itself; local web/build is replaced by the builder stage).
+web/node_modules
+web/build
+web/.svelte-kit
+web/.output
+
+# Validation harness transient state
+validate/**/mail
+validate/**/spool
+validate/**/log
+validate/**/*.db

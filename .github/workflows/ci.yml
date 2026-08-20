@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  go:
+    name: Go (fmt / vet / test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache: true
+      - name: gofmt check
+        run: |
+          files=$(gofmt -l cmd internal main.go)
+          if [ -n "$files" ]; then
+            echo "Files not gofmt-clean:"
+            echo "$files"
+            exit 1
+          fi
+      - name: go vet
+        run: go vet ./...
+      - name: go test
+        run: go test ./... -count=1
+
+  build:
+    name: Full build (frontend + binary)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache: true
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - name: Build frontend
+        working-directory: web
+        run: pnpm install --frozen-lockfile && pnpm build
+      - name: Build binary (embedded UI)
+        run: go build -o xlistman .
+      - name: Smoke test
+        run: ./xlistman version
