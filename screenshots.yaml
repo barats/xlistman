@@ -1,0 +1,31 @@
+# xListman configuration for the README screenshot environment.
+#
+# Runs on its own port / socket / database / sink so it never touches the dev
+# (:8080), e2e (:8090), or MTA validation environments. Seed the realistic
+# demo data with scripts/screenshot-seed.sh; capture with a headless browser
+# against http://localhost:8081 at 1280x900.
+http:
+    listen: :8081
+lmtp:
+    listen: :8026
+socket:
+    path: /tmp/xlistman-shots.sock
+database:
+    path: /tmp/xlistman-shots.db
+smtp:
+    host: localhost
+    port: 25
+    username: ""
+    password: ""
+    mode: sink
+    sink_dir: /tmp/xlistman-shots-mail
+web:
+    base_url: http://localhost:8081
+rate_limits:
+    # Generous so repeated capture runs never trip the anti-flood caps.
+    subscribe_per_hour: 10000
+    magic_link_per_hour: 10000
+    magic_link_per_ip_per_hour: 10000
+    posts_per_hour: 10000
+queue:
+    max_retries: 8

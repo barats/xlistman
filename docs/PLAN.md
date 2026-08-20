@@ -301,3 +301,31 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
   attachment (an attached `.txt` file) was being dropped instead of listed —
   attachment classification now checks disposition, not just media type
   (covered by a regression test).
+
+## Next
+
+### Launch (open source)
+- MIT license, root README, and `SECURITY.md` (all in repo). The README
+  embeds five screenshots (public index, member self-service, archives,
+  moderation queue, server administration) captured from a live instance at
+  1280x900 and stored in `docs/screenshots/`. The demo data is reproducible:
+  `scripts/screenshot-seed.sh` + `screenshots.yaml` run on a separate port
+  (:8081), DB, and sink so they never touch the dev or e2e environments.
+- GitHub Actions CI: gofmt/vet/test plus a full frontend build (`make build`
+  path) so a fresh checkout provably ships the embedded UI.
+- Releases: `v0.1.0` tagged with semantic versioning; goreleaser binaries
+  (linux amd64/arm64, darwin) and a multi-arch GHCR image per tag.
+- Hygiene: gofmt, `.dockerignore`, Docker default config (image starts with
+  no extra steps), neutral Go proxy default.
+
+### Post-launch roadmap
+- **SMTP TLS story.** Outbound is currently opportunistic STARTTLS only
+  (`net/smtp.SendMail`); no implicit TLS (`:465`) or TLS configuration.
+  First production-facing gap for modern relays.
+- **Upgrade path.** Schema is GORM `AutoMigrate` only, with no versioned
+  migrations (`internal/migrate/` is empty) and no migration tooling. The
+  natural `v0.2`+ theme: versioned migrations, and a documented back-up-
+  before-upgrade story for existing installs.
+- **Deployment guide.** Reverse proxy + HTTPS + systemd walkthrough for
+  running xListman for real (the `systemd/` unit exists but is undocumented).
+- Web posting stays explicitly out of scope (ADR 0024: posting is email-only).
