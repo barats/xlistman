@@ -4,10 +4,12 @@ project_name: xlistman
 
 # The web UI is embedded into the binary via go:embed, so build the SvelteKit
 # frontend before the Go builds (requires Node.js + pnpm on the release
-# runner — see .github/workflows/release.yml).
+# runner — see .github/workflows/release.yml). The hook must not rely on a
+# shell (goreleaser execs the command directly), so use `pnpm --dir web`.
 before:
   hooks:
-    - cd web && pnpm install --frozen-lockfile && pnpm build
+    - pnpm --dir web install --frozen-lockfile
+    - pnpm --dir web build
 
 builds:
   - env:
