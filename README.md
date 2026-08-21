@@ -80,7 +80,7 @@ docker run -d --name xlistman \
   -p 8080:8080 -p 8024:8024 \
   -v xlistman-data:/data \
   -e XLISTMAN_WEB_BASE_URL=http://localhost:8080 \
-  ghcr.io/barats/xlistman:0.1.0
+  ghcr.io/barats/xlistman:0.2.0
 ```
 
 The image ships a working default config (`/etc/xlistman/config.yaml`); any
