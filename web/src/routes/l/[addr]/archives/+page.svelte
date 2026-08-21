@@ -4,15 +4,23 @@
 	import { ApiError, getArchives } from '$lib/api';
 	import type { ArchiveEntry } from '$lib/types';
 	import { fmtRelative } from '$lib/dates';
+	import { getSiteName, setSeo } from '$lib/seo';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 
+	const site = getSiteName();
 	const addr = page.params.addr ?? '';
 	const at = addr.indexOf('@');
 	const listName = addr.slice(0, at);
 	const domain = addr.slice(at + 1);
+
+	setSeo({
+		title: `Archives — ${addr} — ${site}`,
+		description: `Browse the members-only archive of ${addr}.`,
+		noindex: true
+	});
 
 	let entries = $state<ArchiveEntry[] | null>(null);
 	let phase: 'loading' | 'loaded' | 'denied' | 'error' = $state('loading');

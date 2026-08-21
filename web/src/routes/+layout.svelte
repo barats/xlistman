@@ -6,8 +6,11 @@
 	import { page } from '$app/state';
 	import { me, refreshMe, signOut } from '$lib/auth';
 	import { webStatus, refreshWebStatus } from '$lib/access';
+	import { getSiteName } from '$lib/seo';
 
 	let { children } = $props();
+
+	const site = getSiteName();
 
 	onMount(() => {
 		refreshMe();
@@ -89,7 +92,7 @@
 		>
 			<a href="/" class="flex items-center gap-2 font-semibold tracking-tight">
 				<Mail class="size-5" />
-				xListman
+				{site}
 			</a>
 			<div class="flex items-center gap-1">
 				<nav class="hidden items-center gap-x-4 text-sm md:flex">
@@ -123,7 +126,7 @@
 	</main>
 	<footer class="border-t">
 		<div class="mx-auto w-full max-w-5xl px-4 py-4 text-xs text-muted-foreground">
-			xListman · self-hosted mailing lists
+			{site} · self-hosted mailing lists
 		</div>
 	</footer>
 </div>

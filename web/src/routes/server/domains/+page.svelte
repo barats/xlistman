@@ -2,11 +2,19 @@
 	import { onMount } from 'svelte';
 	import { createAdminDomain, getAdminDomains } from '$lib/api';
 	import type { AdminDomain } from '$lib/types';
+	import { getSiteName, setSeo } from '$lib/seo';
 	import { Button } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Skeleton } from '$lib/components/ui/skeleton';
+
+	const site = getSiteName();
+	setSeo({
+		title: `Domains — ${site}`,
+		description: `Manage the domains hosted on ${site}.`,
+		noindex: true
+	});
 
 	let domains = $state<AdminDomain[] | null>(null);
 	let error = $state('');

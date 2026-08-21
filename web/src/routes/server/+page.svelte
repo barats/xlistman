@@ -6,8 +6,16 @@
 		getAdminLists
 	} from '$lib/api';
 	import type { AdminAdministrator, AdminDomain, AdminList } from '$lib/types';
+	import { getSiteName, setSeo } from '$lib/seo';
 	import { Card } from '$lib/components/ui/card';
 	import { Skeleton } from '$lib/components/ui/skeleton';
+
+	const site = getSiteName();
+	setSeo({
+		title: `Server administration — ${site}`,
+		description: `Administer the ${site} instance: domains, lists, and administrators.`,
+		noindex: true
+	});
 
 	let domains = $state<AdminDomain[] | null>(null);
 	let lists = $state<AdminList[] | null>(null);

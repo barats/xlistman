@@ -147,7 +147,7 @@ with `xlistman config init`.
 | HTTP / LMTP / socket | `http.listen`, `lmtp.listen`, `socket.path` |
 | Storage | `database.path` |
 | Outbound | `smtp.host`, `smtp.port`, `smtp.username/password`, `smtp.mode` (`smtp`\|`sink`), `smtp.sink_dir` |
-| Web | `web.base_url` (public origin used in emails) |
+| Web | `web.base_url` (public origin used in emails), `web.site_name` (instance name in titles and the UI) |
 | Protection | `rate_limits.*` (subscribe / magic-link / posts per hour) |
 | Delivery | `queue.max_retries` |
 

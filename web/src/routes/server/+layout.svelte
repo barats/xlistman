@@ -4,10 +4,19 @@
 	import { ApiError, getAdminInfo } from '$lib/api';
 	import type { AdminInfo } from '$lib/types';
 	import { webStatus } from '$lib/access';
+	import { getSiteName, setSeo } from '$lib/seo';
 	import { Card } from '$lib/components/ui/card';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 
 	let { children } = $props();
+
+	// Base title for the whole server console; leaf pages refine it.
+	const site = getSiteName();
+	setSeo({
+		title: `Server administration — ${site}`,
+		description: `Administer the ${site} instance: domains, lists, and administrators.`,
+		noindex: true
+	});
 
 	let info = $state<AdminInfo | null>(null);
 	let phase: 'loading' | 'loaded' | 'denied' | 'error' = $state('loading');

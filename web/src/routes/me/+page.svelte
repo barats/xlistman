@@ -3,6 +3,7 @@
 	import { me, refreshMe } from '$lib/auth';
 	import { getMyHeldPosts, reEnable, setDelivery, unsubscribeMe } from '$lib/api';
 	import type { HeldPost, Subscription } from '$lib/types';
+	import { getSiteName, setSeo } from '$lib/seo';
 	import { cn } from '$lib/utils';
 	import { fmtRelative } from '$lib/dates';
 	import { statusVariant } from '$lib/status';
@@ -10,6 +11,13 @@
 	import { Button, buttonVariants } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
 	import { Skeleton } from '$lib/components/ui/skeleton';
+
+	const site = getSiteName();
+	setSeo({
+		title: `My subscriptions — ${site}`,
+		description: `Manage your subscriptions and delivery preferences on ${site}.`,
+		noindex: true
+	});
 
 	const modes = [
 		{ value: 'regular', label: 'Regular' },

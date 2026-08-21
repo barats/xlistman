@@ -3,10 +3,18 @@
 	import { getAdminAuditEvents } from '$lib/api';
 	import type { AuditEventPage } from '$lib/types';
 	import { auditActions } from '$lib/audit';
+	import { getSiteName, setSeo } from '$lib/seo';
 	import AuditEvents from '$lib/components/audit-events.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Select } from '$lib/components/ui/select';
 	import { Skeleton } from '$lib/components/ui/skeleton';
+
+	const site = getSiteName();
+	setSeo({
+		title: `Server audit — ${site}`,
+		description: 'Review the instance-wide audit trail.',
+		noindex: true
+	});
 
 	const pageSize = 500;
 

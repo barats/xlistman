@@ -2,11 +2,19 @@
 	import { onMount } from 'svelte';
 	import { addAdminAdministrator, getAdminAdministrators, removeAdminAdministrator } from '$lib/api';
 	import type { AdminAdministrator } from '$lib/types';
+	import { getSiteName, setSeo } from '$lib/seo';
 	import { Button } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Skeleton } from '$lib/components/ui/skeleton';
+
+	const site = getSiteName();
+	setSeo({
+		title: `Administrators — ${site}`,
+		description: `Manage who can administer the ${site} instance.`,
+		noindex: true
+	});
 
 	let admins = $state<AdminAdministrator[] | null>(null);
 	let email = $state('');

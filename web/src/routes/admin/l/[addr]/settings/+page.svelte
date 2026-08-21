@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { ApiError, getConsoleSettings, updateConsoleSettings } from '$lib/api';
 	import type { ConsoleSettings } from '$lib/types';
+	import { getSiteName, setSeo } from '$lib/seo';
 	import { Button } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
@@ -10,10 +11,17 @@
 	import { Select } from '$lib/components/ui/select';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 
+	const site = getSiteName();
 	const addr = page.params.addr ?? '';
 	const at = addr.indexOf('@');
 	const listName = addr.slice(0, at);
 	const domain = addr.slice(at + 1);
+
+	setSeo({
+		title: `Settings — ${addr} — ${site}`,
+		description: `Configure ${addr}.`,
+		noindex: true
+	});
 
 	let data = $state<ConsoleSettings | null>(null);
 	let phase: 'loading' | 'loaded' | 'denied' | 'error' = $state('loading');

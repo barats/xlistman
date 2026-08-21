@@ -4,16 +4,24 @@
 	import { ApiError, getHeldMessage, moderate } from '$lib/api';
 	import type { HeldMessageDetail } from '$lib/types';
 	import { fmtDate } from '$lib/dates';
+	import { getSiteName, setSeo } from '$lib/seo';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import MessageBody from '$lib/components/message-body.svelte';
 
+	const site = getSiteName();
 	const addr = page.params.addr ?? '';
 	const id = Number(page.params.id ?? '');
 	const at = addr.indexOf('@');
 	const listName = addr.slice(0, at);
 	const domain = addr.slice(at + 1);
+
+	setSeo({
+		title: `${addr} — ${site}`,
+		description: `Review a held message on ${addr}.`,
+		noindex: true
+	});
 
 	let msg = $state<HeldMessageDetail | null>(null);
 	let phase: 'loading' | 'loaded' | 'denied' | 'error' = $state('loading');
@@ -25,6 +33,11 @@
 		try {
 			msg = await getHeldMessage(domain, listName, id);
 			phase = 'loaded';
+			setSeo({
+				title: `${msg?.subject || '(no subject)'} — ${addr} — ${site}`,
+				description: `Review a held message on ${addr}.`,
+				noindex: true
+			});
 		} catch (e) {
 			if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
 				phase = 'denied';

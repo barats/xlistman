@@ -3,9 +3,17 @@
 	import { ApiError, getConsoleLists } from '$lib/api';
 	import type { ConsoleList } from '$lib/types';
 	import { webStatus } from '$lib/access';
+	import { getSiteName, setSeo } from '$lib/seo';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Card } from '$lib/components/ui/card';
 	import { Skeleton } from '$lib/components/ui/skeleton';
+
+	const site = getSiteName();
+	setSeo({
+		title: `My lists — ${site}`,
+		description: 'Manage the mailing lists where you hold a role.',
+		noindex: true
+	});
 
 	let lists = $state<ConsoleList[] | null>(null);
 	let phase: 'loading' | 'loaded' | 'denied' | 'error' = $state('loading');

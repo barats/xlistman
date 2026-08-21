@@ -50,6 +50,9 @@ type SMTPConfig struct {
 
 type WebConfig struct {
 	BaseURL string `yaml:"base_url"`
+	// SiteName is the instance name shown in page titles, the web UI
+	// header/footer, and social tags. Defaults to "xListman".
+	SiteName string `yaml:"site_name"`
 }
 
 type RateLimitConfig struct {
@@ -153,6 +156,9 @@ func applyDefaults(cfg *Config) {
 	if cfg.SMTP.SinkDir == "" {
 		cfg.SMTP.SinkDir = "./mail"
 	}
+	if cfg.Web.SiteName == "" {
+		cfg.Web.SiteName = "xListman"
+	}
 	if cfg.RateLimits.SubscribePerHour == 0 {
 		cfg.RateLimits.SubscribePerHour = 5
 	}
@@ -182,6 +188,7 @@ func applyEnvOverrides(cfg *Config) {
 	setStrFromEnv(envPrefix+"SMTP_MODE", &cfg.SMTP.Mode)
 	setStrFromEnv(envPrefix+"SMTP_SINK_DIR", &cfg.SMTP.SinkDir)
 	setStrFromEnv(envPrefix+"WEB_BASE_URL", &cfg.Web.BaseURL)
+	setStrFromEnv(envPrefix+"WEB_SITE_NAME", &cfg.Web.SiteName)
 	setIntFromEnv(envPrefix+"RATE_LIMITS_SUBSCRIBE_PER_HOUR", &cfg.RateLimits.SubscribePerHour)
 	setIntFromEnv(envPrefix+"RATE_LIMITS_MAGIC_LINK_PER_HOUR", &cfg.RateLimits.MagicLinkPerHour)
 	setIntFromEnv(envPrefix+"RATE_LIMITS_MAGIC_LINK_PER_IP_PER_HOUR", &cfg.RateLimits.MagicLinkPerIPPerHour)

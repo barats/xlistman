@@ -3,15 +3,23 @@
 	import { page } from '$app/state';
 	import { getBounces, reenableBounceMember, resetBounceCount } from '$lib/api';
 	import type { BounceMember } from '$lib/types';
+	import { getSiteName, setSeo } from '$lib/seo';
 	import { statusVariant } from '$lib/status';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 
+	const site = getSiteName();
 	const addr = page.params.addr ?? '';
 	const at = addr.indexOf('@');
 	const listName = addr.slice(0, at);
 	const domain = addr.slice(at + 1);
+
+	setSeo({
+		title: `Bounces — ${addr} — ${site}`,
+		description: `Review bounces for subscriptions to ${addr}.`,
+		noindex: true
+	});
 
 	let members = $state<BounceMember[] | null>(null);
 	let error = $state('');

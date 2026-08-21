@@ -3,13 +3,21 @@
 	import { page } from '$app/state';
 	import { getConsoleListInfo, getConsoleMembers, getHeldMessages } from '$lib/api';
 	import type { ConsoleListInfo, HeldMessage, MemberPage } from '$lib/types';
+	import { getSiteName, setSeo } from '$lib/seo';
 	import { Card } from '$lib/components/ui/card';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 
+	const site = getSiteName();
 	const addr = page.params.addr ?? '';
 	const at = addr.indexOf('@');
 	const listName = addr.slice(0, at);
 	const domain = addr.slice(at + 1);
+
+	setSeo({
+		title: `${addr} — ${site}`,
+		description: `List console for ${addr}.`,
+		noindex: true
+	});
 
 	let info = $state<ConsoleListInfo | null>(null);
 	let memberPage = $state<MemberPage | null>(null);

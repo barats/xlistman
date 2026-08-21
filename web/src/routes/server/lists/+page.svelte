@@ -8,6 +8,7 @@
 		getAdminLists
 	} from '$lib/api';
 	import type { AdminDomain, AdminList } from '$lib/types';
+	import { getSiteName, setSeo } from '$lib/seo';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
@@ -15,6 +16,13 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Select } from '$lib/components/ui/select';
 	import { Skeleton } from '$lib/components/ui/skeleton';
+
+	const site = getSiteName();
+	setSeo({
+		title: `Lists — ${site}`,
+		description: `Create and manage lists on ${site}.`,
+		noindex: true
+	});
 
 	let lists = $state<AdminList[] | null>(null);
 	let domains = $state<AdminDomain[] | null>(null);

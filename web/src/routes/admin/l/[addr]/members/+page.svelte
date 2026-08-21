@@ -14,6 +14,7 @@
 		revokeRole
 	} from '$lib/api';
 	import type { ConsoleMember, MemberPage } from '$lib/types';
+	import { getSiteName, setSeo } from '$lib/seo';
 	import { statusVariant } from '$lib/status';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
@@ -22,10 +23,17 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 
+	const site = getSiteName();
 	const addr = page.params.addr ?? '';
 	const at = addr.indexOf('@');
 	const listName = addr.slice(0, at);
 	const domain = addr.slice(at + 1);
+
+	setSeo({
+		title: `Members — ${addr} — ${site}`,
+		description: `Manage members of ${addr}.`,
+		noindex: true
+	});
 
 	const pageSize = 100;
 

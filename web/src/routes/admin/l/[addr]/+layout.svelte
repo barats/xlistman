@@ -5,6 +5,7 @@
 	import { ApiError, getConsoleListInfo } from '$lib/api';
 	import type { ConsoleListInfo } from '$lib/types';
 	import { webStatus } from '$lib/access';
+	import { getSiteName, setSeo } from '$lib/seo';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Card } from '$lib/components/ui/card';
 	import { Skeleton } from '$lib/components/ui/skeleton';
@@ -15,6 +16,14 @@
 	const at = addr.indexOf('@');
 	const listName = addr.slice(0, at);
 	const domain = addr.slice(at + 1);
+
+	// Base title for the per-list console; leaf pages refine it.
+	const site = getSiteName();
+	setSeo({
+		title: `${addr} — ${site}`,
+		description: `List console for ${addr}.`,
+		noindex: true
+	});
 
 	let info = $state<ConsoleListInfo | null>(null);
 	let phase: 'loading' | 'loaded' | 'denied' | 'error' = $state('loading');

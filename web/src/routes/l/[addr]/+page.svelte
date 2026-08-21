@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { getList, subscribe } from '$lib/api';
 	import type { ListInfo } from '$lib/types';
+	import { getSiteName, setSeo } from '$lib/seo';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
@@ -10,10 +11,16 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 
+	const site = getSiteName();
 	const addr = page.params.addr ?? '';
 	const at = addr.indexOf('@');
 	const listName = addr.slice(0, at);
 	const domain = addr.slice(at + 1);
+
+	setSeo({
+		title: `${addr} — ${site}`,
+		description: `Subscribe to the ${addr} mailing list.`
+	});
 
 	let info = $state<ListInfo | null>(null);
 	let error = $state('');
@@ -21,8 +28,17 @@
 	onMount(async () => {
 		try {
 			info = await getList(domain, listName);
+			setSeo({
+				title: `${addr} — ${site}`,
+				description: info.description || `Subscribe to the ${addr} mailing list.`
+			});
 		} catch {
 			error = 'List not found.';
+			setSeo({
+				title: `List not found — ${site}`,
+				description: "The mailing list you're looking for could not be found.",
+				noindex: true
+			});
 		}
 	});
 

@@ -4,13 +4,21 @@
 	import { getHeldMessages, moderate } from '$lib/api';
 	import type { HeldMessage } from '$lib/types';
 	import { fmtRelative } from '$lib/dates';
+	import { getSiteName, setSeo } from '$lib/seo';
 	import { Button } from '$lib/components/ui/button';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 
+	const site = getSiteName();
 	const addr = page.params.addr ?? '';
 	const at = addr.indexOf('@');
 	const listName = addr.slice(0, at);
 	const domain = addr.slice(at + 1);
+
+	setSeo({
+		title: `Moderation — ${addr} — ${site}`,
+		description: `Review held messages on ${addr}.`,
+		noindex: true
+	});
 
 	let held = $state<HeldMessage[] | null>(null);
 	let error = $state('');

@@ -3,10 +3,18 @@
 	import { requestMagicLink } from '$lib/api';
 	import { me } from '$lib/auth';
 	import { webStatus } from '$lib/access';
+	import { getSiteName, setSeo } from '$lib/seo';
 	import { Button } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+
+	const site = getSiteName();
+	setSeo({
+		title: `Sign in — ${site}`,
+		description: `Sign in to ${site} with a magic link sent to your email address.`,
+		noindex: true
+	});
 
 	const errorParam = page.url.searchParams.get('error');
 	const prefill = page.url.searchParams.get('email') ?? '';

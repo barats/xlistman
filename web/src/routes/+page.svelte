@@ -2,14 +2,21 @@
 	import { onMount } from 'svelte';
 	import { getLists } from '$lib/api';
 	import type { ListSummary } from '$lib/types';
+	import { getSiteName, setSeo } from '$lib/seo';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Card } from '$lib/components/ui/card';
 	import { Skeleton } from '$lib/components/ui/skeleton';
+
+	const site = getSiteName();
 
 	let lists = $state<ListSummary[] | null>(null);
 	let error = $state('');
 
 	onMount(async () => {
+		setSeo({
+			title: `Mailing lists — ${site}`,
+			description: `Browse the mailing lists hosted on this ${site} instance and subscribe with one email address.`
+		});
 		try {
 			lists = await getLists();
 		} catch {

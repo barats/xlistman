@@ -3,8 +3,16 @@
 	import { page } from '$app/state';
 	import { me, refreshMe } from '$lib/auth';
 	import { unsubscribeMe } from '$lib/api';
+	import { getSiteName, setSeo } from '$lib/seo';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
+
+	const site = getSiteName();
+	setSeo({
+		title: `Unsubscribe — ${site}`,
+		description: 'Confirm or manage an unsubscribe request.',
+		noindex: true
+	});
 
 	const listAddr = page.url.searchParams.get('list') ?? '';
 	const email = page.url.searchParams.get('email') ?? '';

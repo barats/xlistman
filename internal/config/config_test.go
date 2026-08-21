@@ -102,10 +102,12 @@ smtp:
 	os.Setenv("XLISTMAN_SMTP_HOST", "relay.example.com")
 	os.Setenv("XLISTMAN_SMTP_PORT", "587")
 	os.Setenv("XLISTMAN_RATE_LIMITS_MAGIC_LINK_PER_IP_PER_HOUR", "77")
+	os.Setenv("XLISTMAN_WEB_SITE_NAME", "My Lists")
 	defer os.Unsetenv("XLISTMAN_HTTP_LISTEN")
 	defer os.Unsetenv("XLISTMAN_SMTP_HOST")
 	defer os.Unsetenv("XLISTMAN_SMTP_PORT")
 	defer os.Unsetenv("XLISTMAN_RATE_LIMITS_MAGIC_LINK_PER_IP_PER_HOUR")
+	defer os.Unsetenv("XLISTMAN_WEB_SITE_NAME")
 
 	cfg, err := LoadFromBytes([]byte(yaml))
 	if err != nil {
@@ -122,6 +124,9 @@ smtp:
 	}
 	if cfg.RateLimits.MagicLinkPerIPPerHour != 77 {
 		t.Errorf("RateLimits.MagicLinkPerIPPerHour = %d, want %d (env override)", cfg.RateLimits.MagicLinkPerIPPerHour, 77)
+	}
+	if cfg.Web.SiteName != "My Lists" {
+		t.Errorf("Web.SiteName = %q, want %q (env override)", cfg.Web.SiteName, "My Lists")
 	}
 }
 

@@ -1,3 +1,9 @@
-# allow crawling everything by default
+# Public pages (the list index and list pages) are crawlable. Gated and
+# members-only areas are kept out of search results and share previews.
 User-agent: *
-Disallow:
+Disallow: /admin
+Disallow: /server
+Disallow: /me
+Disallow: /auth
+Disallow: /unsubscribe
+Disallow: /l/*/archives

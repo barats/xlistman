@@ -4,16 +4,24 @@
 	import { ApiError, getArchiveEntry } from '$lib/api';
 	import type { ArchiveMessage } from '$lib/types';
 	import { fmtDate } from '$lib/dates';
+	import { getSiteName, setSeo } from '$lib/seo';
 	import { buttonVariants } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 	import MessageBody from '$lib/components/message-body.svelte';
 
+	const site = getSiteName();
 	const addr = page.params.addr ?? '';
 	const id = Number(page.params.id ?? '');
 	const at = addr.indexOf('@');
 	const listName = addr.slice(0, at);
 	const domain = addr.slice(at + 1);
+
+	setSeo({
+		title: `Archives — ${addr} — ${site}`,
+		description: `A post in the ${addr} archive.`,
+		noindex: true
+	});
 
 	let msg = $state<ArchiveMessage | null>(null);
 	let phase: 'loading' | 'loaded' | 'denied' | 'error' = $state('loading');
@@ -24,6 +32,11 @@
 		try {
 			msg = await getArchiveEntry(domain, listName, id);
 			phase = 'loaded';
+			setSeo({
+				title: `${msg?.subject || '(no subject)'} — ${addr} — ${site}`,
+				description: `A post in the ${addr} archive.`,
+				noindex: true
+			});
 		} catch (e) {
 			if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
 				phase = 'denied';

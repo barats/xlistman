@@ -3,15 +3,23 @@
 	import { page } from '$app/state';
 	import { addSender, getSenders, removeSender } from '$lib/api';
 	import type { DesignatedSender } from '$lib/types';
+	import { getSiteName, setSeo } from '$lib/seo';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 
+	const site = getSiteName();
 	const addr = page.params.addr ?? '';
 	const at = addr.indexOf('@');
 	const listName = addr.slice(0, at);
 	const domain = addr.slice(at + 1);
+
+	setSeo({
+		title: `Designated senders — ${addr} — ${site}`,
+		description: `Manage designated senders on ${addr}.`,
+		noindex: true
+	});
 
 	let senders = $state<DesignatedSender[] | null>(null);
 	let error = $state('');

@@ -100,12 +100,19 @@ func (s *Server) composeHandler(mux *http.ServeMux, webFS []fs.FS) http.Handler 
 }
 
 // spaHandler serves the embedded SPA static files, falling back to index.html
-// for client-side routes. When no build is embedded, it returns 404.
+// for client-side routes. HTML shells (index.html and the prerendered route
+// shells) are rewritten with per-route head tags (title, description, site
+// name, and for public routes Open Graph + canonical); other assets are served
+// unchanged. When no build is embedded, it returns 404.
 func (s *Server) spaHandler(webFS []fs.FS) http.Handler {
 	if len(webFS) == 0 || webFS[0] == nil {
 		return http.NotFoundHandler()
 	}
 	sub, err := fs.Sub(webFS[0], "web/build")
+	if err != nil {
+		return http.NotFoundHandler()
+	}
+	indexHTML, err := fs.ReadFile(sub, "index.html")
 	if err != nil {
 		return http.NotFoundHandler()
 	}
@@ -115,17 +122,17 @@ func (s *Server) spaHandler(webFS []fs.FS) http.Handler {
 		if p == "" {
 			p = "index.html"
 		}
-		if _, err := fs.Stat(sub, p); err == nil {
+		// Real static assets (scripts, styles, images, robots.txt) are served
+		// directly. Everything else — an existing .html shell or a client-side
+		// route with no file — gets the injected SPA shell.
+		if _, err := fs.Stat(sub, p); err == nil && !strings.HasSuffix(p, ".html") {
 			fileServer.ServeHTTP(w, r)
 			return
 		}
-		if _, err := fs.Stat(sub, "index.html"); err == nil {
-			clone := r.Clone(r.Context())
-			clone.URL.Path = "/"
-			fileServer.ServeHTTP(w, clone)
-			return
-		}
-		http.NotFound(w, r)
+		body := injectHead(string(indexHTML), s.Config.Web.SiteName, s.seoTagsFor(r))
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(body))
 	})
 }
 

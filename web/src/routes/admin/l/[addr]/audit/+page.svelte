@@ -4,15 +4,23 @@
 	import { getAuditEvents } from '$lib/api';
 	import type { AuditEventPage } from '$lib/types';
 	import { auditActions } from '$lib/audit';
+	import { getSiteName, setSeo } from '$lib/seo';
 	import AuditEvents from '$lib/components/audit-events.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Select } from '$lib/components/ui/select';
 	import { Skeleton } from '$lib/components/ui/skeleton';
 
+	const site = getSiteName();
 	const addr = page.params.addr ?? '';
 	const at = addr.indexOf('@');
 	const listName = addr.slice(0, at);
 	const domain = addr.slice(at + 1);
+
+	setSeo({
+		title: `Audit trail — ${addr} — ${site}`,
+		description: `Review the audit trail for ${addr}.`,
+		noindex: true
+	});
 
 	const pageSize = 500;
 

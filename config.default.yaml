@@ -28,6 +28,9 @@ smtp:
 web:
   # The public origin users see in emails (must start with http:// or https://).
   base_url: "http://localhost:8080"
+  # The instance name used in page titles, the web UI header/footer, and
+  # social tags.
+  site_name: "xListman"
 rate_limits:
   subscribe_per_hour: 5
   magic_link_per_hour: 3
