@@ -6,6 +6,7 @@
 # Editor/IDE
 /.vscode/
 web/.vscode/
+.DS_Store
 
 # Local development (generated, untracked)
 /xlistman.yaml

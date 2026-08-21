@@ -18,6 +18,8 @@ database:
 smtp:
   host: "mail.example.com"
   port: 587
+  tls: "starttls-required"
+  tls_insecure_skip_verify: true
 web:
   base_url: "https://lists.example.com"
 rate_limits:
@@ -38,6 +40,12 @@ rate_limits:
 	}
 	if cfg.SMTP.Port != 587 {
 		t.Errorf("SMTP.Port = %d, want %d", cfg.SMTP.Port, 587)
+	}
+	if cfg.SMTP.TLS != "starttls-required" {
+		t.Errorf("SMTP.TLS = %q, want %q", cfg.SMTP.TLS, "starttls-required")
+	}
+	if !cfg.SMTP.TLSInsecureSkipVerify {
+		t.Error("SMTP.TLSInsecureSkipVerify = false, want true")
 	}
 	if cfg.Web.BaseURL != "https://lists.example.com" {
 		t.Errorf("Web.BaseURL = %q, want %q", cfg.Web.BaseURL, "https://lists.example.com")
@@ -69,6 +77,9 @@ func TestLoadConfig_AppliesDefaults(t *testing.T) {
 	}
 	if cfg.SMTP.Host != "localhost" {
 		t.Errorf("default SMTP.Host = %q, want %q", cfg.SMTP.Host, "localhost")
+	}
+	if cfg.SMTP.TLS != "starttls" {
+		t.Errorf("default SMTP.TLS = %q, want %q", cfg.SMTP.TLS, "starttls")
 	}
 	if cfg.SMTP.Port != 25 {
 		t.Errorf("default SMTP.Port = %d, want %d", cfg.SMTP.Port, 25)
@@ -183,5 +194,31 @@ func TestGenerateDefaultConfig(t *testing.T) {
 	}
 	if cfg.HTTP.Listen != ":8080" {
 		t.Errorf("generated HTTP.Listen = %q, want %q", cfg.HTTP.Listen, ":8080")
+	}
+}
+
+func TestValidate_SMTPTLS(t *testing.T) {
+	base := func(tls string) *Config {
+		return &Config{
+			Web:      WebConfig{BaseURL: "http://localhost:8080"},
+			Database: DatabaseConfig{Path: "./xlistman.db"},
+			SMTP:     SMTPConfig{TLS: tls},
+		}
+	}
+	for _, tls := range []string{"none", "starttls", "starttls-required", "implicit"} {
+		if err := base(tls).Validate(); err != nil {
+			t.Errorf("Validate(smtp.tls=%q) = %v, want nil", tls, err)
+		}
+	}
+	if err := base("bogus").Validate(); err == nil {
+		t.Error("Validate(smtp.tls=bogus) = nil, want error")
+	}
+	if err := base("none").Validate(); err != nil {
+		t.Errorf("Validate(smtp.tls=none) = %v, want nil", err)
+	}
+	cfg := base("none")
+	cfg.SMTP.Username = "user"
+	if err := cfg.Validate(); err == nil {
+		t.Error("Validate(smtp.tls=none + username) = nil, want error")
 	}
 }

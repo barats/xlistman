@@ -302,27 +302,47 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
   attachment classification now checks disposition, not just media type
   (covered by a regression test).
 
+### Web SEO — page titles, meta descriptions, robots rules — done
+- Every page gets a browser-tab title and meta description in the
+  "{Page} — {site}" format, with a configurable instance name (`web.site_name`,
+  default `xListman`) used in titles, `og:site_name`, and the UI header/footer.
+- Public pages (`/`, `/l/[addr]`) get server-injected, crawlable head content:
+  title, description, canonical, and Open Graph + Twitter tags, derived from
+  the list (store lookup) — the SPA shell's head is rewritten per route by the
+  Go server. Gated pages and members-only archive paths get `noindex`.
+- Client-side titles/descriptions are set per leaf route; gated console
+  layouts carry base titles so unauthorized views are titled too.
+- `robots.txt` disallows `/admin`, `/server`, `/me`, `/auth`, `/unsubscribe`,
+  and `/l/*/archives`.
+
+### Phase 16 — Outbound SMTP TLS — done
+- `smtp.tls` mode for the relay connection: `none | starttls` (opportunistic,
+  the default) `| starttls-required | implicit` (TLS from the first byte, e.g.
+  `:465`). Replaces `net/smtp.SendMail` with an explicit SMTP client that
+  dials, optionally upgrades to TLS, authenticates, and relays the message.
+- Certificate verification against system roots by default (ServerName =
+  `smtp.host`), with a `smtp.tls_insecure_skip_verify` toggle (default off)
+  for self-signed/private-CA relays.
+- Credentials are only sent over an encrypted connection; a configured
+  `smtp.username` on a plaintext session fails loudly instead of leaking the
+  password. Config validation rejects unknown `smtp.tls` values and
+  `tls=none` + username.
+- Tested with an in-process SMTP server (plaintext / STARTTLS / implicit TLS):
+  all four modes, the auth guard, and the skip-verify toggle. Config validation
+  and defaults covered.
+- ADR 0027.
+
 ## Next
 
-### Launch (open source)
-- MIT license, root README, and `SECURITY.md` (all in repo). The README
-  embeds five screenshots (public index, member self-service, archives,
-  moderation queue, server administration) captured from a live instance at
-  1280x900 and stored in `docs/screenshots/`. The demo data is reproducible:
-  `scripts/screenshot-seed.sh` + `screenshots.yaml` run on a separate port
-  (:8081), DB, and sink so they never touch the dev or e2e environments.
-- GitHub Actions CI: gofmt/vet/test plus a full frontend build (the
-  `pnpm build` + `go build` path) so a fresh checkout provably ships the
-  embedded UI.
-- Releases: `v0.1.0` tagged with semantic versioning; goreleaser binaries
-  (linux amd64/arm64, darwin) and a multi-arch GHCR image per tag.
-- Hygiene: gofmt, `.dockerignore`, Docker default config (image starts with
-  no extra steps), neutral Go proxy default.
+### Launch (open source) — done
+- MIT license, root README, and `SECURITY.md` shipped; README embeds five
+  screenshots captured from a live instance (reproducible via
+  `scripts/screenshot-seed.sh` + `screenshots.yaml` on a separate port).
+- GitHub Actions CI (gofmt/vet/test + full frontend build) and releases:
+  `v0.1.0` tagged, goreleaser binaries (linux amd64/arm64, darwin), and a
+  multi-arch GHCR image per tag.
 
 ### Post-launch roadmap
-- **SMTP TLS story.** Outbound is currently opportunistic STARTTLS only
-  (`net/smtp.SendMail`); no implicit TLS (`:465`) or TLS configuration.
-  First production-facing gap for modern relays.
 - **Upgrade path.** Schema is GORM `AutoMigrate` only, with no versioned
   migrations (`internal/migrate/` is empty) and no migration tooling. The
   natural `v0.2`+ theme: versioned migrations, and a documented back-up-

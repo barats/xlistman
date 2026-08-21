@@ -365,7 +365,7 @@ func cmdServe(args []string, webBuild fs.FS) int {
 	// development (smtp.mode: sink).
 	worker := &queue.Worker{
 		Store:      s,
-		SMTP:       &mail.SMTPClient{Host: cfg.SMTP.Host, Port: cfg.SMTP.Port, Username: cfg.SMTP.Username, Password: cfg.SMTP.Password, Mode: cfg.SMTP.Mode, SinkDir: cfg.SMTP.SinkDir},
+		SMTP:       &mail.SMTPClient{Host: cfg.SMTP.Host, Port: cfg.SMTP.Port, Username: cfg.SMTP.Username, Password: cfg.SMTP.Password, Mode: cfg.SMTP.Mode, SinkDir: cfg.SMTP.SinkDir, TLS: cfg.SMTP.TLS, TLSInsecureSkipVerify: cfg.SMTP.TLSInsecureSkipVerify},
 		MaxRetries: cfg.Queue.MaxRetries,
 		Logger:     logger,
 	}

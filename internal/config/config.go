@@ -46,6 +46,14 @@ type SMTPConfig struct {
 	Password string `yaml:"password"`
 	Mode     string `yaml:"mode"`     // "smtp" (default) or "sink" (write to disk for development)
 	SinkDir  string `yaml:"sink_dir"` // directory for outbound mail when mode is "sink"
+	// TLS selects the transport security for outbound SMTP to the relay:
+	// "none" (plaintext), "starttls" (opportunistic, the default),
+	// "starttls-required" (fail if the relay does not offer STARTTLS), or
+	// "implicit" (TLS from the first byte, e.g. port 465).
+	TLS string `yaml:"tls"`
+	// TLSInsecureSkipVerify disables certificate verification for relays with
+	// self-signed or private-CA certificates. Off by default.
+	TLSInsecureSkipVerify bool `yaml:"tls_insecure_skip_verify"`
 }
 
 type WebConfig struct {
@@ -153,6 +161,9 @@ func applyDefaults(cfg *Config) {
 	if cfg.SMTP.Mode == "" {
 		cfg.SMTP.Mode = "smtp"
 	}
+	if cfg.SMTP.TLS == "" {
+		cfg.SMTP.TLS = "starttls"
+	}
 	if cfg.SMTP.SinkDir == "" {
 		cfg.SMTP.SinkDir = "./mail"
 	}
@@ -187,6 +198,8 @@ func applyEnvOverrides(cfg *Config) {
 	setStrFromEnv(envPrefix+"SMTP_PASSWORD", &cfg.SMTP.Password)
 	setStrFromEnv(envPrefix+"SMTP_MODE", &cfg.SMTP.Mode)
 	setStrFromEnv(envPrefix+"SMTP_SINK_DIR", &cfg.SMTP.SinkDir)
+	setStrFromEnv(envPrefix+"SMTP_TLS", &cfg.SMTP.TLS)
+	setBoolFromEnv(envPrefix+"SMTP_TLS_INSECURE_SKIP_VERIFY", &cfg.SMTP.TLSInsecureSkipVerify)
 	setStrFromEnv(envPrefix+"WEB_BASE_URL", &cfg.Web.BaseURL)
 	setStrFromEnv(envPrefix+"WEB_SITE_NAME", &cfg.Web.SiteName)
 	setIntFromEnv(envPrefix+"RATE_LIMITS_SUBSCRIBE_PER_HOUR", &cfg.RateLimits.SubscribePerHour)
@@ -210,6 +223,14 @@ func setIntFromEnv(name string, target *int) {
 	}
 }
 
+func setBoolFromEnv(name string, target *bool) {
+	if val, ok := os.LookupEnv(name); ok {
+		if b, err := strconv.ParseBool(val); err == nil {
+			*target = b
+		}
+	}
+}
+
 // Validate checks that required fields are present.
 func (c *Config) Validate() error {
 	if c.Web.BaseURL == "" {
@@ -220,6 +241,14 @@ func (c *Config) Validate() error {
 	}
 	if !strings.HasPrefix(c.Web.BaseURL, "http://") && !strings.HasPrefix(c.Web.BaseURL, "https://") {
 		return fmt.Errorf("web.base_url must start with http:// or https://")
+	}
+	switch c.SMTP.TLS {
+	case "none", "starttls", "starttls-required", "implicit":
+	default:
+		return fmt.Errorf("smtp.tls must be one of none, starttls, starttls-required, implicit (got %q)", c.SMTP.TLS)
+	}
+	if c.SMTP.TLS == "none" && c.SMTP.Username != "" {
+		return fmt.Errorf("smtp.tls=none cannot be combined with smtp.username: credentials would be sent in plaintext")
 	}
 	return nil
 }

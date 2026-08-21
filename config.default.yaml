@@ -25,6 +25,14 @@ smtp:
   # sink_dir for development without an MTA).
   mode: "smtp"
   sink_dir: "./mail"
+  # Transport security for outbound mail: "none", "starttls" (opportunistic,
+  # the default), "starttls-required", or "implicit" (TLS from the first byte,
+  # e.g. port 465). Username/password are only ever sent over an encrypted
+  # connection.
+  tls: "starttls"
+  # Disable certificate verification for relays with self-signed or
+  # private-CA certificates. Off by default.
+  tls_insecure_skip_verify: false
 web:
   # The public origin users see in emails (must start with http:// or https://).
   base_url: "http://localhost:8080"
