@@ -40,10 +40,12 @@ type smtpServer struct {
 
 type smtpServerOpt func(*smtpServer)
 
-func withImplicit() smtpServerOpt        { return func(s *smtpServer) { s.implicit = true } }
-func withoutTLS() smtpServerOpt          { return func(s *smtpServer) { s.offerTLS = false } }
-func withoutAuth() smtpServerOpt         { return func(s *smtpServer) { s.allowAuth = false } }
-func withBadCert() smtpServerOpt         { return func(s *smtpServer) { s.tlsCfg = tlsConfigFor(tlsCerts["bad"]) } }
+func withImplicit() smtpServerOpt { return func(s *smtpServer) { s.implicit = true } }
+func withoutTLS() smtpServerOpt   { return func(s *smtpServer) { s.offerTLS = false } }
+func withoutAuth() smtpServerOpt  { return func(s *smtpServer) { s.allowAuth = false } }
+func withBadCert() smtpServerOpt {
+	return func(s *smtpServer) { s.tlsCfg = tlsConfigFor(tlsCerts["bad"]) }
+}
 
 func startSMTPServer(t *testing.T, opts ...smtpServerOpt) *smtpServer {
 	t.Helper()
