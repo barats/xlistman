@@ -1,7 +1,7 @@
 <script lang="ts">
 	import '../app.css';
 	import { onMount } from 'svelte';
-	import { LogOut, Mail, Menu, X } from '@lucide/svelte';
+	import { LogOut, Menu, X } from '@lucide/svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { me, refreshMe, signOut } from '$lib/auth';
@@ -91,7 +91,54 @@
 			class="mx-auto flex min-h-14 w-full max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2"
 		>
 			<a href="/" class="flex items-center gap-2 font-semibold tracking-tight">
-				<Mail class="size-5" />
+				<svg
+					class="size-5 shrink-0"
+					viewBox="0 0 64 64"
+					role="img"
+					aria-label={site}
+					xmlns="http://www.w3.org/2000/svg"
+				>
+					<circle cx="32" cy="20" r="17" fill="#039ba3" />
+					<path
+						d="M 44 30 L 44 35 L 38 35"
+						fill="none"
+						stroke="#039ba3"
+						stroke-width="2.6"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					/>
+					<polygon points="38,31.5 34,35 38,38.5" fill="#039ba3" />
+					<g
+						fill="none"
+						stroke="#ffffff"
+						stroke-width="2.2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<polyline points="22,11 24.5,13.5 28,10" />
+						<polyline points="22,18 24.5,20.5 28,17" />
+						<polyline points="22,25 24.5,27.5 28,24" />
+					</g>
+					<g stroke="#ffffff" stroke-width="2.2" stroke-linecap="round">
+						<line x1="30" y1="10" x2="42" y2="10" />
+						<line x1="30" y1="17" x2="42" y2="17" />
+						<line x1="30" y1="24" x2="42" y2="24" />
+						<line x1="30" y1="31" x2="42" y2="31" />
+					</g>
+					<path
+						d="M 6 34 L 58 34 L 58 56 Q 58 58 56 58 L 8 58 Q 6 58 6 56 Z"
+						fill="#053776"
+					/>
+					<path d="M 6 34 L 32 49 L 58 34 Z" fill="#ffffff" />
+					<path
+						d="M 6 34 L 32 49 L 58 34"
+						fill="none"
+						stroke="#053776"
+						stroke-width="2.2"
+						stroke-linejoin="round"
+						stroke-linecap="round"
+					/>
+				</svg>
 				{site}
 			</a>
 			<div class="flex items-center gap-1">

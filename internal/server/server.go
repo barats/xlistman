@@ -129,7 +129,7 @@ func (s *Server) spaHandler(webFS []fs.FS) http.Handler {
 			fileServer.ServeHTTP(w, r)
 			return
 		}
-		body := injectHead(string(indexHTML), s.Config.Web.SiteName, s.seoTagsFor(r))
+		body := s.injectHead(string(indexHTML), s.Config.Web.SiteName, s.seoTagsFor(r))
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(body))
