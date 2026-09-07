@@ -105,6 +105,7 @@ func (s *Server) injectHead(h string, siteName string, seo seoTags) string {
 		h = setTag(h, `name="description"`, "", `<meta name="description" content="`+html.EscapeString(seo.Description)+`">`)
 	}
 	h = setTag(h, `name="xlistman-site-name"`, "", `<meta name="xlistman-site-name" content="`+html.EscapeString(siteName)+`">`)
+	h = setTag(h, `name="xlistman-version"`, "", `<meta name="xlistman-version" content="`+html.EscapeString(s.Version)+`">`)
 	if seo.NoIndex {
 		h = setTag(h, `name="robots"`, "", `<meta name="robots" content="noindex">`)
 	} else {

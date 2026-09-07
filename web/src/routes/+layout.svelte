@@ -6,11 +6,12 @@
 	import { page } from '$app/state';
 	import { me, refreshMe, signOut } from '$lib/auth';
 	import { webStatus, refreshWebStatus } from '$lib/access';
-	import { getSiteName } from '$lib/seo';
+	import { getSiteName, getVersion } from '$lib/seo';
 
 	let { children } = $props();
 
 	const site = getSiteName();
+	const version = getVersion();
 
 	onMount(() => {
 		refreshMe();
@@ -172,8 +173,14 @@
 		{@render children()}
 	</main>
 	<footer class="border-t">
-		<div class="mx-auto w-full max-w-5xl px-4 py-4 text-xs text-muted-foreground">
-			{site} · self-hosted mailing lists
+		<div class="mx-auto w-full max-w-5xl px-4 py-4 text-center text-xs text-muted-foreground">
+			Powered by
+			<a
+				href="https://www.xlistman.com"
+				class="font-medium underline underline-offset-2 transition-colors hover:text-foreground"
+			>
+				xListman{version ? ' ' + version : ''}
+			</a>
 		</div>
 	</footer>
 </div>

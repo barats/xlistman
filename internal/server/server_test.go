@@ -26,7 +26,7 @@ func newTestServer(t *testing.T) (*Server, *sqlite.Store, string) {
 	}
 	cfg := &config.Config{Web: config.WebConfig{BaseURL: "http://test.local"}}
 	pipeline := &xmail.Pipeline{Store: st, WebBaseURL: cfg.Web.BaseURL}
-	srv := New(cfg, st, slog.New(slog.NewTextHandler(io.Discard, nil)), pipeline)
+	srv := New(cfg, st, slog.New(slog.NewTextHandler(io.Discard, nil)), pipeline, "test")
 	ts := httptest.NewServer(srv.Handler())
 	t.Cleanup(ts.Close)
 	return srv, st, ts.URL
@@ -582,7 +582,7 @@ func TestSPAServing(t *testing.T) {
 
 	cfg := &config.Config{Web: config.WebConfig{BaseURL: "http://test.local"}}
 	pipeline := &xmail.Pipeline{Store: st, WebBaseURL: cfg.Web.BaseURL}
-	srv := New(cfg, st, slog.New(slog.NewTextHandler(io.Discard, nil)), pipeline, web)
+	srv := New(cfg, st, slog.New(slog.NewTextHandler(io.Discard, nil)), pipeline, "test", web)
 
 	cases := []struct{ path, want string }{
 		{"/", "spa shell"},

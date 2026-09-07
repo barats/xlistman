@@ -384,7 +384,7 @@ func cmdServe(args []string, webBuild fs.FS) int {
 	socketServer := &mail.SocketServer{Path: cfg.Socket.Path, Server: lmtpServer}
 
 	// HTTP API server (also serves the embedded SPA).
-	httpServer := server.New(cfg, s, logger, pipeline, webBuild)
+	httpServer := server.New(cfg, s, logger, pipeline, Version, webBuild)
 
 	errCh := make(chan error, 3)
 	go func() { errCh <- lmtpServer.ListenAndServe(ctx) }()

@@ -26,7 +26,7 @@ func newProtectServer(t *testing.T, mutate func(*config.Config)) (*Server, *sqli
 		mutate(cfg)
 	}
 	pipeline := &xmail.Pipeline{Store: st, WebBaseURL: cfg.Web.BaseURL}
-	srv := New(cfg, st, slog.New(slog.NewTextHandler(io.Discard, nil)), pipeline)
+	srv := New(cfg, st, slog.New(slog.NewTextHandler(io.Discard, nil)), pipeline, "test")
 	ts := httptest.NewServer(srv.Handler())
 	t.Cleanup(ts.Close)
 	return srv, st, ts.URL

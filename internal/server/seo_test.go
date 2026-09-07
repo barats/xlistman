@@ -42,7 +42,7 @@ func seoServer(t *testing.T, siteName string) *httptest.Server {
 	}
 	cfg := &config.Config{Web: config.WebConfig{BaseURL: "http://test.local", SiteName: siteName}}
 	pipeline := &xmail.Pipeline{Store: st, WebBaseURL: cfg.Web.BaseURL}
-	srv := New(cfg, st, slog.New(slog.NewTextHandler(io.Discard, nil)), pipeline, web)
+	srv := New(cfg, st, slog.New(slog.NewTextHandler(io.Discard, nil)), pipeline, "test", web)
 	ts := httptest.NewServer(srv.Handler())
 	t.Cleanup(ts.Close)
 	return ts
@@ -95,6 +95,8 @@ func TestSEOInjection_Routes(t *testing.T) {
 		mustContain(t, body, `name="description" content="Browse the mailing lists hosted on this xListman instance and subscribe with one email address."`)
 		mustContain(t, body, `name="xlistman-site-name" content="xListman"`)
 		mustContain(t, body, `<link rel="canonical" href="http://test.local/">`)
+		mustContain(t, body, `name="xlistman-version" content="test"`)
+		assertSingleTag(t, body, `name="xlistman-version"`)
 		mustContain(t, body, `property="og:title" content="Mailing lists — xListman"`)
 		mustContain(t, body, `property="og:url" content="http://test.local/"`)
 		mustContain(t, body, `property="og:site_name" content="xListman"`)

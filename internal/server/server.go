@@ -48,6 +48,7 @@ type Server struct {
 	Config    *config.Config
 	Logger    *slog.Logger
 	Pipeline  *xmail.Pipeline
+	Version   string // build-time version (cmd.Version), shown in the SPA footer
 	cookieSec bool
 	handler   http.Handler
 	httpSrv   *http.Server
@@ -58,15 +59,18 @@ type Server struct {
 	subscribeLimiter      *keyedRateLimiter
 }
 
-// New creates a new HTTP server. webFS optionally carries the embedded
-// SvelteKit SPA build (web/build); when present it is served with an
-// index.html fallback for client-side routes (ADR 0007).
-func New(cfg *config.Config, st store.Store, logger *slog.Logger, pipeline *xmail.Pipeline, webFS ...fs.FS) *Server {
+// New creates a new HTTP server. version is the build-time version (see
+// cmd.Version) and is injected into the SPA shell for the footer. webFS
+// optionally carries the embedded SvelteKit SPA build (web/build); when
+// present it is served with an index.html fallback for client-side routes
+// (ADR 0007).
+func New(cfg *config.Config, st store.Store, logger *slog.Logger, pipeline *xmail.Pipeline, version string, webFS ...fs.FS) *Server {
 	s := &Server{
 		Store:     st,
 		Config:    cfg,
 		Logger:    logger,
 		Pipeline:  pipeline,
+		Version:   version,
 		cookieSec: strings.HasPrefix(cfg.Web.BaseURL, "https://"),
 		// Rate limiter allowances. The YAML loader applies the same defaults;
 		// guarding here keeps zero-value configs (e.g., tests) safe too.

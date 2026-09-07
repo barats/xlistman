@@ -8,6 +8,7 @@
 const BRAND = 'xListman';
 
 let siteName: string | null = null;
+let version: string | null = null;
 
 /** The configured instance name (web.site_name), or the default brand. */
 export function getSiteName(): string {
@@ -17,6 +18,15 @@ export function getSiteName(): string {
 		siteName = fromMeta || BRAND;
 	}
 	return siteName;
+}
+
+/** The build-time version injected by the server (cmd.Version), or "". */
+export function getVersion(): string {
+	if (version === null) {
+		const el = document.head.querySelector('meta[name="xlistman-version"]');
+		version = (el?.getAttribute('content') ?? '').trim();
+	}
+	return version;
 }
 
 export interface SeoOptions {
