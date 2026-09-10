@@ -169,6 +169,23 @@ Active, pre-1.0. Versioned with semantic versioning; `0.x` indicates the
 storage/config surface may still evolve. See the **Next** section in
 [`docs/PLAN.md`](docs/PLAN.md) for the roadmap.
 
+## Deployment / Hosting Notes
+
+This project is a self-hosted mailing list manager similar to Mailman and is
+feature-complete. All functionality has been thoroughly tested and verified in
+a local environment.
+
+However, due to the increasingly strict management of outbound port 25 by
+major cloud providers and ISPs (aimed at preventing spam), it has proven
+difficult to find a suitable cloud platform that allows reliable SMTP
+delivery. As a result, the system has not yet been deployed to a production
+public server.
+
+If you are able to provide a stable hosting environment with unrestricted
+outbound port 25 (or a reliable alternative mail relay setup), I would be very
+grateful for the opportunity to deploy it there. Paid hosting arrangements are
+also welcome.
+
 ## License
 
 [MIT](LICENSE) © 2026 Barat Semet
