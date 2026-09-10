@@ -16,6 +16,21 @@ binary with an embedded frontend and SQLite storage.
   VERP bounce tracking with auto-disable, held-message moderation, an
   immutable audit trail, CSV member import/export, and attachment policies.
 
+## Screenshots
+
+Captured from a live instance seeded with demo data — reproduce them with
+`scripts/screenshot-seed.sh`. Click a thumbnail to open it full size.
+
+<table>
+  <tr>
+    <td align="center"><a href="docs/screenshots/lists.png"><img src="docs/screenshots/lists.png" alt="Public list index" width="190" /></a><br/><em>Public list index</em></td>
+    <td align="center"><a href="docs/screenshots/me.png"><img src="docs/screenshots/me.png" alt="Member self-service" width="190" /></a><br/><em>Member self-service</em></td>
+    <td align="center"><a href="docs/screenshots/archives.png"><img src="docs/screenshots/archives.png" alt="Members-only archives" width="190" /></a><br/><em>Members-only archives</em></td>
+    <td align="center"><a href="docs/screenshots/moderation.png"><img src="docs/screenshots/moderation.png" alt="Moderation queue" width="190" /></a><br/><em>Moderation queue</em></td>
+    <td align="center"><a href="docs/screenshots/server.png"><img src="docs/screenshots/server.png" alt="Server administration" width="190" /></a><br/><em>Server administration</em></td>
+  </tr>
+</table>
+
 ## Features
 
 **Mailing lists**
@@ -55,21 +70,6 @@ binary with an embedded frontend and SQLite storage.
 - CLI parity for administration: `xmailman domain|list|owner|subscriber|…`
 - YAML config with environment overrides and `${ENV_VAR}` secret expansion
 - `systemd` unit and a multi-stage `scratch`-based Docker image included
-
-## Screenshots
-
-Captured from a live instance seeded with demo data — reproduce them with
-`scripts/screenshot-seed.sh`. Click a thumbnail to open it full size.
-
-<table>
-  <tr>
-    <td align="center"><a href="docs/screenshots/lists.png"><img src="docs/screenshots/lists.png" alt="Public list index" width="190" /></a><br/><em>Public list index</em></td>
-    <td align="center"><a href="docs/screenshots/me.png"><img src="docs/screenshots/me.png" alt="Member self-service" width="190" /></a><br/><em>Member self-service</em></td>
-    <td align="center"><a href="docs/screenshots/archives.png"><img src="docs/screenshots/archives.png" alt="Members-only archives" width="190" /></a><br/><em>Members-only archives</em></td>
-    <td align="center"><a href="docs/screenshots/moderation.png"><img src="docs/screenshots/moderation.png" alt="Moderation queue" width="190" /></a><br/><em>Moderation queue</em></td>
-    <td align="center"><a href="docs/screenshots/server.png"><img src="docs/screenshots/server.png" alt="Server administration" width="190" /></a><br/><em>Server administration</em></td>
-  </tr>
-</table>
 
 ## Quickstart
 
