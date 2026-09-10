@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/barats/xlistman/internal/model"
-	"github.com/barats/xlistman/internal/store/sqlite"
+	"github.com/barats/xmailman/internal/model"
+	"github.com/barats/xmailman/internal/store/sqlite"
 )
 
 // consoleFixture sets up an in-memory server with a moderated discussion list

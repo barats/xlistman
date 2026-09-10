@@ -1,4 +1,4 @@
-// Package server implements the xListman HTTP server (API + health + metrics).
+// Package server implements the xMailman HTTP server (API + health + metrics).
 //
 // The web UI is a SvelteKit SPA (ADR 0007); this server exposes the JSON API
 // it consumes. Authentication is passwordless: one-time Magic Links (ADR 0003,
@@ -19,15 +19,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/barats/xlistman/internal/config"
-	xmail "github.com/barats/xlistman/internal/mail"
-	"github.com/barats/xlistman/internal/mailparse"
-	"github.com/barats/xlistman/internal/model"
-	"github.com/barats/xlistman/internal/store"
+	"github.com/barats/xmailman/internal/config"
+	xmail "github.com/barats/xmailman/internal/mail"
+	"github.com/barats/xmailman/internal/mailparse"
+	"github.com/barats/xmailman/internal/model"
+	"github.com/barats/xmailman/internal/store"
 )
 
 const (
-	sessionCookieName = "xlistman_session"
+	sessionCookieName = "xmailman_session"
 	magicLinkTTL      = 30 * time.Minute
 	sessionTTL        = 30 * 24 * time.Hour
 	// publicCacheMaxAge is the Cache-Control max-age on public list endpoints
@@ -42,7 +42,7 @@ type contextKey string
 
 const contextKeySubscriber contextKey = "subscriber"
 
-// Server is the HTTP server for xListman.
+// Server is the HTTP server for xMailman.
 type Server struct {
 	Store     store.Store
 	Config    *config.Config
@@ -415,7 +415,7 @@ func (s *Server) handleMagicLink(w http.ResponseWriter, r *http.Request) {
 	// the per-email allowance.
 
 	link := s.Config.Web.BaseURL + "/api/auth/verify?token=" + token
-	msg := buildTextEmail("xListman", email, "Your xListman login link",
+	msg := buildTextEmail("xMailman", email, "Your xMailman login link",
 		"Use this link to sign in to your subscriptions. It expires in 30 minutes.\n\n"+link+"\n\nIf you did not request this, you can ignore this message.")
 	if err := s.Store.Enqueue(r.Context(), 0, "", email, msg, "", ""); err != nil {
 		s.Logger.Error("enqueue magic link", "email", email, "error", err)

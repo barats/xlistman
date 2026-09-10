@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/barats/xlistman/internal/model"
+	"github.com/barats/xmailman/internal/model"
 )
 
 // Shared administration actions used by the web console and the CLI (ADR 0016),

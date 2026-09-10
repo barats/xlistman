@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/barats/xlistman/internal/model"
+	"github.com/barats/xmailman/internal/model"
 )
 
 func testStore(t *testing.T) *Store {

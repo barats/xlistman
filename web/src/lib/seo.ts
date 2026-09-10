@@ -5,7 +5,7 @@
 // shell; the SPA refines it on navigation via setSeo(). The configured site
 // name (web.site_name) is read from the shell meta injected by the server.
 
-const BRAND = 'xListman';
+const BRAND = 'xMailman';
 
 let siteName: string | null = null;
 let version: string | null = null;
@@ -13,7 +13,7 @@ let version: string | null = null;
 /** The configured instance name (web.site_name), or the default brand. */
 export function getSiteName(): string {
 	if (siteName === null) {
-		const el = document.head.querySelector('meta[name="xlistman-site-name"]');
+		const el = document.head.querySelector('meta[name="xmailman-site-name"]');
 		const fromMeta = (el?.getAttribute('content') ?? '').trim();
 		siteName = fromMeta || BRAND;
 	}
@@ -23,7 +23,7 @@ export function getSiteName(): string {
 /** The build-time version injected by the server (cmd.Version), or "". */
 export function getVersion(): string {
 	if (version === null) {
-		const el = document.head.querySelector('meta[name="xlistman-version"]');
+		const el = document.head.querySelector('meta[name="xmailman-version"]');
 		version = (el?.getAttribute('content') ?? '').trim();
 	}
 	return version;

@@ -176,10 +176,10 @@
 		<div class="mx-auto w-full max-w-5xl px-4 py-4 text-center text-xs text-muted-foreground">
 			Powered by
 			<a
-				href="https://www.xlistman.com"
+				href="https://www.xmailman.com"
 				class="font-medium underline underline-offset-2 transition-colors hover:text-foreground"
 			>
-				xListman{version ? ' ' + version : ''}
+				xMailman{version ? ' ' + version : ''}
 			</a>
 		</div>
 	</footer>

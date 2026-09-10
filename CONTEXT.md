@@ -1,11 +1,11 @@
-# xListman
+# xMailman
 
 A one-binary mailing list manager that integrates with an MTA to manage mailing lists, subscriptions, archives, and administration. An alternative to GNU Mailman with a single-binary deployment model.
 
 ## Language
 
 **Domain**:
-A virtual email domain hosted by an xListman instance (e.g., `example.com`). An instance can host multiple domains.
+A virtual email domain hosted by an xMailman instance (e.g., `example.com`). An instance can host multiple domains.
 _Avoid_: Virtual host, mail domain
 
 **List**:
@@ -13,7 +13,7 @@ A mailing list, identified by the pair `(listname, domain)` (e.g., `dev@example.
 _Avoid_: Mailing list entry, list instance
 
 **Subscriber**:
-An email address known to xListman and treated as trustworthy. A Subscriber created through self-service (subscribe command, web form) is verified by double opt-in confirmation; a Subscriber added directly by an Owner or server administrator is trusted by that person's action, with no separate verification step. The primary identity for subscriptions, ownership, and moderation. A Subscriber does not need to be subscribed to any list (e.g., an owner who receives no posts).
+An email address known to xMailman and treated as trustworthy. A Subscriber created through self-service (subscribe command, web form) is verified by double opt-in confirmation; a Subscriber added directly by an Owner or server administrator is trusted by that person's action, with no separate verification step. The primary identity for subscriptions, ownership, and moderation. A Subscriber does not need to be subscribed to any list (e.g., an owner who receives no posts).
 _Avoid_: User, account, member (use Member for the subscription role specifically)
 
 **Subscription**:
@@ -37,7 +37,7 @@ A Subscriber who can approve or reject held messages on a List, but cannot chang
 _Avoid_: Approver, reviewer
 
 **Administrator**:
-A Subscriber with instance-wide server privileges on an xListman instance: creating domains and lists, managing other Administrators, deleting lists, and changing ListType, via the web console and the CLI. The server operator designates the first Administrator via the CLI; subsequent Administrators can be designated by any Administrator. The instance-wide counterpart to Owner, which is scoped to a single List.
+A Subscriber with instance-wide server privileges on an xMailman instance: creating domains and lists, managing other Administrators, deleting lists, and changing ListType, via the web console and the CLI. The server operator designates the first Administrator via the CLI; subsequent Administrators can be designated by any Administrator. The instance-wide counterpart to Owner, which is scoped to a single List.
 _Avoid_: Admin, server admin, staff role
 
 **Member**:

@@ -1,6 +1,6 @@
-# xListman validation fixture for the LMTP loop against local exim.
+# xMailman validation fixture for the LMTP loop against local exim.
 # Prerequisites: exim installed; 127.0.0.2 loopback alias + /etc/hosts entry
-# (validate/exim/start-loopback.sh). Set XLISTMAN_CONFIG=validate/exim/exim-validate.yaml
+# (validate/exim/start-loopback.sh). Set XMAILMAN_CONFIG=validate/exim/exim-validate.yaml
 # when running the daemon and CLI commands. Outbound goes to the exim dev
 # instance on localhost:2525.
 http:
@@ -17,7 +17,7 @@ smtp:
     username: ""
     password: ""
     mode: smtp
-    sink_dir: /tmp/xlistman-mail
+    sink_dir: /tmp/xmailman-mail
 web:
     base_url: http://127.0.0.1:8081
 rate_limits:

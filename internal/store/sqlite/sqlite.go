@@ -9,8 +9,8 @@ import (
 	"sort"
 	"time"
 
-	xmail "github.com/barats/xlistman/internal/mailparse"
-	"github.com/barats/xlistman/internal/model"
+	xmail "github.com/barats/xmailman/internal/mailparse"
+	"github.com/barats/xmailman/internal/model"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -1027,7 +1027,7 @@ func (s *Store) CreateAuditEvent(ctx context.Context, e model.AuditEvent) error 
 // list (listID != nil) and/or a single action (action != ""). Paged with
 // limit/offset: limit <= 0 returns everything (the CLI's deep-history view);
 // larger limits are clamped to 500 (the web console shows the most recent
-// 500, with older history reachable via `xlistman audit ...`).
+// 500, with older history reachable via `xmailman audit ...`).
 func (s *Store) ListAuditEvents(ctx context.Context, listID *int64, action string, limit, offset int) ([]model.AuditEvent, error) {
 	q := s.db.WithContext(ctx)
 	if listID != nil {

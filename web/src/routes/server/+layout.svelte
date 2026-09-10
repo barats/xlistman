@@ -76,7 +76,7 @@
 			<h2 class="text-lg font-semibold">Administrator required</h2>
 			<p class="mt-1 text-sm text-muted-foreground">
 				Only an Administrator can manage the server. Ask an Administrator to designate you, or
-				use <code class="rounded bg-muted px-1 py-0.5">xlistman admin add</code> on the server.
+				use <code class="rounded bg-muted px-1 py-0.5">xmailman admin add</code> on the server.
 			</p>
 		</Card>
 	{:else if phase === 'loading'}

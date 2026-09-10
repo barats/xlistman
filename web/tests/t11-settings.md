@@ -7,7 +7,7 @@ is verified against the audit trail.
 
 ## Setup
 
-1. `run: ./xlistman list create ops@lists.test --type discussion --owner owner@lists.test --desc "settings fixture"`
+1. `run: ./xmailman list create ops@lists.test --type discussion --owner owner@lists.test --desc "settings fixture"`
 
 ## Steps
 
@@ -22,7 +22,7 @@ is verified against the audit trail.
 9. `navigate to /admin/l/ops@lists.test/settings`
 10. `expect input "Description" to have value "Operational settings fixture"`
 11. `expect input "Subject prefix" to have value "[ops]"`
-12. `run: ./xlistman audit list ops@lists.test settings.update (expect: subject_prefix)`
+12. `run: ./xmailman audit list ops@lists.test settings.update (expect: subject_prefix)`
 13. `fill "Bounces before auto-disable" with -1`
 14. `click "Save settings"`
 15. `expect text "numeric settings cannot be negative" to appear`

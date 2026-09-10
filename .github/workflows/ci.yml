@@ -49,6 +49,6 @@ jobs:
         working-directory: web
         run: pnpm install --frozen-lockfile && pnpm build
       - name: Build binary (embedded UI)
-        run: go build -o xlistman .
+        run: go build -o xmailman .
       - name: Smoke test
-        run: ./xlistman version
+        run: ./xmailman version

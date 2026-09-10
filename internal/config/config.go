@@ -11,7 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config holds all xListman configuration.
+// Config holds all xMailman configuration.
 type Config struct {
 	HTTP       HTTPConfig      `yaml:"http"`
 	LMTP       LMTPConfig      `yaml:"lmtp"`
@@ -59,7 +59,7 @@ type SMTPConfig struct {
 type WebConfig struct {
 	BaseURL string `yaml:"base_url"`
 	// SiteName is the instance name shown in page titles, the web UI
-	// header/footer, and social tags. Defaults to "xListman".
+	// header/footer, and social tags. Defaults to "xMailman".
 	SiteName string `yaml:"site_name"`
 }
 
@@ -79,7 +79,7 @@ type QueueConfig struct {
 	MaxRetries int `yaml:"max_retries"`
 }
 
-const envPrefix = "XLISTMAN_"
+const envPrefix = "XMAILMAN_"
 
 // LoadFromFile reads a YAML config file, applies env var overrides, and returns a Config.
 func LoadFromFile(path string) (*Config, error) {
@@ -123,7 +123,7 @@ func GenerateDefault() ([]byte, error) {
 		return nil, fmt.Errorf("marshal default config: %w", err)
 	}
 
-	header := []byte("# xListman configuration file\n# Environment variables with XLISTMAN_ prefix override these values.\n# Use ${ENV_VAR} syntax for secrets.\n\n")
+	header := []byte("# xMailman configuration file\n# Environment variables with XMAILMAN_ prefix override these values.\n# Use ${ENV_VAR} syntax for secrets.\n\n")
 	return append(header, data...), nil
 }
 
@@ -147,10 +147,10 @@ func applyDefaults(cfg *Config) {
 		cfg.LMTP.Listen = ":8024"
 	}
 	if cfg.Socket.Path == "" {
-		cfg.Socket.Path = "/var/run/xlistman.sock"
+		cfg.Socket.Path = "/var/run/xmailman.sock"
 	}
 	if cfg.Database.Path == "" {
-		cfg.Database.Path = "./xlistman.db"
+		cfg.Database.Path = "./xmailman.db"
 	}
 	if cfg.SMTP.Host == "" {
 		cfg.SMTP.Host = "localhost"
@@ -168,7 +168,7 @@ func applyDefaults(cfg *Config) {
 		cfg.SMTP.SinkDir = "./mail"
 	}
 	if cfg.Web.SiteName == "" {
-		cfg.Web.SiteName = "xListman"
+		cfg.Web.SiteName = "xMailman"
 	}
 	if cfg.RateLimits.SubscribePerHour == 0 {
 		cfg.RateLimits.SubscribePerHour = 5

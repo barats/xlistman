@@ -7,8 +7,8 @@ actions are verified against the audit trail.
 
 ## Setup
 
-1. `run: ./xlistman list create opsnl@lists.test --type newsletter --owner owner@lists.test --desc "newsletter fixture"`
-2. `run: ./xlistman subscriber add opsnl@lists.test author@lists.test`
+1. `run: ./xmailman list create opsnl@lists.test --type newsletter --owner owner@lists.test --desc "newsletter fixture"`
+2. `run: ./xmailman subscriber add opsnl@lists.test author@lists.test`
 
 ## Steps
 
@@ -23,10 +23,10 @@ actions are verified against the audit trail.
 9. `click "Add sender"`
 10. `expect text "Sender added." to appear`
 11. `expect text "author@lists.test" to appear`
-12. `run: ./xlistman audit list opsnl@lists.test sender.add (expect: author@lists.test)`
+12. `run: ./xmailman audit list opsnl@lists.test sender.add (expect: author@lists.test)`
 13. `click "Remove" in row containing "author@lists.test"`
 14. `expect text "Sender removed." to appear`
 15. `expect text "No designated senders yet." to appear`
-16. `run: ./xlistman audit list opsnl@lists.test sender.remove (expect: author@lists.test)`
+16. `run: ./xmailman audit list opsnl@lists.test sender.remove (expect: author@lists.test)`
 17. `expect 0 console errors`
 18. `expect no API request to return a 5xx`

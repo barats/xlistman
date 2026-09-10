@@ -13,7 +13,7 @@ import (
 // capacity. State lives only in this process — an explicit deviation from
 // ADR 0008's "rate limiting counters are stored in the database" phrasing,
 // because DB-backed counters would add writes to the exact database this
-// protects. When xListman becomes multi-instance, rate limiting belongs in
+// protects. When xMailman becomes multi-instance, rate limiting belongs in
 // front (a reverse proxy), not the app DB.
 type keyedRateLimiter struct {
 	mu         sync.Mutex

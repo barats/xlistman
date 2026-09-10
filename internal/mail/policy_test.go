@@ -3,7 +3,7 @@ package mail
 import (
 	"testing"
 
-	"github.com/barats/xlistman/internal/model"
+	"github.com/barats/xmailman/internal/model"
 )
 
 func testList(listType model.ListType, moderation bool) model.List {

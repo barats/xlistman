@@ -12,10 +12,10 @@ from="${2:?from email required}"
 subject="${3:?subject required}"
 body="${4:-}"
 
-export XLISTMAN_CONFIG="${XLISTMAN_CONFIG:-scripts/e2e.yaml}"
+export XMAILMAN_CONFIG="${XMAILMAN_CONFIG:-scripts/e2e.yaml}"
 date="$(date -u +'%a, %d %b %Y %H:%M:%S +0000')"
 msgid="$(date +%s%N)"
 
 printf 'From: %s\r\nTo: %s\r\nSubject: %s\r\nDate: %s\r\nMessage-ID: <%s@lists.test>\r\n\r\n%s\r\n' \
 	"$from" "$list" "$subject" "$date" "$msgid" "$body" \
-	| ./xlistman deliver "$list" >/dev/null
+	| ./xmailman deliver "$list" >/dev/null

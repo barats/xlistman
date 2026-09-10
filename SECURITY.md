@@ -2,11 +2,11 @@
 
 ## Reporting a Vulnerability
 
-xListman is pre-1.0 and maintained by a single developer. If you find a
+xMailman is pre-1.0 and maintained by a single developer. If you find a
 security vulnerability, please report it privately so it can be fixed before
 it is disclosed publicly:
 
-- Open a [private vulnerability report](https://github.com/barats/xlistman/security/advisories/new)
+- Open a [private vulnerability report](https://github.com/barats/xmailman/security/advisories/new)
   on GitHub (recommended), or
 - File a regular issue if you are unsure whether the finding is security-relevant.
 
@@ -37,14 +37,14 @@ Design decisions relevant to security, in no particular order:
 
 ## Operational Notes
 
-- **Serve over HTTPS.** xListman does not terminate TLS itself; run it behind
+- **Serve over HTTPS.** xMailman does not terminate TLS itself; run it behind
   a reverse proxy (Caddy, nginx, Traefik) that does. Set `web.base_url` to the
   public HTTPS origin.
 - **SMTP credentials** live in the config file or environment. Use the
-  `${ENV_VAR}` secret-expansion syntax in `xlistman.yaml` rather than
+  `${ENV_VAR}` secret-expansion syntax in `xmailman.yaml` rather than
   committing plaintext.
 - **Back up before upgrading.** The SQLite database is the store of record;
-  keep a copy of `xlistman.db` before updating to a new release.
+  keep a copy of `xmailman.db` before updating to a new release.
 
 ## Supported Versions
 

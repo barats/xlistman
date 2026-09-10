@@ -9,9 +9,9 @@ import (
 	"net/textproto"
 	"time"
 
-	"github.com/barats/xlistman/internal/mail"
-	"github.com/barats/xlistman/internal/model"
-	"github.com/barats/xlistman/internal/store"
+	"github.com/barats/xmailman/internal/mail"
+	"github.com/barats/xmailman/internal/model"
+	"github.com/barats/xmailman/internal/store"
 )
 
 // DigestWorker compiles per-list digests from the archive and enqueues them

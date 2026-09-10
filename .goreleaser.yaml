@@ -1,6 +1,6 @@
 version: 2
 
-project_name: xlistman
+project_name: xmailman
 
 # The web UI is embedded into the binary via go:embed, so build the SvelteKit
 # frontend before the Go builds (requires Node.js + pnpm on the release
@@ -15,7 +15,7 @@ builds:
   - env:
       - CGO_ENABLED=0
     ldflags:
-      - -s -w -X github.com/barats/xlistman/cmd.Version={{.Version}}
+      - -s -w -X github.com/barats/xmailman/cmd.Version={{.Version}}
     goos:
       - linux
       - darwin
@@ -40,4 +40,4 @@ changelog:
 release:
   github:
     owner: barats
-    name: xlistman
+    name: xmailman

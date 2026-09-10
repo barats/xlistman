@@ -2,7 +2,7 @@
 
 Server operators need a way to protect an instance from the web attack surface without restarting the daemon or stopping email. We added two instance-wide switches — web login and web management — that an Administrator toggles via the CLI, stored in the database (a `web_settings` row) and read by the HTTP server per request, so changes apply immediately with no restart, persist across restarts, and are shared by all instances (ADR 0008).
 
-`xlistman disable login` blocks the magic-link flow (no new Sessions) and deletes every existing Session; `xlistman disable management` blocks the per-list role console and the server-admin area. Public pages, the subscribe form, subscriber self-service, all email paths, and the CLI itself are unaffected. Every toggle is recorded as an Audit Event (`web.login-enable`, `web.login-disable`, `web.management-enable`, `web.management-disable`).
+`xmailman disable login` blocks the magic-link flow (no new Sessions) and deletes every existing Session; `xmailman disable management` blocks the per-list role console and the server-admin area. Public pages, the subscribe form, subscriber self-service, all email paths, and the CLI itself are unaffected. Every toggle is recorded as an Audit Event (`web.login-enable`, `web.login-disable`, `web.management-enable`, `web.management-disable`).
 
 ## Considered Options
 

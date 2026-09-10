@@ -30,7 +30,7 @@ type seoTags struct {
 func (s *Server) seoTagsFor(r *http.Request) seoTags {
 	site := s.Config.Web.SiteName
 	if site == "" {
-		site = "xListman"
+		site = "xMailman"
 	}
 	def := seoTags{
 		Title:       site,
@@ -56,7 +56,7 @@ func (s *Server) seoTagsFor(r *http.Request) seoTags {
 func (s *Server) seoTagsForList(r *http.Request, def seoTags) seoTags {
 	site := s.Config.Web.SiteName
 	if site == "" {
-		site = "xListman"
+		site = "xMailman"
 	}
 	rest := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/l/"), "/")
 	if strings.Contains(rest, "/") {
@@ -104,8 +104,8 @@ func (s *Server) injectHead(h string, siteName string, seo seoTags) string {
 	if seo.Description != "" {
 		h = setTag(h, `name="description"`, "", `<meta name="description" content="`+html.EscapeString(seo.Description)+`">`)
 	}
-	h = setTag(h, `name="xlistman-site-name"`, "", `<meta name="xlistman-site-name" content="`+html.EscapeString(siteName)+`">`)
-	h = setTag(h, `name="xlistman-version"`, "", `<meta name="xlistman-version" content="`+html.EscapeString(s.Version)+`">`)
+	h = setTag(h, `name="xmailman-site-name"`, "", `<meta name="xmailman-site-name" content="`+html.EscapeString(siteName)+`">`)
+	h = setTag(h, `name="xmailman-version"`, "", `<meta name="xmailman-version" content="`+html.EscapeString(s.Version)+`">`)
 	if seo.NoIndex {
 		h = setTag(h, `name="robots"`, "", `<meta name="robots" content="noindex">`)
 	} else {

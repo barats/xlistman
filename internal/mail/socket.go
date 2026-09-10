@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-// SocketServer accepts pipe-mode relays from the `xlistman deliver` command
+// SocketServer accepts pipe-mode relays from the `xmailman deliver` command
 // over a local Unix socket. Each connection carries one message: the first
 // line is the recipient address, the remainder is the raw RFC 822 message.
 // Relaying to the running daemon keeps a single writer to the database

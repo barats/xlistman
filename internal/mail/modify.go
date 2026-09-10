@@ -12,7 +12,7 @@ import (
 	"net/textproto"
 	"strings"
 
-	"github.com/barats/xlistman/internal/model"
+	"github.com/barats/xmailman/internal/model"
 )
 
 // ModifyMessageOptions controls how a message is modified before delivery.

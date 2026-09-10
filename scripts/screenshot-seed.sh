@@ -3,9 +3,9 @@
 # screenshots are captured from.
 #
 # Requires a running daemon configured with screenshots.yaml (started with
-# `XLISTMAN_CONFIG=screenshots.yaml ./xlistman serve`, or your own script).
+# `XMAILMAN_CONFIG=screenshots.yaml ./xmailman serve`, or your own script).
 # Archive posts and the held messages are injected through the real mail
-# pipeline via `xlistman deliver`, which relays to the daemon's pipe socket —
+# pipeline via `xmailman deliver`, which relays to the daemon's pipe socket —
 # the same path as LMTP mail.
 #
 # The domain, lists, subscribers, roles, archive, and moderation states are
@@ -13,8 +13,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-export XLISTMAN_CONFIG="${XLISTMAN_CONFIG:-screenshots.yaml}"
-BIN="$(pwd)/xlistman"
+export XMAILMAN_CONFIG="${XMAILMAN_CONFIG:-screenshots.yaml}"
+BIN="$(pwd)/xmailman"
 
 run() {
 	echo "  > $*" >&2

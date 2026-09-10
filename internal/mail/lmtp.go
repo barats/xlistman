@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/barats/xlistman/internal/model"
-	"github.com/barats/xlistman/internal/store"
+	"github.com/barats/xmailman/internal/model"
+	"github.com/barats/xmailman/internal/store"
 )
 
 // LMTPServer receives inbound mail from the MTA via LMTP (RFC 2033).
@@ -73,7 +73,7 @@ type lmtpConn struct {
 }
 
 func (c *lmtpConn) serve(ctx context.Context) {
-	c.send(220, "xListman LMTP ready")
+	c.send(220, "xMailman LMTP ready")
 
 	for {
 		line, err := c.r.ReadString('\n')
@@ -90,7 +90,7 @@ func (c *lmtpConn) serve(ctx context.Context) {
 
 		switch cmd {
 		case "LHLO":
-			c.send(250, "xListman")
+			c.send(250, "xMailman")
 		case "MAIL":
 			c.handleMail(arg)
 		case "RCPT":

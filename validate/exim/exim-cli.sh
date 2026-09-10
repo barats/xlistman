@@ -1,5 +1,5 @@
 #!/bin/bash
-# exim wrapper for the xListman LMTP-loop validation: always points at the
+# exim wrapper for the xMailman LMTP-loop validation: always points at the
 # validate/exim config with absolute -D macro paths (the daemon chdirs on
 # startup and requires absolute spool/pid paths). Use for submissions, queue
 # checks, and daemon start:

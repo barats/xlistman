@@ -21,13 +21,13 @@ the mail pipeline; each action is verified against the audit trail.
 8. `expect text "Message rejected" to appear`
 9. `navigate to /admin/l/mod@lists.test/moderation`
 10. `expect text "Reject me" to be absent`
-11. `run: ./xlistman audit list mod@lists.test moderation.reject (expect: Reject me)`
+11. `run: ./xmailman audit list mod@lists.test moderation.reject (expect: Reject me)`
 12. `click "Discard me"`
 13. `expect page URL to contain /held/`
 14. `click "Discard"`
 15. `expect text "Message discarded" to appear`
 16. `navigate to /admin/l/mod@lists.test/moderation`
 17. `expect text "Discard me" to be absent`
-18. `run: ./xlistman audit list mod@lists.test moderation.discard (expect: Discard me)`
+18. `run: ./xmailman audit list mod@lists.test moderation.discard (expect: Discard me)`
 19. `expect 0 console errors`
 20. `expect no API request to return a 5xx`

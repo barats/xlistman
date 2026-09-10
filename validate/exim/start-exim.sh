@@ -1,5 +1,5 @@
 #!/bin/bash
-# Start the user-space exim instance for the xListman LMTP-loop validation.
+# Start the user-space exim instance for the xMailman LMTP-loop validation.
 # No sudo needed: daemon on 127.0.0.1:2525, spool/logs under validate/.
 # Run from the repo root. Stop with stop-exim.sh.
 set -euo pipefail

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/barats/xlistman/internal/model"
+	"github.com/barats/xmailman/internal/model"
 )
 
 // buildMultipart assembles a raw multipart/mixed message with a text/plain

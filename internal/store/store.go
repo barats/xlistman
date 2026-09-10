@@ -1,4 +1,4 @@
-// Package store defines the storage interface for xListman.
+// Package store defines the storage interface for xMailman.
 //
 // The Store interface is the primary seam for testing. All domain operations
 // go through this interface, allowing the SQLite implementation to be swapped
@@ -9,10 +9,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/barats/xlistman/internal/model"
+	"github.com/barats/xmailman/internal/model"
 )
 
-// Store is the storage interface for all xListman domain operations.
+// Store is the storage interface for all xMailman domain operations.
 type Store interface {
 	// Domain operations
 	CreateDomain(ctx context.Context, name, description string) (*model.Domain, error)

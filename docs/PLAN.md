@@ -1,4 +1,4 @@
-# xListman Plan
+# xMailman Plan
 
 Goal: a one-binary, self-hosted mailing list manager (GNU Mailman alternative) with a
 passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` for decisions.
@@ -126,7 +126,7 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
   and survive list deletion.
 - Surfaces: per-list **Audit** tab in the web role console (Owners only),
   instance-wide **Audit** tab in the server-admin area (Administrators only),
-  and a `xlistman audit` CLI command — all reverse-chronological with an
+  and a `xmailman audit` CLI command — all reverse-chronological with an
   action filter.
 - Test suite green (`go test ./...`); verified end-to-end in the browser
   (owner audit tab, admin audit tab, moderation/role/settings events recorded
@@ -212,7 +212,7 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
   silent 202 on over-quota so the endpoint cannot enumerate subscribers),
   per-IP magic-link (default 50/hour, 429 + Retry-After), and per-IP subscribe
   (5/hour, 429). New config `rate_limits.magic_link_per_ip_per_hour` (env
-  `XLISTMAN_RATE_LIMITS_MAGIC_LINK_PER_IP_PER_HOUR`). The previously dead
+  `XMAILMAN_RATE_LIMITS_MAGIC_LINK_PER_IP_PER_HOUR`). The previously dead
   `rate_limits` config is now actually enforced; `posts_per_hour` targets the
   LMTP/email inbound path and stays out of web scope.
 - HTTP caching on the public list endpoints: `Cache-Control: public,
@@ -226,7 +226,7 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
 - Test suite green (`go test ./...`).
 
 ### Phase 14 — CSV member import/export — complete and tested
-- Member migration tooling so a real community can move onto xListman. Posting
+- Member migration tooling so a real community can move onto xMailman. Posting
   stays email-only (ADR 0024: the web UI is read/admin-only for list content; no
   web composer), so this phase is "getting people in," not content.
 - **Export:** Owner-only **Export** button on the Members tab plus CLI
@@ -305,7 +305,7 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
 ### Web SEO — page titles, meta descriptions, robots rules — done
 - Every page gets a browser-tab title and meta description in the
   "{Page} — {site}" format, with a configurable instance name (`web.site_name`,
-  default `xListman`) used in titles, `og:site_name`, and the UI header/footer.
+  default `xMailman`) used in titles, `og:site_name`, and the UI header/footer.
 - Public pages (`/`, `/l/[addr]`) get server-injected, crawlable head content:
   title, description, canonical, and Open Graph + Twitter tags, derived from
   the list (store lookup) — the SPA shell's head is rewritten per route by the
@@ -348,5 +348,5 @@ passwordless web UI. See `CONTEXT.md` for the domain language and `docs/adr/` fo
   natural `v0.2`+ theme: versioned migrations, and a documented back-up-
   before-upgrade story for existing installs.
 - **Deployment guide.** Reverse proxy + HTTPS + systemd walkthrough for
-  running xListman for real (the `systemd/` unit exists but is undocumented).
+  running xMailman for real (the `systemd/` unit exists but is undocumented).
 - Web posting stays explicitly out of scope (ADR 0024: posting is email-only).

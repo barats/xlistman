@@ -1,6 +1,6 @@
-# xListman validation fixture for the LMTP loop against local Postfix.
+# xMailman validation fixture for the LMTP loop against local Postfix.
 # Postfix must be running with lists.test routed to LMTP (start-postfix.sh).
-# Set XLISTMAN_CONFIG=validate/postfix/postfix-validate.yaml when running the
+# Set XMAILMAN_CONFIG=validate/postfix/postfix-validate.yaml when running the
 # daemon and CLI commands.
 http:
     listen: 127.0.0.1:8081
@@ -16,7 +16,7 @@ smtp:
     username: ""
     password: ""
     mode: smtp
-    sink_dir: /tmp/xlistman-mail
+    sink_dir: /tmp/xmailman-mail
 web:
     base_url: http://127.0.0.1:8081
 rate_limits:

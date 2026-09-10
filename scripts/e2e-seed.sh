@@ -3,12 +3,12 @@
 #
 # Requires a running e2e daemon (started by scripts/e2e.sh setup): archive
 # posts and the held message are injected through the real mail pipeline via
-# `xlistman deliver`, which relays to the daemon's pipe-mode socket.
+# `xmailman deliver`, which relays to the daemon's pipe-mode socket.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-export XLISTMAN_CONFIG="${XLISTMAN_CONFIG:-scripts/e2e.yaml}"
-BIN="$(pwd)/xlistman"
+export XMAILMAN_CONFIG="${XMAILMAN_CONFIG:-scripts/e2e.yaml}"
+BIN="$(pwd)/xmailman"
 
 run() {
 	echo "  > $*" >&2

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/barats/xlistman/internal/model"
-	"github.com/barats/xlistman/internal/store/sqlite"
+	"github.com/barats/xmailman/internal/model"
+	"github.com/barats/xmailman/internal/store/sqlite"
 )
 
 type cmdFixture struct {

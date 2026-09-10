@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/barats/xlistman/internal/model"
+	"github.com/barats/xmailman/internal/model"
 )
 
 var (

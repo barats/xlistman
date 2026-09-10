@@ -11,7 +11,7 @@ set -euo pipefail
 
 email="${1:?usage: e2e-get-link.sh <email> [--wait]}"
 want_wait="${2:-}"
-sink="${E2E_SINK_DIR:-/tmp/xlistman-e2e-mail}"
+sink="${E2E_SINK_DIR:-/tmp/xmailman-e2e-mail}"
 base_url="${E2E_BASE_URL:-http://localhost:8090}"
 
 # Sink filenames are <nanos>-<recipient>.eml with non-[A-Za-z0-9._-] chars

@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/barats/xlistman/internal/model"
+	"github.com/barats/xmailman/internal/model"
 )
 
 // handleRequest processes an email sent to listname-request@domain. Each

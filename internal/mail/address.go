@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// AddressType identifies the function of an email address handled by xListman.
+// AddressType identifies the function of an email address handled by xMailman.
 type AddressType int
 
 const (
@@ -20,7 +20,7 @@ const (
 	AddressTypeUnknown
 )
 
-// ParsedAddress describes a recipient address routed to xListman.
+// ParsedAddress describes a recipient address routed to xMailman.
 type ParsedAddress struct {
 	Type        AddressType
 	ListName    string // local part before any suffix

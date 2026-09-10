@@ -18,7 +18,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/barats/xlistman/internal/model"
+	"github.com/barats/xmailman/internal/model"
 	"github.com/microcosm-cc/bluemonday"
 )
 

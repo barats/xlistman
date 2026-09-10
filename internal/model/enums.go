@@ -1,4 +1,4 @@
-// Package model defines xListman's domain entities.
+// Package model defines xMailman's domain entities.
 //
 // These types represent the core concepts from the project's ubiquitous language
 // (see CONTEXT.md). They are pure data structures annotated with GORM tags for

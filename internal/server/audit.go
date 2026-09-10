@@ -7,7 +7,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/barats/xlistman/internal/model"
+	"github.com/barats/xmailman/internal/model"
 )
 
 // subscriberActor wraps a signed-in Subscriber as the actor for an Audit Event.
@@ -60,7 +60,7 @@ func (s *Server) handleAdminAudit(w http.ResponseWriter, r *http.Request) {
 
 // writeAuditEvents writes Audit Events newest-first as JSON, paged. The web
 // console shows the most recent 500 events; deeper history is the CLI's job
-// (xlistman audit ...), so no pager beyond limit/offset is offered here.
+// (xmailman audit ...), so no pager beyond limit/offset is offered here.
 func (s *Server) writeAuditEvents(w http.ResponseWriter, r *http.Request, listID *int64, action string) {
 	limit := queryIntDefault(r, "limit", 500)
 	if limit <= 0 || limit > 500 {

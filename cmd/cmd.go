@@ -1,4 +1,4 @@
-// Package cmd implements the xListman CLI.
+// Package cmd implements the xMailman CLI.
 package cmd
 
 import (
@@ -18,13 +18,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/barats/xlistman/internal/config"
-	"github.com/barats/xlistman/internal/mail"
-	"github.com/barats/xlistman/internal/members"
-	"github.com/barats/xlistman/internal/model"
-	"github.com/barats/xlistman/internal/queue"
-	"github.com/barats/xlistman/internal/server"
-	"github.com/barats/xlistman/internal/store/sqlite"
+	"github.com/barats/xmailman/internal/config"
+	"github.com/barats/xmailman/internal/mail"
+	"github.com/barats/xmailman/internal/members"
+	"github.com/barats/xmailman/internal/model"
+	"github.com/barats/xmailman/internal/queue"
+	"github.com/barats/xmailman/internal/server"
+	"github.com/barats/xmailman/internal/store/sqlite"
 )
 
 // Version is set at build time.
@@ -73,7 +73,7 @@ func Run(args []string, webBuild fs.FS) int {
 	case "web":
 		return cmdWeb(rest)
 	case "version":
-		fmt.Println("xListman", Version)
+		fmt.Println("xMailman", Version)
 		return 0
 	case "help", "-h", "--help":
 		printUsage()
@@ -86,9 +86,9 @@ func Run(args []string, webBuild fs.FS) int {
 }
 
 func printUsage() {
-	fmt.Fprintf(os.Stderr, `xListman - mailing list manager
+	fmt.Fprintf(os.Stderr, `xMailman - mailing list manager
 
-Usage: xlistman <command> [args]
+Usage: xmailman <command> [args]
 
 Commands:
   serve                          Start the daemon
@@ -138,18 +138,18 @@ Commands:
   disable management             Disable web management (block both consoles)
   web status                     Show web access control state
   config check                   Validate config file
-  config init                    Generate a default xlistman.yaml
+  config init                    Generate a default xmailman.yaml
   version                        Print version
 `)
 }
 
 func loadConfig() (*config.Config, error) {
-	configPath := os.Getenv("XLISTMAN_CONFIG")
+	configPath := os.Getenv("XMAILMAN_CONFIG")
 	if configPath == "" {
-		configPath = "xlistman.yaml"
+		configPath = "xmailman.yaml"
 	}
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("config file not found: %s\nUse 'xlistman config init' to generate one, or set XLISTMAN_CONFIG", configPath)
+		return nil, fmt.Errorf("config file not found: %s\nUse 'xmailman config init' to generate one, or set XMAILMAN_CONFIG", configPath)
 	}
 	return config.LoadFromFile(configPath)
 }
@@ -426,7 +426,7 @@ func cmdServe(args []string, webBuild fs.FS) int {
 		}
 	}()
 
-	logger.Info("xListman daemon started",
+	logger.Info("xMailman daemon started",
 		"http", cfg.HTTP.Listen, "lmtp", cfg.LMTP.Listen, "socket", cfg.Socket.Path, "smtp_mode", cfg.SMTP.Mode)
 
 	select {
@@ -452,7 +452,7 @@ func cmdServe(args []string, webBuild fs.FS) int {
 
 func cmdDeliver(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: xlistman deliver <list-address>")
+		fmt.Fprintln(os.Stderr, "usage: xmailman deliver <list-address>")
 		return 1
 	}
 	cfg, err := loadConfig()
@@ -462,7 +462,7 @@ func cmdDeliver(args []string) int {
 	}
 	conn, err := net.Dial("unix", cfg.Socket.Path)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "connect to daemon: %v (is 'xlistman serve' running?)\n", err)
+		fmt.Fprintf(os.Stderr, "connect to daemon: %v (is 'xmailman serve' running?)\n", err)
 		return 1
 	}
 	defer conn.Close()
@@ -491,7 +491,7 @@ func cmdDeliver(args []string) int {
 
 func cmdDomain(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: xlistman domain <add|remove|list> [args]")
+		fmt.Fprintln(os.Stderr, "usage: xmailman domain <add|remove|list> [args]")
 		return 1
 	}
 	cfg, err := loadConfig()
@@ -510,7 +510,7 @@ func cmdDomain(args []string) int {
 	switch args[0] {
 	case "add":
 		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "usage: xlistman domain add <name> [description]")
+			fmt.Fprintln(os.Stderr, "usage: xmailman domain add <name> [description]")
 			return 1
 		}
 		desc := ""
@@ -528,7 +528,7 @@ func cmdDomain(args []string) int {
 
 	case "remove":
 		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "usage: xlistman domain remove <name>")
+			fmt.Fprintln(os.Stderr, "usage: xmailman domain remove <name>")
 			return 1
 		}
 		if err := s.DeleteDomain(ctx, args[1]); err != nil {
@@ -562,7 +562,7 @@ func cmdDomain(args []string) int {
 
 func cmdAdmin(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: xlistman admin <add|remove|list> [email]")
+		fmt.Fprintln(os.Stderr, "usage: xmailman admin <add|remove|list> [email]")
 		return 1
 	}
 	cfg, err := loadConfig()
@@ -581,7 +581,7 @@ func cmdAdmin(args []string) int {
 	switch args[0] {
 	case "add":
 		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "usage: xlistman admin add <email>")
+			fmt.Fprintln(os.Stderr, "usage: xmailman admin add <email>")
 			return 1
 		}
 		sub, err := s.GetOrCreateSubscriber(ctx, strings.ToLower(args[1]))
@@ -599,7 +599,7 @@ func cmdAdmin(args []string) int {
 
 	case "remove":
 		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "usage: xlistman admin remove <email>")
+			fmt.Fprintln(os.Stderr, "usage: xmailman admin remove <email>")
 			return 1
 		}
 		sub, err := s.GetSubscriber(ctx, strings.ToLower(args[1]))
@@ -622,7 +622,7 @@ func cmdAdmin(args []string) int {
 			return 1
 		}
 		if len(admins) == 0 {
-			fmt.Println("No administrators. Designate one with `xlistman admin add <email>`.")
+			fmt.Println("No administrators. Designate one with `xmailman admin add <email>`.")
 			return 0
 		}
 		for _, a := range admins {
@@ -642,7 +642,7 @@ func cmdAdmin(args []string) int {
 
 func cmdList(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: xlistman list <create|delete|type|list|info|config|allowlist|add-sender|remove-sender> [args]")
+		fmt.Fprintln(os.Stderr, "usage: xmailman list <create|delete|type|list|info|config|allowlist|add-sender|remove-sender> [args]")
 		return 1
 	}
 	cfg, err := loadConfig()
@@ -661,7 +661,7 @@ func cmdList(args []string) int {
 	switch args[0] {
 	case "create":
 		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "usage: xlistman list create <addr> --type <discussion|newsletter> [--owner <email>] [--moderate]")
+			fmt.Fprintln(os.Stderr, "usage: xmailman list create <addr> --type <discussion|newsletter> [--owner <email>] [--moderate]")
 			return 1
 		}
 		listName, domain, err := parseListAddr(args[1])
@@ -722,7 +722,7 @@ func cmdList(args []string) int {
 
 	case "delete":
 		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "usage: xlistman list delete <addr>")
+			fmt.Fprintln(os.Stderr, "usage: xmailman list delete <addr>")
 			return 1
 		}
 		listName, domain, _ := parseListAddr(args[1])
@@ -741,7 +741,7 @@ func cmdList(args []string) int {
 
 	case "type":
 		if len(args) < 3 {
-			fmt.Fprintln(os.Stderr, "usage: xlistman list type <addr> <discussion|newsletter>")
+			fmt.Fprintln(os.Stderr, "usage: xmailman list type <addr> <discussion|newsletter>")
 			return 1
 		}
 		listName, domain, _ := parseListAddr(args[1])
@@ -786,7 +786,7 @@ func cmdList(args []string) int {
 
 	case "info":
 		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "usage: xlistman list info <addr>")
+			fmt.Fprintln(os.Stderr, "usage: xmailman list info <addr>")
 			return 1
 		}
 		listName, domain, _ := parseListAddr(args[1])
@@ -830,7 +830,7 @@ func cmdList(args []string) int {
 
 	case "config":
 		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "usage: xlistman list config <addr> <key>=<value> [<key>=<value> ...]")
+			fmt.Fprintln(os.Stderr, "usage: xmailman list config <addr> <key>=<value> [<key>=<value> ...]")
 			return 1
 		}
 		listName, domain, _ := parseListAddr(args[1])
@@ -898,7 +898,7 @@ func cmdList(args []string) int {
 
 	case "allowlist":
 		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "usage: xlistman list allowlist <addr>")
+			fmt.Fprintln(os.Stderr, "usage: xmailman list allowlist <addr>")
 			return 1
 		}
 		listName, domain, _ := parseListAddr(args[1])
@@ -927,7 +927,7 @@ func cmdList(args []string) int {
 
 	case "add-sender":
 		if len(args) < 3 {
-			fmt.Fprintln(os.Stderr, "usage: xlistman list add-sender <addr> <email>")
+			fmt.Fprintln(os.Stderr, "usage: xmailman list add-sender <addr> <email>")
 			return 1
 		}
 		listName, domain, _ := parseListAddr(args[1])
@@ -943,7 +943,7 @@ func cmdList(args []string) int {
 		// Subscriber-first: only a known (verified) Subscriber can be designated.
 		sub, err := s.GetSubscriber(ctx, strings.ToLower(args[2]))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "unknown subscriber: %s. Add them first with `xlistman subscriber add`, or have them subscribe to a list.\n", args[2])
+			fmt.Fprintf(os.Stderr, "unknown subscriber: %s. Add them first with `xmailman subscriber add`, or have them subscribe to a list.\n", args[2])
 			return 1
 		}
 		if err := s.AddDesignatedSender(ctx, l.ID, sub.ID); err != nil {
@@ -956,7 +956,7 @@ func cmdList(args []string) int {
 
 	case "remove-sender":
 		if len(args) < 3 {
-			fmt.Fprintln(os.Stderr, "usage: xlistman list remove-sender <addr> <subscriber-id>")
+			fmt.Fprintln(os.Stderr, "usage: xmailman list remove-sender <addr> <subscriber-id>")
 			return 1
 		}
 		listName, domain, _ := parseListAddr(args[1])
@@ -991,7 +991,7 @@ func cmdList(args []string) int {
 
 func cmdOwner(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: xlistman owner <add|remove|list> [args]")
+		fmt.Fprintln(os.Stderr, "usage: xmailman owner <add|remove|list> [args]")
 		return 1
 	}
 	cfg, err := loadConfig()
@@ -1010,7 +1010,7 @@ func cmdOwner(args []string) int {
 	switch args[0] {
 	case "add", "remove":
 		if len(args) < 3 {
-			fmt.Fprintln(os.Stderr, "usage: xlistman owner add|remove <list-addr> <email>")
+			fmt.Fprintln(os.Stderr, "usage: xmailman owner add|remove <list-addr> <email>")
 			return 1
 		}
 		listName, domain, _ := parseListAddr(args[1])
@@ -1037,7 +1037,7 @@ func cmdOwner(args []string) int {
 
 	case "list":
 		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "usage: xlistman owner list <list-addr>")
+			fmt.Fprintln(os.Stderr, "usage: xmailman owner list <list-addr>")
 			return 1
 		}
 		listName, domain, _ := parseListAddr(args[1])
@@ -1062,7 +1062,7 @@ func cmdOwner(args []string) int {
 
 func cmdModerator(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: xlistman moderator <add|remove|list> [args]")
+		fmt.Fprintln(os.Stderr, "usage: xmailman moderator <add|remove|list> [args]")
 		return 1
 	}
 	cfg, err := loadConfig()
@@ -1081,7 +1081,7 @@ func cmdModerator(args []string) int {
 	switch args[0] {
 	case "add", "remove":
 		if len(args) < 3 {
-			fmt.Fprintf(os.Stderr, "usage: xlistman moderator %s <list-addr> <email>\n", args[0])
+			fmt.Fprintf(os.Stderr, "usage: xmailman moderator %s <list-addr> <email>\n", args[0])
 			return 1
 		}
 		listName, domain, _ := parseListAddr(args[1])
@@ -1111,7 +1111,7 @@ func cmdModerator(args []string) int {
 
 	case "list":
 		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "usage: xlistman moderator list <list-addr>")
+			fmt.Fprintln(os.Stderr, "usage: xmailman moderator list <list-addr>")
 			return 1
 		}
 		listName, domain, _ := parseListAddr(args[1])
@@ -1146,7 +1146,7 @@ func cmdModerator(args []string) int {
 
 func cmdSubscriber(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: xlistman subscriber <add|remove|approve|reject|re-enable|reset-bounces|list|import|export> [args]")
+		fmt.Fprintln(os.Stderr, "usage: xmailman subscriber <add|remove|approve|reject|re-enable|reset-bounces|list|import|export> [args]")
 		return 1
 	}
 	cfg, err := loadConfig()
@@ -1165,7 +1165,7 @@ func cmdSubscriber(args []string) int {
 	switch args[0] {
 	case "add", "remove":
 		if len(args) < 3 {
-			fmt.Fprintln(os.Stderr, "usage: xlistman subscriber add|remove <list-addr> <email>")
+			fmt.Fprintln(os.Stderr, "usage: xmailman subscriber add|remove <list-addr> <email>")
 			return 1
 		}
 		listName, domain, _ := parseListAddr(args[1])
@@ -1199,7 +1199,7 @@ func cmdSubscriber(args []string) int {
 
 	case "approve", "reject":
 		if len(args) < 3 {
-			fmt.Fprintf(os.Stderr, "usage: xlistman subscriber %s <list-addr> <email>\n", args[0])
+			fmt.Fprintf(os.Stderr, "usage: xmailman subscriber %s <list-addr> <email>\n", args[0])
 			return 1
 		}
 		listName, domain, _ := parseListAddr(args[1])
@@ -1229,7 +1229,7 @@ func cmdSubscriber(args []string) int {
 
 	case "re-enable", "reset-bounces":
 		if len(args) < 3 {
-			fmt.Fprintf(os.Stderr, "usage: xlistman subscriber %s <list-addr> <email>\n", args[0])
+			fmt.Fprintf(os.Stderr, "usage: xmailman subscriber %s <list-addr> <email>\n", args[0])
 			return 1
 		}
 		listName, domain, _ := parseListAddr(args[1])
@@ -1272,7 +1272,7 @@ func cmdSubscriber(args []string) int {
 
 	case "list":
 		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "usage: xlistman subscriber list <list-addr>")
+			fmt.Fprintln(os.Stderr, "usage: xmailman subscriber list <list-addr>")
 			return 1
 		}
 		listName, domain, _ := parseListAddr(args[1])
@@ -1292,7 +1292,7 @@ func cmdSubscriber(args []string) int {
 
 	case "import":
 		if len(args) < 3 {
-			fmt.Fprintln(os.Stderr, "usage: xlistman subscriber import <list-addr> <file>")
+			fmt.Fprintln(os.Stderr, "usage: xmailman subscriber import <list-addr> <file>")
 			return 1
 		}
 		listName, domain, _ := parseListAddr(args[1])
@@ -1324,7 +1324,7 @@ func cmdSubscriber(args []string) int {
 
 	case "export":
 		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "usage: xlistman subscriber export <list-addr>")
+			fmt.Fprintln(os.Stderr, "usage: xmailman subscriber export <list-addr>")
 			return 1
 		}
 		listName, domain, _ := parseListAddr(args[1])
@@ -1355,7 +1355,7 @@ func cmdSubscriber(args []string) int {
 
 func cmdModeration(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: xlistman moderation <list|approve|reject|discard> [args]")
+		fmt.Fprintln(os.Stderr, "usage: xmailman moderation <list|approve|reject|discard> [args]")
 		return 1
 	}
 	cfg, err := loadConfig()
@@ -1374,7 +1374,7 @@ func cmdModeration(args []string) int {
 	switch args[0] {
 	case "list":
 		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "usage: xlistman moderation list <list-addr>")
+			fmt.Fprintln(os.Stderr, "usage: xmailman moderation list <list-addr>")
 			return 1
 		}
 		listName, domain, _ := parseListAddr(args[1])
@@ -1399,7 +1399,7 @@ func cmdModeration(args []string) int {
 
 	case "approve", "reject", "discard":
 		if len(args) < 2 {
-			fmt.Fprintf(os.Stderr, "usage: xlistman moderation %s <id>\n", args[0])
+			fmt.Fprintf(os.Stderr, "usage: xmailman moderation %s <id>\n", args[0])
 			return 1
 		}
 		id, err := strconv.ParseInt(args[1], 10, 64)
@@ -1432,7 +1432,7 @@ func cmdModeration(args []string) int {
 
 func cmdAudit(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: xlistman audit <list <addr> [action]|server [action]>")
+		fmt.Fprintln(os.Stderr, "usage: xmailman audit <list <addr> [action]|server [action]>")
 		return 1
 	}
 	cfg, err := loadConfig()
@@ -1456,7 +1456,7 @@ func cmdAudit(args []string) int {
 	switch args[0] {
 	case "list":
 		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "usage: xlistman audit list <list-addr> [action]")
+			fmt.Fprintln(os.Stderr, "usage: xmailman audit list <list-addr> [action]")
 			return 1
 		}
 		listName, domain, err := parseListAddr(args[1])
@@ -1495,7 +1495,7 @@ func cmdAudit(args []string) int {
 
 func cmdQueue(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: xlistman queue <list|discard> [args]")
+		fmt.Fprintln(os.Stderr, "usage: xmailman queue <list|discard> [args]")
 		return 1
 	}
 	cfg, err := loadConfig()
@@ -1529,7 +1529,7 @@ func cmdQueue(args []string) int {
 
 	case "discard":
 		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "usage: xlistman queue discard <id>")
+			fmt.Fprintln(os.Stderr, "usage: xmailman queue discard <id>")
 			return 1
 		}
 		id, err := strconv.ParseInt(args[1], 10, 64)
@@ -1548,7 +1548,7 @@ func cmdQueue(args []string) int {
 
 func cmdConfig(args []string) int {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: xlistman config <check|init>")
+		fmt.Fprintln(os.Stderr, "usage: xmailman config <check|init>")
 		return 1
 	}
 	switch args[0] {
@@ -1571,11 +1571,11 @@ func cmdConfig(args []string) int {
 			fmt.Fprintln(os.Stderr, "generate config:", err)
 			return 1
 		}
-		if err := os.WriteFile("xlistman.yaml", data, 0644); err != nil {
+		if err := os.WriteFile("xmailman.yaml", data, 0644); err != nil {
 			fmt.Fprintln(os.Stderr, "write config:", err)
 			return 1
 		}
-		fmt.Println("Generated xlistman.yaml. Edit it and set web.base_url.")
+		fmt.Println("Generated xmailman.yaml. Edit it and set web.base_url.")
 		return 0
 	}
 	return 1
@@ -1584,7 +1584,7 @@ func cmdConfig(args []string) int {
 // --- web access control (ADR 0020) ---
 
 // cmdSetWebToggle enables or disables one of the two web access switches
-// (`xlistman enable|disable login|management`). Disabling login also ends
+// (`xmailman enable|disable login|management`). Disabling login also ends
 // every existing Session, so a lockdown logs everyone out. Every toggle is
 // recorded as an Audit Event.
 func cmdSetWebToggle(args []string, enabled bool) int {
@@ -1593,7 +1593,7 @@ func cmdSetWebToggle(args []string, enabled bool) int {
 		verb = "enable"
 	}
 	if len(args) < 1 {
-		fmt.Fprintf(os.Stderr, "usage: xlistman %s <login|management>\n", verb)
+		fmt.Fprintf(os.Stderr, "usage: xmailman %s <login|management>\n", verb)
 		return 1
 	}
 	cfg, err := loadConfig()
@@ -1649,10 +1649,10 @@ func cmdSetWebToggle(args []string, enabled bool) int {
 	return 1
 }
 
-// cmdWeb shows the current web access control state (`xlistman web status`).
+// cmdWeb shows the current web access control state (`xmailman web status`).
 func cmdWeb(args []string) int {
 	if len(args) < 1 || args[0] != "status" {
-		fmt.Fprintln(os.Stderr, "usage: xlistman web status")
+		fmt.Fprintln(os.Stderr, "usage: xmailman web status")
 		return 1
 	}
 	cfg, err := loadConfig()

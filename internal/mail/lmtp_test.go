@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/barats/xlistman/internal/model"
-	"github.com/barats/xlistman/internal/store/sqlite"
+	"github.com/barats/xmailman/internal/model"
+	"github.com/barats/xmailman/internal/store/sqlite"
 )
 
 // TestSubscribeConfirmFlow drives the email double opt-in loop: a subscribe

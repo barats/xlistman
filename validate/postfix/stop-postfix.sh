@@ -5,13 +5,13 @@ set -euo pipefail
 
 postfix stop || true
 
-if [ -f /etc/postfix/main.cf.xlistman-validate.bak ]; then
-  mv /etc/postfix/main.cf.xlistman-validate.bak /etc/postfix/main.cf
+if [ -f /etc/postfix/main.cf.xmailman-validate.bak ]; then
+  mv /etc/postfix/main.cf.xmailman-validate.bak /etc/postfix/main.cf
   echo "restored /etc/postfix/main.cf"
 fi
 
-if [ -f /etc/aliases.xlistman-validate.bak ]; then
-  mv /etc/aliases.xlistman-validate.bak /etc/aliases
+if [ -f /etc/aliases.xmailman-validate.bak ]; then
+  mv /etc/aliases.xmailman-validate.bak /etc/aliases
   newaliases
   echo "restored /etc/aliases"
 fi

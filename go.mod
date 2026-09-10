@@ -1,4 +1,4 @@
-module github.com/barats/xlistman
+module github.com/barats/xmailman
 
 go 1.25.0
 

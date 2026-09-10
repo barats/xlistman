@@ -12,10 +12,10 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/barats/xlistman/internal/config"
-	xmail "github.com/barats/xlistman/internal/mail"
-	"github.com/barats/xlistman/internal/model"
-	"github.com/barats/xlistman/internal/store/sqlite"
+	"github.com/barats/xmailman/internal/config"
+	xmail "github.com/barats/xmailman/internal/mail"
+	"github.com/barats/xmailman/internal/model"
+	"github.com/barats/xmailman/internal/store/sqlite"
 )
 
 func newTestServer(t *testing.T) (*Server, *sqlite.Store, string) {

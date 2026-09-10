@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/barats/xlistman/internal/store/sqlite"
+	"github.com/barats/xmailman/internal/store/sqlite"
 )
 
 type failingSender struct{ err error }

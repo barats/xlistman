@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	xmail "github.com/barats/xlistman/internal/mail"
-	"github.com/barats/xlistman/internal/mailparse"
-	"github.com/barats/xlistman/internal/members"
-	"github.com/barats/xlistman/internal/model"
+	xmail "github.com/barats/xmailman/internal/mail"
+	"github.com/barats/xmailman/internal/mailparse"
+	"github.com/barats/xmailman/internal/members"
+	"github.com/barats/xmailman/internal/model"
 )
 
 // listHandler is a console handler that operates on an already-loaded list.
@@ -401,7 +401,7 @@ func (s *Server) handleConsoleSenders(w http.ResponseWriter, r *http.Request, l 
 		sub, err := s.Store.GetSubscriber(ctx, email)
 		if err != nil {
 			writeJSON(w, 404, map[string]string{
-				"error": "unknown subscriber: " + email + ". Add them first with `xlistman subscriber add`, or have them subscribe to a list.",
+				"error": "unknown subscriber: " + email + ". Add them first with `xmailman subscriber add`, or have them subscribe to a list.",
 			})
 			return
 		}

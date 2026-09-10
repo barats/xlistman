@@ -1,4 +1,4 @@
-# xListman configuration for the README screenshot environment.
+# xMailman configuration for the README screenshot environment.
 #
 # Runs on its own port / socket / database / sink so it never touches the dev
 # (:8080), e2e (:8090), or MTA validation environments. Seed the realistic
@@ -9,16 +9,16 @@ http:
 lmtp:
     listen: :8026
 socket:
-    path: /tmp/xlistman-shots.sock
+    path: /tmp/xmailman-shots.sock
 database:
-    path: /tmp/xlistman-shots.db
+    path: /tmp/xmailman-shots.db
 smtp:
     host: localhost
     port: 25
     username: ""
     password: ""
     mode: sink
-    sink_dir: /tmp/xlistman-shots-mail
+    sink_dir: /tmp/xmailman-shots-mail
 web:
     base_url: http://localhost:8081
 rate_limits:

@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/barats/xlistman/internal/model"
-	"github.com/barats/xlistman/internal/store/sqlite"
+	"github.com/barats/xmailman/internal/model"
+	"github.com/barats/xmailman/internal/store/sqlite"
 )
 
 func testDigestWorker(t *testing.T, s *sqlite.Store) *DigestWorker {

@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/barats/xlistman/internal/members"
-	"github.com/barats/xlistman/internal/model"
+	"github.com/barats/xmailman/internal/members"
+	"github.com/barats/xmailman/internal/model"
 )
 
 // ImportMembers bulk-adds members to a list from a parsed import file (Phase

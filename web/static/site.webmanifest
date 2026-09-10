@@ -1,6 +1,6 @@
 {
-	"name": "xListman",
-	"short_name": "xListman",
+	"name": "xMailman",
+	"short_name": "xMailman",
 	"description": "A self-hosted, one-binary mailing list manager.",
 	"start_url": "/",
 	"scope": "/",

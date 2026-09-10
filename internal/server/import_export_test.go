@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/barats/xlistman/internal/model"
+	"github.com/barats/xmailman/internal/model"
 )
 
 // doMultipart POSTs a single-file multipart form (Phase 14 import).

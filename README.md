@@ -1,4 +1,4 @@
-# xListman
+# xMailman
 
 **A one-binary, self-hosted mailing list manager.** A modern, self-contained
 alternative to GNU Mailman: manage mailing lists, subscriptions, archives, and
@@ -52,7 +52,7 @@ binary with an embedded frontend and SQLite storage.
   bounces, audit) and a server-admin area (domains, lists, administrators)
 
 **Operations**
-- CLI parity for administration: `xlistman domain|list|owner|subscriber|…`
+- CLI parity for administration: `xmailman domain|list|owner|subscriber|…`
 - YAML config with environment overrides and `${ENV_VAR}` secret expansion
 - `systemd` unit and a multi-stage `scratch`-based Docker image included
 
@@ -76,16 +76,16 @@ Captured from a live instance seeded with demo data — reproduce them with
 ### Option 1 — Docker (fastest)
 
 ```sh
-docker run -d --name xlistman \
+docker run -d --name xmailman \
   -p 8080:8080 -p 8024:8024 \
-  -v xlistman-data:/data \
-  -e XLISTMAN_WEB_BASE_URL=http://localhost:8080 \
-  ghcr.io/barats/xlistman:0.3.0
+  -v xmailman-data:/data \
+  -e XMAILMAN_WEB_BASE_URL=http://localhost:8080 \
+  ghcr.io/barats/xmailman:0.4.0
 ```
 
-The image ships a working default config (`/etc/xlistman/config.yaml`); any
-value can be overridden with `XLISTMAN_*` environment variables (e.g. point
-`XLISTMAN_SMTP_HOST` / `XLISTMAN_SMTP_PORT` at your relay). See
+The image ships a working default config (`/etc/xmailman/config.yaml`); any
+value can be overridden with `XMAILMAN_*` environment variables (e.g. point
+`XMAILMAN_SMTP_HOST` / `XMAILMAN_SMTP_PORT` at your relay). See
 [Configuration](#configuration).
 
 ### Option 2 — Build from source
@@ -94,25 +94,25 @@ Prerequisites: Go 1.25+, and Node.js + pnpm for the embedded web UI.
 
 ```sh
 cd web && pnpm install && pnpm build   # build the SvelteKit frontend
-cd .. && go build -o xlistman .        # then the Go binary (UI embedded)
-./xlistman config init                 # generate ./xlistman.yaml, then edit it
-./xlistman serve
+cd .. && go build -o xmailman .        # then the Go binary (UI embedded)
+./xmailman config init                 # generate ./xmailman.yaml, then edit it
+./xmailman serve
 ```
 
 > The web UI is generated and not committed, so `go install
-> github.com/barats/xlistman@latest` (and a plain `go build`) produces a binary
+> github.com/barats/xmailman@latest` (and a plain `go build`) produces a binary
 > **without the web UI** — CLI and mail handling only. For the full product,
 > use the Docker image (above) or download a release binary from the
-> [GitHub Releases](https://github.com/barats/xlistman/releases) page, which
+> [GitHub Releases](https://github.com/barats/xmailman/releases) page, which
 > ships the frontend embedded (goreleaser builds it as part of the release).
 
 ### First steps
 
 ```sh
 # create a domain, then a list with its first owner
-xlistman domain add example.com "Example domain"
-xlistman list create dev@example.com --type discussion --owner you@example.com
-xlistman serve   # start the daemon (HTTP :8080, LMTP :8024, pipe socket)
+xmailman domain add example.com "Example domain"
+xmailman list create dev@example.com --type discussion --owner you@example.com
+xmailman serve   # start the daemon (HTTP :8080, LMTP :8024, pipe socket)
 ```
 
 Open `http://localhost:8080`, request a login link, and you're in. To receive
@@ -120,9 +120,9 @@ mail, wire your MTA to deliver the list domain over LMTP (see below).
 
 ## MTA integration
 
-xListman integrates with an existing mail server rather than replacing it. The
-flow: your MTA accepts mail for the list domain and hands it to xListman over
-**LMTP** (or the pipe-mode Unix socket); xListman delivers outbound mail back
+xMailman integrates with an existing mail server rather than replacing it. The
+flow: your MTA accepts mail for the list domain and hands it to xMailman over
+**LMTP** (or the pipe-mode Unix socket); xMailman delivers outbound mail back
 through your relay.
 
 - **Postfix:** `virtual_mailbox_domains = lists.example.com` +
@@ -136,11 +136,11 @@ including the VERP bounce reverse leg. The reproducible harnesses live in
 
 ## Configuration
 
-Configuration is YAML, loaded from `xlistman.yaml` (or `XLISTMAN_CONFIG`),
-overlaid with `XLISTMAN_*` environment variables, and expanded for `${ENV_VAR}`
+Configuration is YAML, loaded from `xmailman.yaml` (or `XMAILMAN_CONFIG`),
+overlaid with `XMAILMAN_*` environment variables, and expanded for `${ENV_VAR}`
 secrets. A minimal runnable config ships as
 [`config.default.yaml`](config.default.yaml); generate a fully commented one
-with `xlistman config init`.
+with `xmailman config init`.
 
 | Area | Key settings |
 |------|--------------|
@@ -159,7 +159,7 @@ of environment variable names.
 - [`CONTEXT.md`](CONTEXT.md) — the domain model and glossary (Subscriber,
   Subscription, List Role, Held Message, …)
 - [`docs/PLAN.md`](docs/PLAN.md) — build history and roadmap
-- [`docs/adr/`](docs/adr/) — 26 architecture decision records
+- [`docs/adr/`](docs/adr/) — 28 architecture decision records
 - [`validate/README.md`](validate/README.md) — MTA validation harnesses
 - [`SECURITY.md`](SECURITY.md) — security policy and reporting
 

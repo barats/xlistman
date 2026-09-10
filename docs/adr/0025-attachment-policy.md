@@ -1,6 +1,6 @@
 # Per-list attachment policy
 
-Posts to a List can carry files as MIME parts, but xListman previously had no
+Posts to a List can carry files as MIME parts, but xMailman previously had no
 notion of an attachment: messages were opaque bytes end to end, and the
 per-list `max_message_size` setting (default 1 MB) was stored but never
 enforced on the inbound path. This ADR records the decision to make attachment

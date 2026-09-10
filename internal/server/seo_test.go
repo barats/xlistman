@@ -9,13 +9,13 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/barats/xlistman/internal/config"
-	xmail "github.com/barats/xlistman/internal/mail"
-	"github.com/barats/xlistman/internal/model"
-	"github.com/barats/xlistman/internal/store/sqlite"
+	"github.com/barats/xmailman/internal/config"
+	xmail "github.com/barats/xmailman/internal/mail"
+	"github.com/barats/xmailman/internal/model"
+	"github.com/barats/xmailman/internal/store/sqlite"
 )
 
-const testShell = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>xListman</title><meta name="description" content="default desc"><link href="/_app/a.css" rel="stylesheet"></head><body><div id="app"></div></body></html>`
+const testShell = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>xMailman</title><meta name="description" content="default desc"><link href="/_app/a.css" rel="stylesheet"></head><body><div id="app"></div></body></html>`
 
 func seoServer(t *testing.T, siteName string) *httptest.Server {
 	t.Helper()
@@ -87,19 +87,19 @@ func assertSingleTag(t *testing.T, body, tagOpen string) {
 }
 
 func TestSEOInjection_Routes(t *testing.T) {
-	ts := seoServer(t, "xListman")
+	ts := seoServer(t, "xMailman")
 
 	t.Run("list index", func(t *testing.T) {
 		body := getBody(t, ts, "/")
-		mustContain(t, body, "<title>Mailing lists — xListman</title>")
-		mustContain(t, body, `name="description" content="Browse the mailing lists hosted on this xListman instance and subscribe with one email address."`)
-		mustContain(t, body, `name="xlistman-site-name" content="xListman"`)
+		mustContain(t, body, "<title>Mailing lists — xMailman</title>")
+		mustContain(t, body, `name="description" content="Browse the mailing lists hosted on this xMailman instance and subscribe with one email address."`)
+		mustContain(t, body, `name="xmailman-site-name" content="xMailman"`)
 		mustContain(t, body, `<link rel="canonical" href="http://test.local/">`)
-		mustContain(t, body, `name="xlistman-version" content="test"`)
-		assertSingleTag(t, body, `name="xlistman-version"`)
-		mustContain(t, body, `property="og:title" content="Mailing lists — xListman"`)
+		mustContain(t, body, `name="xmailman-version" content="test"`)
+		assertSingleTag(t, body, `name="xmailman-version"`)
+		mustContain(t, body, `property="og:title" content="Mailing lists — xMailman"`)
 		mustContain(t, body, `property="og:url" content="http://test.local/"`)
-		mustContain(t, body, `property="og:site_name" content="xListman"`)
+		mustContain(t, body, `property="og:site_name" content="xMailman"`)
 		mustContain(t, body, `property="og:image" content="http://test.local/og-image.png"`)
 		mustContain(t, body, `property="og:image:width" content="1200"`)
 		mustContain(t, body, `property="og:image:height" content="630"`)
@@ -112,7 +112,7 @@ func TestSEOInjection_Routes(t *testing.T) {
 
 	t.Run("list page", func(t *testing.T) {
 		body := getBody(t, ts, "/l/dev@example.com")
-		mustContain(t, body, "<title>dev@example.com — xListman</title>")
+		mustContain(t, body, "<title>dev@example.com — xMailman</title>")
 		mustContain(t, body, `name="description" content="Development list"`)
 		mustContain(t, body, `<link rel="canonical" href="http://test.local/l/dev@example.com"`)
 		mustContain(t, body, `property="og:url" content="http://test.local/l/dev@example.com"`)
@@ -121,13 +121,13 @@ func TestSEOInjection_Routes(t *testing.T) {
 
 	t.Run("list without description", func(t *testing.T) {
 		body := getBody(t, ts, "/l/team@example.com")
-		mustContain(t, body, "<title>team@example.com — xListman</title>")
+		mustContain(t, body, "<title>team@example.com — xMailman</title>")
 		mustContain(t, body, `name="description" content="Subscribe to the team@example.com mailing list."`)
 	})
 
 	t.Run("missing list", func(t *testing.T) {
 		body := getBody(t, ts, "/l/nope@example.com")
-		mustContain(t, body, "<title>List not found — xListman</title>")
+		mustContain(t, body, "<title>List not found — xMailman</title>")
 		mustContain(t, body, `name="robots" content="noindex"`)
 		mustNotContain(t, body, `property="og:title"`)
 		mustNotContain(t, body, `property="og:image"`)
@@ -142,8 +142,8 @@ func TestSEOInjection_Routes(t *testing.T) {
 
 	t.Run("private route gets shell default", func(t *testing.T) {
 		body := getBody(t, ts, "/me")
-		mustContain(t, body, "<title>xListman</title>")
-		mustContain(t, body, `name="xlistman-site-name" content="xListman"`)
+		mustContain(t, body, "<title>xMailman</title>")
+		mustContain(t, body, `name="xmailman-site-name" content="xMailman"`)
 		mustNotContain(t, body, `property="og:title"`)
 		mustNotContain(t, body, `name="robots" content="noindex"`) // client adds noindex
 	})
@@ -151,7 +151,7 @@ func TestSEOInjection_Routes(t *testing.T) {
 	t.Run("assets served unchanged", func(t *testing.T) {
 		body := getBody(t, ts, "/_app/a.js")
 		mustContain(t, body, "console.log('asset')")
-		mustNotContain(t, body, "xlistman-site-name")
+		mustNotContain(t, body, "xmailman-site-name")
 	})
 }
 
@@ -159,12 +159,12 @@ func TestSEOInjection_ConfigurableSiteName(t *testing.T) {
 	ts := seoServer(t, "My Community")
 	body := getBody(t, ts, "/")
 	mustContain(t, body, "<title>Mailing lists — My Community</title>")
-	mustContain(t, body, `name="xlistman-site-name" content="My Community"`)
+	mustContain(t, body, `name="xmailman-site-name" content="My Community"`)
 	mustContain(t, body, `property="og:site_name" content="My Community"`)
 }
 
 func TestSEOInjection_BrandAssets(t *testing.T) {
-	ts := seoServer(t, "xListman")
+	ts := seoServer(t, "xMailman")
 
 	t.Run("favicon + theme-color on every route", func(t *testing.T) {
 		for _, path := range []string{"/", "/l/dev@example.com", "/me", "/l/nope@example.com"} {
@@ -185,7 +185,7 @@ func TestSEOInjection_BrandAssets(t *testing.T) {
 	})
 
 	t.Run("og:image is the configured base URL plus /og-image.png", func(t *testing.T) {
-		ts2 := seoServer(t, "xListman")
+		ts2 := seoServer(t, "xMailman")
 		body := getBody(t, ts2, "/")
 		mustContain(t, body, `property="og:image" content="http://test.local/og-image.png"`)
 		mustContain(t, body, `name="twitter:image" content="http://test.local/og-image.png"`)

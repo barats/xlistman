@@ -1,6 +1,6 @@
 # Frontend test suite (agent-executed, via chrome-devtools MCP)
 
-This is a suite of **agent-executed** frontend tests for xListman. Each test is
+This is a suite of **agent-executed** frontend tests for xMailman. Each test is
 one Markdown file in this directory. An agent runs them against a live browser
 through the chrome-devtools MCP server, asserting on **text** (a11y snapshots,
 DOM text, network, console) — never on screenshots. This keeps the suite
@@ -9,8 +9,8 @@ runnable by text-only models.
 ## How to run
 
 1. `./scripts/e2e.sh setup` — builds the binary, wipes/creates a fresh DB
-   (`/tmp/xlistman-e2e.db`), starts the daemon on `http://localhost:8090`
-   (`scripts/e2e.yaml`; sink mail in `/tmp/xlistman-e2e-mail`), seeds fixtures,
+   (`/tmp/xmailman-e2e.db`), starts the daemon on `http://localhost:8090`
+   (`scripts/e2e.yaml`; sink mail in `/tmp/xmailman-e2e-mail`), seeds fixtures,
    and prints an agent prompt.
 2. Tell the agent to run the suite: *"Execute `web/tests/t*.md` in order
    against `http://localhost:8090` and write the report to
@@ -42,7 +42,7 @@ Setup commands use the `run:` form:
 | Setup step | What the agent does to pass it |
 | --- | --- |
 | `run: <command>` | Run the command in the terminal. PASS if it exits 0. |
-| `run: <command> (expect: <text>)` | Run the command; PASS if it exits 0 **and** its output contains `<text>`. Used for audit-verification steps, e.g. `run: ./xlistman audit list mod@lists.test moderation.reject (expect: Reject me)`. |
+| `run: <command> (expect: <text>)` | Run the command; PASS if it exits 0 **and** its output contains `<text>`. Used for audit-verification steps, e.g. `run: ./xmailman audit list mod@lists.test moderation.reject (expect: Reject me)`. |
 
 Fixture helpers: `./scripts/e2e-post.sh <list> <from> <subject> <body>`
 (inject a real post via the mail pipeline), `./scripts/e2e-confirm.sh <email>
@@ -147,7 +147,7 @@ posts), `mod@lists.test` (discussion, **moderated**, 1 held message from
 ## Troubleshooting
 
 - `scripts/e2e.sh status` — is the daemon up?
-- `tail /tmp/xlistman-e2e.log` — daemon log (SMTP sink writes go to
-  `/tmp/xlistman-e2e-mail`).
+- `tail /tmp/xmailman-e2e.log` — daemon log (SMTP sink writes go to
+  `/tmp/xmailman-e2e-mail`).
 - On a FAIL the agent records the actual page text and console errors; the
   environment is left up so it can be inspected.

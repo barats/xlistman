@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# e2e.sh — bootstrap runner for the xListman frontend test suite.
+# e2e.sh — bootstrap runner for the xMailman frontend test suite.
 #
 #   ./scripts/e2e.sh setup    build, fresh DB, start daemon, seed, print agent prompt
 #   ./scripts/e2e.sh stop     stop the e2e daemon
@@ -15,13 +15,13 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$(pwd)"
 
-export XLISTMAN_CONFIG="$ROOT/scripts/e2e.yaml"
-BIN="$ROOT/xlistman"
-DB=/tmp/xlistman-e2e.db
-SINK=/tmp/xlistman-e2e-mail
-SOCK=/tmp/xlistman-e2e.sock
-PIDFILE=/tmp/xlistman-e2e.pid
-LOG=/tmp/xlistman-e2e.log
+export XMAILMAN_CONFIG="$ROOT/scripts/e2e.yaml"
+BIN="$ROOT/xmailman"
+DB=/tmp/xmailman-e2e.db
+SINK=/tmp/xmailman-e2e-mail
+SOCK=/tmp/xmailman-e2e.sock
+PIDFILE=/tmp/xmailman-e2e.pid
+LOG=/tmp/xmailman-e2e.log
 BASE_URL=http://localhost:8090
 
 cmd="${1:-setup}"
@@ -73,7 +73,7 @@ setup() {
 	echo
 	echo "== e2e environment ready =="
 	echo "Base URL:  $BASE_URL"
-	echo "Config:    $XLISTMAN_CONFIG (DB $DB, sink $SINK)"
+	echo "Config:    $XMAILMAN_CONFIG (DB $DB, sink $SINK)"
 	echo "Scenarios: $(ls web/tests/t*.md 2>/dev/null | wc -l | tr -d ' ') test files in web/tests/"
 	echo
 	echo "Next: tell the agent to run the suite, e.g.:"

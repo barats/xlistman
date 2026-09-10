@@ -70,7 +70,7 @@
 			<li>
 				An <strong class="font-medium text-foreground">Administrator</strong> is a Subscriber
 				with instance-wide privileges. The first is designated on the server with
-				<code class="rounded bg-muted px-1 py-0.5">xlistman admin add</code>; later ones can be
+				<code class="rounded bg-muted px-1 py-0.5">xmailman admin add</code>; later ones can be
 				added here.
 			</li>
 			<li>Creating a list makes you its first Owner by default (overrideable to any Subscriber).</li>

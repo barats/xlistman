@@ -1,9 +1,9 @@
 // Command e2eseed inserts fixture states that the CLI and the mail pipeline
 // cannot create: Disabled members (bounce count at the list's threshold) and
 // Held subscriptions awaiting owner approval. Everything else is seeded
-// through the xListman CLI and `xlistman deliver` (see scripts/e2e-seed.sh).
+// through the xMailman CLI and `xmailman deliver` (see scripts/e2e-seed.sh).
 //
-// Usage (run against a fresh database, with XLISTMAN_CONFIG=scripts/e2e.yaml):
+// Usage (run against a fresh database, with XMAILMAN_CONFIG=scripts/e2e.yaml):
 //
 //	go run ./cmd/e2eseed                          # canonical fixtures: disabled@ on dev, heldsub@ on mod
 //	go run ./cmd/e2eseed disabled <list> <email>  # Disabled member of <list>
@@ -19,15 +19,15 @@ import (
 	"os"
 	"strings"
 
-	"github.com/barats/xlistman/internal/config"
-	"github.com/barats/xlistman/internal/model"
-	"github.com/barats/xlistman/internal/store/sqlite"
+	"github.com/barats/xmailman/internal/config"
+	"github.com/barats/xmailman/internal/model"
+	"github.com/barats/xmailman/internal/store/sqlite"
 )
 
 func main() {
-	path := os.Getenv("XLISTMAN_CONFIG")
+	path := os.Getenv("XMAILMAN_CONFIG")
 	if path == "" {
-		path = "xlistman.yaml"
+		path = "xmailman.yaml"
 	}
 	cfg, err := config.LoadFromFile(path)
 	if err != nil {

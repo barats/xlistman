@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/barats/xlistman/internal/model"
+	"github.com/barats/xmailman/internal/model"
 )
 
 // fullSettingsJSON is a complete ListSettings payload matching the shape the

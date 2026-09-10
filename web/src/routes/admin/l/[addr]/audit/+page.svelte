@@ -82,7 +82,7 @@
 </div>
 <p class="mt-2 text-xs text-muted-foreground">
 	This view shows the most recent 500 events. Older history is available via the CLI:
-	<code class="rounded bg-muted px-1 py-0.5 font-mono">xlistman audit list {addr} [action]</code>
+	<code class="rounded bg-muted px-1 py-0.5 font-mono">xmailman audit list {addr} [action]</code>
 </p>
 
 {#if error}

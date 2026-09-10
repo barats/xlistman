@@ -11,7 +11,7 @@ cd "$(dirname "$0")/.."
 
 email="${1:?usage: e2e-confirm.sh <email> <list>}"
 list="${2:?list address required}"
-sink="${E2E_SINK_DIR:-/tmp/xlistman-e2e-mail}"
+sink="${E2E_SINK_DIR:-/tmp/xmailman-e2e-mail}"
 
 sanitized="$(printf '%s' "$email" | tr -c 'A-Za-z0-9._-' '_')"
 file="$(ls -1t "$sink"/*"${sanitized}.eml" 2>/dev/null | head -1 || true)"

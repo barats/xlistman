@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/barats/xlistman/internal/model"
+	"github.com/barats/xmailman/internal/model"
 )
 
 // handleConsoleBounces lists members with bounce activity (bounce_count > 0 or

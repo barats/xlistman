@@ -1,5 +1,5 @@
 # Build output
-/xlistman
+/xmailman
 /e2eseed
 /dist/
 
@@ -9,10 +9,10 @@ web/.vscode/
 .DS_Store
 
 # Local development (generated, untracked)
-/xlistman.yaml
-/xlistman.db
-/xlistman.db-shm
-/xlistman.db-wal
+/xmailman.yaml
+/xmailman.db
+/xmailman.db-shm
+/xmailman.db-wal
 
 # Frontend e2e suite (generated report; scenarios live in web/tests/t*.md)
 /web/tests/report.md

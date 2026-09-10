@@ -1,10 +1,10 @@
-# xListman default configuration.
+# xMailman default configuration.
 #
 # This file is a minimal, runnable starting point. It is baked into the
-# Docker image (as /etc/xlistman/config.yaml) and documented in the README.
-# For a full commented reference, run `xlistman config init`.
+# Docker image (as /etc/xmailman/config.yaml) and documented in the README.
+# For a full commented reference, run `xmailman config init`.
 #
-# Every value can be overridden with an XLISTMAN_-prefixed environment
+# Every value can be overridden with an XMAILMAN_-prefixed environment
 # variable (see internal/config/config.go), and ${ENV_VAR} syntax expands
 # secrets from the environment.
 
@@ -15,9 +15,9 @@ lmtp:
 socket:
   # /tmp rather than /var/run: writable in the scratch container image and on
   # single-user setups. Override for multi-user systems.
-  path: "/tmp/xlistman.sock"
+  path: "/tmp/xmailman.sock"
 database:
-  path: "./xlistman.db"
+  path: "./xmailman.db"
 smtp:
   host: "localhost"
   port: 25
@@ -38,7 +38,7 @@ web:
   base_url: "http://localhost:8080"
   # The instance name used in page titles, the web UI header/footer, and
   # social tags.
-  site_name: "xListman"
+  site_name: "xMailman"
 rate_limits:
   subscribe_per_hour: 5
   magic_link_per_hour: 3

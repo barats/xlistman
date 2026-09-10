@@ -22,13 +22,13 @@ so a high-port instance validates the production shape.
 to an LMTP transport:
 
 ```
-xlistman_lmtp:
+xmailman_lmtp:
   driver = manualroute
   domains = lists.test
   route_list = * lists.lmtp.local
-  transport = xlistman_lmtp
+  transport = xmailman_lmtp
 
-xlistman_lmtp:
+xmailman_lmtp:
   driver = smtp
   protocol = lmtp
   port = 8024
@@ -60,13 +60,13 @@ generates a DSN to the VERP envelope sender (`dev-bounces+…@lists.test`), whic
 routes back through the `lists.test` router into the LMTP bounce handler. This
 re-validates the null-sender fix: exim delivers the DSN with `MAIL FROM:<>`.
 
-**Outbound.** xListman submits via SMTP to `localhost:2525`; post envelope
+**Outbound.** xMailman submits via SMTP to `localhost:2525`; post envelope
 senders are VERP addresses in the list domain; final local delivery to
 `owner@localhost` is an `appendfile` mbox under the fixture (self-contained,
 no mail-spool permissions).
 
 **Considered Options.**
-- The `lmtp` transport driver (socket/command) — rejected: xListman's LMTP
+- The `lmtp` transport driver (socket/command) — rejected: xMailman's LMTP
   server is TCP; the driver requires `socket` or `command`.
 - Routing directly to `127.0.0.1` — rejected: exim's local-host loop guard.
 - An `/etc/hosts` entry mapping to `127.0.0.1` — rejected: the guard is

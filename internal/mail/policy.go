@@ -1,7 +1,7 @@
 package mail
 
 import (
-	"github.com/barats/xlistman/internal/model"
+	"github.com/barats/xmailman/internal/model"
 )
 
 // PostAction is the decision made by the posting policy for an incoming message.

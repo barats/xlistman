@@ -4,7 +4,7 @@ import (
 	"embed"
 	"os"
 
-	"github.com/barats/xlistman/cmd"
+	"github.com/barats/xmailman/cmd"
 )
 
 //go:embed all:web/build

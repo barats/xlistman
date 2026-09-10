@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/barats/xlistman/internal/model"
+	"github.com/barats/xmailman/internal/model"
 )
 
 // TestConsoleBounces verifies the owner-only Bounces tab: listing members with

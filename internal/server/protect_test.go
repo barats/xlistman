@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/barats/xlistman/internal/config"
-	xmail "github.com/barats/xlistman/internal/mail"
-	"github.com/barats/xlistman/internal/store/sqlite"
+	"github.com/barats/xmailman/internal/config"
+	xmail "github.com/barats/xmailman/internal/mail"
+	"github.com/barats/xmailman/internal/store/sqlite"
 )
 
 // newProtectServer builds a test server with a config mutation applied, for

@@ -12,7 +12,7 @@ http:
 lmtp:
   listen: ":8024"
 socket:
-  path: "/tmp/xlistman.sock"
+  path: "/tmp/xmailman.sock"
 database:
   path: "./test.db"
 smtp:
@@ -69,11 +69,11 @@ func TestLoadConfig_AppliesDefaults(t *testing.T) {
 	if cfg.LMTP.Listen != ":8024" {
 		t.Errorf("default LMTP.Listen = %q, want %q", cfg.LMTP.Listen, ":8024")
 	}
-	if cfg.Socket.Path != "/var/run/xlistman.sock" {
-		t.Errorf("default Socket.Path = %q, want %q", cfg.Socket.Path, "/var/run/xlistman.sock")
+	if cfg.Socket.Path != "/var/run/xmailman.sock" {
+		t.Errorf("default Socket.Path = %q, want %q", cfg.Socket.Path, "/var/run/xmailman.sock")
 	}
-	if cfg.Database.Path != "./xlistman.db" {
-		t.Errorf("default Database.Path = %q, want %q", cfg.Database.Path, "./xlistman.db")
+	if cfg.Database.Path != "./xmailman.db" {
+		t.Errorf("default Database.Path = %q, want %q", cfg.Database.Path, "./xmailman.db")
 	}
 	if cfg.SMTP.Host != "localhost" {
 		t.Errorf("default SMTP.Host = %q, want %q", cfg.SMTP.Host, "localhost")
@@ -109,16 +109,16 @@ smtp:
   host: "localhost"
   port: 25
 `
-	os.Setenv("XLISTMAN_HTTP_LISTEN", ":3000")
-	os.Setenv("XLISTMAN_SMTP_HOST", "relay.example.com")
-	os.Setenv("XLISTMAN_SMTP_PORT", "587")
-	os.Setenv("XLISTMAN_RATE_LIMITS_MAGIC_LINK_PER_IP_PER_HOUR", "77")
-	os.Setenv("XLISTMAN_WEB_SITE_NAME", "My Lists")
-	defer os.Unsetenv("XLISTMAN_HTTP_LISTEN")
-	defer os.Unsetenv("XLISTMAN_SMTP_HOST")
-	defer os.Unsetenv("XLISTMAN_SMTP_PORT")
-	defer os.Unsetenv("XLISTMAN_RATE_LIMITS_MAGIC_LINK_PER_IP_PER_HOUR")
-	defer os.Unsetenv("XLISTMAN_WEB_SITE_NAME")
+	os.Setenv("XMAILMAN_HTTP_LISTEN", ":3000")
+	os.Setenv("XMAILMAN_SMTP_HOST", "relay.example.com")
+	os.Setenv("XMAILMAN_SMTP_PORT", "587")
+	os.Setenv("XMAILMAN_RATE_LIMITS_MAGIC_LINK_PER_IP_PER_HOUR", "77")
+	os.Setenv("XMAILMAN_WEB_SITE_NAME", "My Lists")
+	defer os.Unsetenv("XMAILMAN_HTTP_LISTEN")
+	defer os.Unsetenv("XMAILMAN_SMTP_HOST")
+	defer os.Unsetenv("XMAILMAN_SMTP_PORT")
+	defer os.Unsetenv("XMAILMAN_RATE_LIMITS_MAGIC_LINK_PER_IP_PER_HOUR")
+	defer os.Unsetenv("XMAILMAN_WEB_SITE_NAME")
 
 	cfg, err := LoadFromBytes([]byte(yaml))
 	if err != nil {
@@ -201,7 +201,7 @@ func TestValidate_SMTPTLS(t *testing.T) {
 	base := func(tls string) *Config {
 		return &Config{
 			Web:      WebConfig{BaseURL: "http://localhost:8080"},
-			Database: DatabaseConfig{Path: "./xlistman.db"},
+			Database: DatabaseConfig{Path: "./xmailman.db"},
 			SMTP:     SMTPConfig{TLS: tls},
 		}
 	}

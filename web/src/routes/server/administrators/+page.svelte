@@ -68,7 +68,7 @@
 		<p class="mt-1 text-sm text-muted-foreground">
 			Administrators can create domains and lists, manage other Administrators, delete lists, and
 			change list types. Only known Subscribers can be designated — add them to a list first, or
-			use <code class="rounded bg-muted px-1 py-0.5">xlistman admin add</code>.
+			use <code class="rounded bg-muted px-1 py-0.5">xmailman admin add</code>.
 		</p>
 		<form
 			class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end"
@@ -89,7 +89,7 @@
 		{#if admins.length === 0}
 			<Card class="p-6 text-sm text-muted-foreground">
 				No Administrators. Designate the first one above or on the server with
-				<code class="rounded bg-muted px-1 py-0.5">xlistman admin add</code>.
+				<code class="rounded bg-muted px-1 py-0.5">xmailman admin add</code>.
 			</Card>
 		{:else}
 			{#each admins as a (a.id)}

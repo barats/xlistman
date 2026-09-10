@@ -45,7 +45,7 @@ audit row, so an audit failure there is logged loudly rather than rolled back.
 **Surfaces**: a per-list **Audit** tab in the web role console visible to
 Owners only (Moderators keep the moderation-only boundary), an instance-wide
 **Audit** tab in the server-admin area visible to Administrators only, and a
-`xlistman audit` CLI command for parity. Both views are reverse-chronological
+`xmailman audit` CLI command for parity. Both views are reverse-chronological
 with an optional action filter.
 
 **Storage**: a dedicated `audit_events` table (no foreign keys, matching the

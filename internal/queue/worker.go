@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/barats/xlistman/internal/model"
-	"github.com/barats/xlistman/internal/store"
+	"github.com/barats/xmailman/internal/model"
+	"github.com/barats/xmailman/internal/store"
 )
 
 // Sender delivers a single message to the MTA. *mail.SMTPClient implements it.

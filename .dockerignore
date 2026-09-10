@@ -4,14 +4,14 @@
 **/.DS_Store
 
 # Go build artifacts
-/xlistman
+/xmailman
 /e2eseed
 
 # Local dev state
-/xlistman.yaml
-/xlistman.db
-/xlistman.db-shm
-/xlistman.db-wal
+/xmailman.yaml
+/xmailman.db
+/xmailman.db-shm
+/xmailman.db-wal
 
 # Frontend deps + intermediate build output (the Dockerfile rebuilds web/build
 # itself; local web/build is replaced by the builder stage).

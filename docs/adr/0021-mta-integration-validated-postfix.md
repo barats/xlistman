@@ -7,8 +7,8 @@ exercised against a real MTA. This ADR records the integration shape after live
 validation of the full loop against a local Postfix, including the decisions
 that validation surfaced.
 
-**Inbound wiring.** Postfix treats xListman's hosted domains as virtual mailbox
-domains and hands every recipient in them to xListman over LMTP:
+**Inbound wiring.** Postfix treats xMailman's hosted domains as virtual mailbox
+domains and hands every recipient in them to xMailman over LMTP:
 
 ```
 virtual_mailbox_domains = lists.example.com
@@ -17,7 +17,7 @@ virtual_transport = lmtp:[127.0.0.1]:8024
 
 The `[127.0.0.1]` bracket syntax pins the LMTP client to that host (no MX
 lookup). Postfix's LMTP client does not apply `recipient_delimiter` — it
-delivers the full envelope recipient through to xListman — so xListman parses
+delivers the full envelope recipient through to xMailman — so xMailman parses
 `listname+role@domain` itself (post, `-request`, `-owner`, `-subscribe`,
 `-unsubscribe`, `-bounces+VERP`, `-confirm+token`, `-moderate+token`). This is
 the production integration for an instance hosting virtual domains.

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/barats/xlistman/internal/mailparse"
-	"github.com/barats/xlistman/internal/model"
+	"github.com/barats/xmailman/internal/mailparse"
+	"github.com/barats/xmailman/internal/model"
 )
 
 func TestModifyMessageFooterMultipart(t *testing.T) {

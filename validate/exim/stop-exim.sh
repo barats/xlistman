@@ -1,5 +1,5 @@
 #!/bin/bash
-# Stop the user-space exim instance for the xListman LMTP-loop validation.
+# Stop the user-space exim instance for the xMailman LMTP-loop validation.
 # Run from the repo root.
 set -euo pipefail
 

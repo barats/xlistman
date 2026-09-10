@@ -1,13 +1,13 @@
 # MTA validation harness
 
-Disposable-but-kept fixtures for validating the xListman LMTP loop against a
+Disposable-but-kept fixtures for validating the xMailman LMTP loop against a
 real local MTA. The harness files (configs + scripts) are tracked in the repo
 under `validate/postfix/` and `validate/exim/`; transient outputs (databases,
 logs, spools, mailboxes) are gitignored.
 
 Both validations use the same domain/address conventions:
 
-- Domain: `lists.test` (reserved, non-routable), routed to xListman's LMTP
+- Domain: `lists.test` (reserved, non-routable), routed to xMailman's LMTP
   server on `127.0.0.1:8024` (Postfix) or `127.0.0.2:8024` (exim).
 - List: `dev@lists.test` (discussion), owner `owner@localhost`, with a second
   subscriber `poster@localhost` and a `deadbeat@localhost` subscription used
@@ -25,7 +25,7 @@ Prerequisite: Postfix installed (macOS ships it). Root needed to start it.
 
 ```
 sudo ./validate/postfix/start-postfix.sh     # backup + extend main.cf/aliases, start
-XLISTMAN_CONFIG=validate/postfix/postfix-validate.yaml ./xlistman serve
+XMAILMAN_CONFIG=validate/postfix/postfix-validate.yaml ./xmailman serve
 # ... run the flows (see docs/adr/0021) ...
 sudo ./validate/postfix/stop-postfix.sh      # stop and restore main.cf + aliases
 ```
@@ -37,12 +37,12 @@ Config: `validate/postfix/postfix-validate.yaml` (outbound to localhost:25);
 ## exim (ADR 0022)
 
 Prerequisites: `brew install exim` (no root for the instance itself), plus a
-root one-time loopback setup so exim can deliver to xListman over LMTP:
+root one-time loopback setup so exim can deliver to xMailman over LMTP:
 
 ```
 sudo ./validate/exim/start-loopback.sh       # lo0 alias 127.0.0.2 + /etc/hosts: lists.lmtp.local
 ./validate/exim/start-exim.sh                # exim daemon on 127.0.0.1:2525
-XLISTMAN_CONFIG=validate/exim/exim-validate.yaml ./xlistman serve
+XMAILMAN_CONFIG=validate/exim/exim-validate.yaml ./xmailman serve
 # ... run the flows (see docs/adr/0022) ...
 ./validate/exim/stop-exim.sh
 sudo ./validate/exim/stop-loopback.sh        # revert the loopback setup

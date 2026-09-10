@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/barats/xlistman/internal/mailparse"
-	"github.com/barats/xlistman/internal/model"
-	"github.com/barats/xlistman/internal/store"
+	"github.com/barats/xmailman/internal/mailparse"
+	"github.com/barats/xmailman/internal/model"
+	"github.com/barats/xmailman/internal/store"
 )
 
 // Pipeline processes inbound mail messages and routes them to the appropriate
