@@ -73,7 +73,21 @@ Captured from a live instance seeded with demo data — reproduce them with
 
 ## Quickstart
 
-### Option 1 — Docker (fastest)
+### Option 1 — Prebuilt binary download
+
+Download the archive for your platform from
+[GitHub Releases](https://github.com/barats/xmailman/releases) — for example
+`xmailman_0.4.0_linux_amd64.tar.gz` (linux/darwin × amd64/arm64 are
+available, plus `checksums.txt` to verify). The release binaries ship the web
+UI embedded.
+
+```sh
+tar xzf xmailman_0.4.0_linux_amd64.tar.gz
+./xmailman config init                 # generate ./xmailman.yaml, then edit it
+./xmailman serve
+```
+
+### Option 2 — Docker / Podman
 
 ```sh
 docker run -d --name xmailman \
@@ -86,9 +100,10 @@ docker run -d --name xmailman \
 The image ships a working default config (`/etc/xmailman/config.yaml`); any
 value can be overridden with `XMAILMAN_*` environment variables (e.g. point
 `XMAILMAN_SMTP_HOST` / `XMAILMAN_SMTP_PORT` at your relay). See
-[Configuration](#configuration).
+[Configuration](#configuration). Prefer Podman? Substitute `podman` for
+`docker` in the command above.
 
-### Option 2 — Build from source
+### Option 3 — Build from source
 
 Prerequisites: Go 1.25+, and Node.js + pnpm for the embedded web UI.
 
@@ -102,23 +117,9 @@ cd .. && go build -o xmailman .        # then the Go binary (UI embedded)
 > The web UI is generated and not committed, so `go install
 > github.com/barats/xmailman@latest` (and a plain `go build`) produces a binary
 > **without the web UI** — CLI and mail handling only. For the full product,
-> use the Docker image (above) or a prebuilt release binary (Option 3 below),
-> which ships the frontend embedded (goreleaser builds it as part of the
+> use a prebuilt release binary (Option 1) or the Docker image (Option 2),
+> which ship the frontend embedded (goreleaser builds it as part of the
 > release).
-
-### Option 3 — Prebuilt binary download
-
-Download the archive for your platform from
-[GitHub Releases](https://github.com/barats/xmailman/releases) — for example
-`xmailman_0.4.0_linux_amd64.tar.gz` (linux/darwin × amd64/arm64 are
-available, plus `checksums.txt` to verify). The release binaries ship the web
-UI embedded.
-
-```sh
-tar xzf xmailman_0.4.0_linux_amd64.tar.gz
-./xmailman config init                 # generate ./xmailman.yaml, then edit it
-./xmailman serve
-```
 
 ### First steps
 
