@@ -102,9 +102,23 @@ cd .. && go build -o xmailman .        # then the Go binary (UI embedded)
 > The web UI is generated and not committed, so `go install
 > github.com/barats/xmailman@latest` (and a plain `go build`) produces a binary
 > **without the web UI** — CLI and mail handling only. For the full product,
-> use the Docker image (above) or download a release binary from the
-> [GitHub Releases](https://github.com/barats/xmailman/releases) page, which
-> ships the frontend embedded (goreleaser builds it as part of the release).
+> use the Docker image (above) or a prebuilt release binary (Option 3 below),
+> which ships the frontend embedded (goreleaser builds it as part of the
+> release).
+
+### Option 3 — Prebuilt binary download
+
+Download the archive for your platform from
+[GitHub Releases](https://github.com/barats/xmailman/releases) — for example
+`xmailman_0.4.0_linux_amd64.tar.gz` (linux/darwin × amd64/arm64 are
+available, plus `checksums.txt` to verify). The release binaries ship the web
+UI embedded.
+
+```sh
+tar xzf xmailman_0.4.0_linux_amd64.tar.gz
+./xmailman config init                 # generate ./xmailman.yaml, then edit it
+./xmailman serve
+```
 
 ### First steps
 
